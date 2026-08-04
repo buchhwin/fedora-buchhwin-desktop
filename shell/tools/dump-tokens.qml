@@ -12,6 +12,7 @@ import Quickshell
 import Quickshell.Io
 import "../theme"
 import "../config"
+import "../common"
 
 Scope {
     id: root
@@ -25,16 +26,24 @@ Scope {
         say("  " + name + pad + value)
     }
 
-    Component.onCompleted: {
-        // Scheme loading is asynchronous; give it a beat rather than reading
-        // an empty object and reporting a fallback as if it were the palette.
-        settle.start()
-    }
+    // Wait for the data, not for a duration. The previous fixed 600 ms timer
+    // was the bug: it touched Scheme for the FIRST time inside itself, so the
+    // palette only started loading in the line that read it, `ready` was always
+    // false, and every palette silently reported the built-in fallback. See
+    // WaitFor.qml.
+    WaitFor {
+        condition: Config.settled && Scheme.ready
 
-    Timer {
-        id: settle
-        interval: 600
-        onTriggered: {
+        onTimedOut: {
+            // A dump that cannot see its palette must fail, not print the
+            // fallback under the palette's name. tests/all-palettes.sh greps
+            // for this line.
+            say("  FAIL: palette did not load — " +
+                (Scheme.failure.length ? Scheme.failure : "no reason reported"))
+            Qt.callLater(Qt.quit)
+        }
+
+        onReady: {
             say("palette      " + Scheme.name + "  (" + Scheme.displayName + ", family " +
                 Scheme.family + ", dark=" + Scheme.dark + ", ready=" + Scheme.ready + ")")
             say("accent       " + Config.theme.accent)
@@ -86,6 +95,23 @@ Scope {
             // Two things that must never be true, checked here so a bad palette
             // fails a test instead of just looking slightly wrong.
             var bad = []
+            // The palette must be the one that was asked for. Without this the
+            // test cannot tell eleven palettes apart from one palette eleven
+            // times — which is precisely what it failed to tell for all of M1.
+            if (!Scheme.ready) bad.push("palette not loaded")
+            // All 26 semantic names, not just the ones printed above. The
+            // header of tests/all-palettes.sh promises that "a palette that is
+            // missing a key has to fail here" — it did not, because a name
+            // nothing happened to render was never looked at. The built-in
+            // fallback is the schema: it is the one place every name exists.
+            var missing = []
+            for (var key in Scheme.fallback)
+                if (!Scheme.colors[key]) missing.push(key)
+            if (missing.length) bad.push("palette is missing " + missing.length +
+                                         " colour(s): " + missing.join(", "))
+            if (Scheme.name !== Config.theme.palette)
+                bad.push("wrong palette: asked for " + Config.theme.palette +
+                         ", got " + Scheme.name)
             if (Theme.hex(Theme.bg) === Theme.hex(Theme.fg)) bad.push("bg == fg")
             if (Math.abs(Theme.luminance(Theme.bg) - Theme.luminance(Theme.fg)) < 0.25)
                 bad.push("bg/fg contrast too low")

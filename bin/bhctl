@@ -11,14 +11,25 @@ usage() {
     cat <<'EOF'
 bhctl theme [<palette> [<accent>]]   switch or show the colour scheme
 bhctl theme apply                    re-render foreign app themes
+bhctl niri apply                     regenerate ~/.config/niri/config.kdl
+bhctl niri diff                      show what a regeneration would change
 bhctl doctor                         check the installation
 bhctl shell reset                    restore default settings and restart
 EOF
 }
 
-render() {
-    BUCHHWIN_TOOL=render QT_QPA_PLATFORM=offscreen timeout 60 qs -p "$REPO_DIR/shell" >/dev/null 2>&1
+# One runner for every tool. This used to be a second copy of the installer's
+# render(), with the tool name baked in — so adding a tool meant editing both.
+run_tool() {
+    BUCHHWIN_TOOL="$1" QT_QPA_PLATFORM=offscreen timeout 60 qs -p "$REPO_DIR/shell" >/dev/null 2>&1
+    # The tools exit 0 even when they abort; their report is the real result.
+    if grep -q ABORT "/tmp/buchhwin-$1.log" 2>/dev/null; then
+        sed -n '/ABORT/,$p' "/tmp/buchhwin-$1.log" >&2
+        return 1
+    fi
+    return 0
 }
+render() { run_tool render; }
 
 case "${1:-}" in
 theme)
@@ -43,11 +54,53 @@ theme)
         ;;
     esac
     ;;
+niri)
+    shift
+    cfg="$CONFIG_HOME/niri/config.kdl"
+    case "${1:-apply}" in
+    apply)
+        mkdir -p "$CONFIG_HOME/niri" "$CONFIG_HOME/environment.d"
+        run_tool niri || exit 1
+        if command -v niri >/dev/null; then
+            # niri live-reloads on write, so a broken file is already loaded by
+            # the time we get here. Say so loudly rather than let it look fine.
+            if niri validate -c "$cfg" 2>&1 | grep -q "config is valid"; then
+                echo "config.kdl regenerated and valid"
+            else
+                echo "config.kdl regenerated but INVALID:" >&2
+                niri validate -c "$cfg" 2>&1 | sed 's/^/  /' >&2
+                exit 1
+            fi
+        else
+            echo "config.kdl regenerated (niri not installed, not validated)"
+        fi
+        ;;
+    diff)
+        tmp="$(mktemp -d)"; mkdir -p "$tmp/niri" "$tmp/environment.d"
+        XDG_CONFIG_HOME="$tmp" run_tool niri || { rm -rf "$tmp"; exit 1; }
+        if diff -u "$cfg" "$tmp/niri/config.kdl" 2>/dev/null; then
+            echo "no changes"
+        fi
+        rm -rf "$tmp"
+        ;;
+    *) usage; exit 2 ;;
+    esac
+    ;;
 doctor)
     printf 'niri        %s\n' "$(niri --version 2>/dev/null | head -1 || echo MISSING)"
     printf 'quickshell  %s\n' "$(qs --version 2>/dev/null | cut -d, -f1 || echo MISSING)"
     printf 'shell unit  %s\n' "$(systemctl --user is-active buchhwin-shell 2>/dev/null || echo inactive)"
     printf 'config      %s\n' "$([[ -f $CONFIG_HOME/buchhwin/shell.json ]] && echo ok || echo MISSING)"
+    if [[ -f "$CONFIG_HOME/niri/config.kdl" ]]; then
+        if command -v niri >/dev/null && niri validate -c "$CONFIG_HOME/niri/config.kdl" 2>&1 | grep -q "config is valid"; then
+            printf 'niri config valid (%s lines)\n' "$(wc -l < "$CONFIG_HOME/niri/config.kdl")"
+        else
+            printf 'niri config INVALID — run: bhctl niri apply\n'
+        fi
+    else
+        printf 'niri config MISSING — run: bhctl niri apply\n'
+    fi
+    printf 'startup     %s\n' "$(systemd-analyze --user critical-chain buchhwin-shell.service 2>/dev/null | grep -m1 '@' | sed 's/^ *//' || echo 'not measured')"
     # "as little XWayland as possible" is only a claim until something counts.
     if command -v niri >/dev/null && niri msg -j windows >/dev/null 2>&1; then
         if pgrep -x Xwayland >/dev/null 2>&1; then
@@ -61,7 +114,7 @@ doctor)
 "shell")
     [[ "${2:-}" == "reset" ]] || { usage; exit 2; }
     cp "$CONFIG_HOME/buchhwin/shell.json" "$CONFIG_HOME/buchhwin/shell.json.bak" 2>/dev/null
-    printf '{\n  "theme": { "palette": "everforest-dark", "accent": "green" }\n}\n' \
+    printf '{\n  "version": 1,\n  "theme": { "palette": "everforest-dark", "accent": "green" }\n}\n' \
         > "$CONFIG_HOME/buchhwin/shell.json"
     systemctl --user restart buchhwin-shell 2>/dev/null
     echo "settings reset (previous kept as shell.json.bak)"

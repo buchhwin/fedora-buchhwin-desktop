@@ -2,3 +2,12 @@
 brave-browser       # launched Wayland-native; see lib/60-shell.sh for the flags
 code
 keepassxc
+
+# Chosen deliberately rather than arriving later as somebody's dependency.
+# Qt was measured and rejected for these: qimgv 29 packages/89 MiB against
+# loupe 5/31, okular 81/221 against papers 8/24. GTK apps are recoloured from
+# our palette anyway, so the toolkit underneath is not something you see.
+loupe                       # images
+vlc                         # video — Qt, and in Fedora's own updates repo
+# No PDF viewer: the browser does it.
+# No archive manager: nautilus hard-requires gnome-autoar and does it itself.

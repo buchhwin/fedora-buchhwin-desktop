@@ -1,0 +1,8 @@
+# Shared building blocks, registered by name.
+#
+# Not optional: Quickshell loads files through a virtual filesystem
+# (qs:@/qs/tools/...), so QML's implicit "types in my own folder" rule does not
+# apply and a component without an entry here fails with "X is not a type".
+# The singletons in theme/ and config/ carry the same warning for the same
+# reason — this is the third time the project has paid for it.
+WaitFor 1.0 WaitFor.qml

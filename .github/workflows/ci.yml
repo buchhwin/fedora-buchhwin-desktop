@@ -38,16 +38,30 @@ jobs:
     container: fedora:44
     steps:
       - uses: actions/checkout@v4
-      - name: install quickshell
+      - name: install quickshell and niri
+        # install_weak_deps=False is the same guarantee the installer relies on:
+        # Fedora's niri package recommends waybar, alacritty, fuzzel and
+        # swaylock. Asserting it here means every run proves it still holds.
+        # jq is required by tests/all-palettes.sh, which exits 2 without it —
+        # it was never installed explicitly before.
         run: |
           dnf install -y --setopt=install_weak_deps=False \
-            quickshell qt6-qtdeclarative qt6-qtdeclarative-devel git-core
+            quickshell qt6-qtdeclarative qt6-qtdeclarative-devel git-core niri jq
+          for unwanted in waybar alacritty fuzzel swaylock; do
+            if rpm -q "$unwanted" >/dev/null 2>&1; then
+              echo "::error::$unwanted was pulled in despite install_weak_deps=False"
+              exit 1
+            fi
+          done
       - name: qmllint
         run: |
           qmllint-qt6 -I /usr/lib64/qt6/qml -I shell/ $(git ls-files 'shell/**/*.qml') \
             || echo "::warning::qmllint reported findings (not yet blocking)"
       - name: every palette resolves to a full token set
         run: bash tests/all-palettes.sh
+
+      - name: the generated niri config parses, cleanly
+        run: bash tests/niri-config.sh
 
   secrets:
     runs-on: ubuntu-latest

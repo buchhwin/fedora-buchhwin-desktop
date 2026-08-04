@@ -9,9 +9,12 @@ quickshell
 qt6-qtdeclarative           # quickshell's runtime
 qt6-qtdeclarative-devel     # qmllint/qmlformat, used by CI and `bhctl doctor`
 
-# Greeter. The theme is ours, generated from the palette.
-sddm
-sddm-wayland-generic
+# Greeter. greetd, not SDDM: the greeter is our own Quickshell surface, so it
+# uses the same palette, fonts and code as the lock screen instead of needing a
+# second theme maintained in a second format. greetd itself is 2 packages.
+# ⚠️ SDDM is only removed once the new greeter is proven to reach a desktop on
+# the VM — a broken greeter means no way to log in at all.
+greetd
 
 # Terminal.
 kitty
@@ -50,9 +53,25 @@ qt6ct
 
 # Drives.
 udisks2
+# Files, network shares and cloud storage.
+#
+# nautilus is not merely "a file manager". From niri's own shipped wiki:
+# xdg-desktop-portal-gnome is REQUIRED for screencasting, and since v47 that
+# portal uses nautilus as the file chooser — so this is the Open/Save dialog of
+# every application. Both portals below are therefore correct, not redundant.
+# (Escape hatch if it ever bites: org.freedesktop.impl.portal.FileChooser=gtk;
+# in niri-portals.conf.)
+#
+# Measured against the Qt alternative: nautilus + gvfs + online accounts is
+# 11 packages / 17 MiB; dolphin pulls 68 packages / 216 MiB of KDE frameworks.
+nautilus
 gvfs
 gvfs-smb
-gvfs-fuse
+gvfs-nfs
+gvfs-fuse                   # makes gvfs mounts visible to non-GTK programs too
+gvfs-goa                    # Google Drive and friends, via online accounts
+gnome-online-accounts
+gnome-online-accounts-gtk   # standalone account setup; no GNOME Settings needed
 
 # ⚠️ OPEN DECISION — no file manager is listed on purpose.
 # Every mature Linux file manager is GTK (nemo, nautilus, thunar) or Qt

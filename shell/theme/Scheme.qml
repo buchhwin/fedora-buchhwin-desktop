@@ -14,16 +14,39 @@ pragma Singleton
 import QtQuick
 import Quickshell
 import Quickshell.Io
+import "../config"
 
 Singleton {
     id: root
 
-    // Written by Config; kept as a plain property so the headless renderer can
-    // override it from the command line without a config file existing yet.
-    property string name: "everforest-dark"
+    // Bound to the user's choice, not merely documented as such.
+    //
+    // This was a plain "everforest-dark" until M2, and the comment claimed
+    // Config wrote it — nothing did. Changing theme.palette in shell.json was
+    // therefore a no-op, and tests/all-palettes.sh passed vacuously: it loaded
+    // Everforest eleven times and, because every palette's first accent is one
+    // of the 26 names Everforest also defines, never saw the magenta sentinel.
+    //
+    // It stays a binding rather than a readonly alias so a headless tool can
+    // still assign over it — an assignment breaks the binding, which is exactly
+    // the escape hatch the old comment wanted.
+    property string name: Config.theme.palette || "everforest-dark"
 
-    // Honest readiness: the data is what matters, not the file object's state.
-    readonly property bool ready: !!_data.colors
+    // Honest readiness: the data is what matters, not the file object's state
+    // — and it must be the data for the palette we are asking about NOW.
+    //
+    // Checking only `_data.colors` had a race: `name` is bound to the config,
+    // so it changes from the default to the user's choice a few milliseconds
+    // in. Between those two moments the old palette's data is still loaded and
+    // `ready` would say true while `name` already named a different palette.
+    // Anything that sampled it there wrote one palette's colours under another
+    // palette's name.
+    readonly property bool ready: !!_data.colors && _loadedName === root.name
+    property string _loadedName: ""
+
+    // Why it is not ready, for a tool that has to explain itself rather than
+    // exit quietly. Empty while everything is fine.
+    property string failure: ""
     readonly property var colors: _data.colors || fallback
     readonly property string family: _data.family || "Everforest"
     readonly property string displayName: _data.display_name || root.name
@@ -67,9 +90,29 @@ Singleton {
         id: file
         path: Quickshell.shellPath("theme/palettes/" + root.name + ".json")
         watchChanges: true
+        // Loud on purpose. This failing silently is exactly how the whole
+        // desktop ran on fallback colours without anyone noticing.
+        printErrors: true
         onFileChanged: reload()
-        onLoaded: root._data = JSON.parse(text())
-        onLoadFailed: root._data = ({})
+        onLoaded: {
+            try {
+                root._data = JSON.parse(text())
+                root._loadedName = root.name
+                root.failure = ""
+            } catch (e) {
+                // A palette that is present but malformed is a different fault
+                // from one that is missing, and the difference is what someone
+                // needs in order to fix it.
+                root._data = ({})
+                root._loadedName = ""
+                root.failure = "palette '" + root.name + "' is not valid JSON: " + e
+            }
+        }
+        onLoadFailed: {
+            root._data = ({})
+            root._loadedName = ""
+            root.failure = "palette '" + root.name + "' could not be read from " + path
+        }
     }
 
     // Written by the installer (a plain `ls` of the palette folder). Absent on

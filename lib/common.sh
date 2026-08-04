@@ -41,9 +41,27 @@ dnf_install() {
 # `qs` is how this project renders anything. Running it headless is a first
 # class path, not a trick: the installer and a running session use the same
 # code, so a fresh machine and a palette switch cannot drift apart.
-render() {
-    command -v qs >/dev/null || { warn "quickshell not installed yet; skipping render"; return 0; }
-    BUCHHWIN_TOOL=render QT_QPA_PLATFORM=offscreen \
-        timeout 60 qs -p "$REPO_DIR/shell" >/dev/null 2>&1 \
-        || warn "render pass failed — run 'bhctl theme apply' after logging in"
+#
+# One helper for every tool, rather than one function per tool hardcoding its
+# own name — there were two copies of this, in common.sh and in bin/bhctl, and
+# adding the niri generator would have meant editing both.
+run_tool() {
+    local tool="$1"
+    local log="/tmp/buchhwin-$tool.log"
+    command -v qs >/dev/null || { warn "quickshell not installed yet; skipping $tool"; return 0; }
+    if ! BUCHHWIN_TOOL="$tool" QT_QPA_PLATFORM=offscreen \
+            timeout 60 qs -p "$REPO_DIR/shell" >/dev/null 2>&1; then
+        warn "$tool pass failed — run 'bhctl $tool apply' after logging in"
+        return 1
+    fi
+    # The tools exit 0 even when they abort, so their own report is the only
+    # place a failure shows. Surfacing it here is the difference between a
+    # warning and a desktop that quietly has no colours.
+    if [[ -f "$log" ]] && grep -q 'ABORT' "$log"; then
+        warn "$tool aborted: $(grep -m1 -A1 'ABORT' "$log" | tail -1 | sed 's/^ *//')"
+        return 1
+    fi
+    return 0
 }
+
+render() { run_tool render; }

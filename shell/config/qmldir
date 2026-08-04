@@ -1,3 +1,4 @@
 # See theme/qmldir — a singleton without a qmldir entry is invisible to any
 # file outside its own directory.
 singleton Config 1.0 Config.qml
+singleton Migrations 1.0 Migrations.qml

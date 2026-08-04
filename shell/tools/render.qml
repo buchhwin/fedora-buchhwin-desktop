@@ -23,6 +23,7 @@ import Quickshell
 import Quickshell.Io
 import "../theme"
 import "../config"
+import "../common"
 
 Scope {
     id: root
@@ -163,21 +164,50 @@ Scope {
     }
 
     // ------------------------------------------------------------------- niri
-    // Colours, rounding and border width only — the rest of config.kdl is
-    // generated separately (M2) so a theme change never rewrites keybinds.
+    // COLOURS ONLY. This file is `include`d by the generated config.kdl, and
+    // the split is what lets a palette change leave the keybindings alone.
+    //
+    // ⚠️ Two rules, both from niri's own documentation and both easy to break:
+    //
+    //  * No `on`, no `off`, no `width`, no `gaps` here. Whether a border exists
+    //    is a look setting and belongs to tools/niri.qml. Worse, the meaning
+    //    differs by file: "writing layout { border {} } in an included config
+    //    does nothing… the same in the main config will ENABLE the border".
+    //    Deciding visibility from here would mean deciding it differently
+    //    depending on which file happened to be read.
+    //
+    //  * An include overrides what came before it, so config.kdl places this
+    //    include after its own layout block. Sections merge property by
+    //    property, so setting only colours leaves gaps and width untouched.
     function niriColours() {
         return headerHash.replace(/^#/gm, "//") +
+            "// Colours only — see tools/render.qml. Structure lives in config.kdl.\n" +
             "layout {\n" +
-            "    gaps " + Config.look.gapsOut + "\n" +
+            "    background-color \"" + Theme.hex(Theme.bgDeep) + "\"\n" +
             "    border {\n" +
-            (Theme.borderWidth > 0 ? "        width " + Theme.borderWidth + "\n"
-                                   : "        off\n") +
             "        active-color \"" + Theme.hex(Theme.accent) + "\"\n" +
             "        inactive-color \"" + Theme.hex(Theme.outline) + "\"\n" +
+            "        urgent-color \"" + Theme.hex(Theme.error) + "\"\n" +
             "    }\n" +
             "    focus-ring {\n" +
-            (Theme.borderWidth > 0 ? "        off\n" : "        off\n") +
+            "        active-color \"" + Theme.hex(Theme.accent) + "\"\n" +
+            "        inactive-color \"" + Theme.hex(Theme.outline) + "\"\n" +
+            "        urgent-color \"" + Theme.hex(Theme.error) + "\"\n" +
             "    }\n" +
+            "    shadow {\n" +
+            "        color \"" + Theme.hex(Theme.bgDeep) + "b0\"\n" +
+            "    }\n" +
+            "    insert-hint {\n" +
+            "        color \"" + Theme.hex(Theme.accent) + "80\"\n" +
+            "    }\n" +
+            "    tab-indicator {\n" +
+            "        active-color \"" + Theme.hex(Theme.accent) + "\"\n" +
+            "        inactive-color \"" + Theme.hex(Theme.outline) + "\"\n" +
+            "        urgent-color \"" + Theme.hex(Theme.error) + "\"\n" +
+            "    }\n" +
+            "}\n" +
+            "\noverview {\n" +
+            "    backdrop-color \"" + Theme.hex(Theme.bgDim) + "\"\n" +
             "}\n"
     }
 
@@ -204,21 +234,23 @@ Scope {
     FileView { id: f7 }
     FileView { id: log; path: "/tmp/buchhwin-render.log" }
 
-    Component.onCompleted: settle.start()
+    // Wait for the palette to actually be there. The previous fixed 700 ms
+    // timer looked like it was doing this and was not: it touched Scheme for
+    // the first time inside itself, so the palette had not begun loading when
+    // `ready` was tested. See WaitFor.qml.
+    WaitFor {
+        condition: Config.settled && Scheme.ready
 
-    Timer {
-        id: settle
-        // The palette loads asynchronously; rendering before it lands would
-        // write the fallback colours and look like a corrupted palette.
-        interval: 700
-        onTriggered: {
+        onTimedOut: {
+            note("buchhwin render — ABORT")
+            note("  the palette did not load; refusing to write fallback colours")
+            note("  " + (Scheme.failure.length ? Scheme.failure : "no reason reported"))
+            Qt.callLater(Qt.quit)
+        }
+
+        onReady: {
             note("buchhwin render — palette " + Scheme.name +
                  " (" + Scheme.displayName + "), accent " + Config.theme.accent)
-            if (!Scheme.ready) {
-                note("  ABORT: palette did not load; refusing to write fallback colours")
-                Qt.callLater(Qt.quit)
-                return
-            }
 
             write(f1, root.cfg + "/gtk-3.0/gtk.css",      gtk3Css(),    "gtk3 colours")
             write(f2, root.cfg + "/gtk-3.0/settings.ini", gtkSettings(), "gtk3 settings")

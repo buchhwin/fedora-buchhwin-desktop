@@ -28,12 +28,24 @@ that still falls back, so the claim stays measurable instead of aspirational.
 
     shell/          the Quickshell shell — the whole user interface
       theme/        Scheme.qml (palette) + Theme.qml (tokens) + palettes/
-      config/       Config.qml — ~/.config/buchhwin/shell.json, one writer
+      config/       Config.qml — ~/.config/buchhwin/shell.json
+                    Migrations.qml — renames and removals, on the raw JSON
+      common/       shared pieces (WaitFor: wait for data, not for a duration)
       tools/        headless tools, run through the same import graph
+                    render.qml → GTK/Qt/kitty/colors.kdl
+                    niri.qml   → config.kdl + environment.d
       ui/           bar, notch, launcher, dock, settings
     lib/            installer phases (bash)
     packages/       package lists
-    sddm/           the greeter theme, generated from the same tokens
+    tests/          all-palettes.sh, niri-config.sh, no-literals.sh
+    docs/           NIRI.md (what is generated), CONFIG.md (the settings),
+                    PRUEFLISTE.md (what only a person can check)
+
+`shell.json` is the only file you edit. `config.kdl`, `colors.kdl`, the GTK and
+Qt themes and `environment.d` are all generated from it — see `docs/NIRI.md`.
+Two writers touch `shell.json`: the settings UI through Config.qml, and
+`bhctl theme`, which patches it with jq and preserves everything it does not
+know about.
 
 ## Licence
 
