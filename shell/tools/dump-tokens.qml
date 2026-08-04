@@ -89,7 +89,8 @@ Scope {
             if (Theme.hex(Theme.bg) === Theme.hex(Theme.fg)) bad.push("bg == fg")
             if (Math.abs(Theme.luminance(Theme.bg) - Theme.luminance(Theme.fg)) < 0.25)
                 bad.push("bg/fg contrast too low")
-            if (Theme.hex(Theme.accent) === "#ff00ff") bad.push("accent missing from palette")
+            // Scheme's "colour not found" sentinel, compared against — not drawn.
+            if (Theme.hex(Theme.accent) === "#ff00ff") bad.push("accent missing")  // literal-ok: sentinel comparison
             say(bad.length ? "  FAIL: " + bad.join(", ") : "  ok: contrast and accent resolve")
             Qt.callLater(Qt.quit)
         }

@@ -1,0 +1,5 @@
+# Flatpaks: used where no native package exists.
+com.spotify.Client
+com.discordapp.Discord
+md.obsidian.Obsidian
+org.onlyoffice.desktopeditors

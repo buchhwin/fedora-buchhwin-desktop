@@ -1,0 +1,56 @@
+#!/usr/bin/env bash
+# buchhwin desktop — turn a bare Fedora Server 44 into a niri desktop.
+#
+#   ./install.sh                  everything
+#   ./install.sh --minimal        no applications
+#   ./install.sh --with citrix    add the Citrix client (see docs/CITRIX.md)
+#   ./install.sh --only <phase>   one phase; repeatable
+#   ./install.sh --skip <phase>   all but one; repeatable
+#
+set -uo pipefail
+REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=lib/common.sh
+source "$REPO_DIR/lib/common.sh"
+
+MINIMAL=0; WITH=(); ONLY=(); SKIP=()
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --minimal) MINIMAL=1 ;;
+        --with)    WITH+=("${2:?}"); shift ;;
+        --only)    ONLY+=("${2:?}"); shift ;;
+        --skip)    SKIP+=("${2:?}"); shift ;;
+        -h|--help) sed -n '2,12p' "$0"; exit 0 ;;
+        *) die "unknown option: $1" ;;
+    esac
+    shift
+done
+export MINIMAL WITH
+
+should_run() {
+    local p="$1" s
+    for s in "${SKIP[@]:-}"; do [[ "$s" == "$p" ]] && return 1; done
+    (( ${#ONLY[@]} )) || return 0
+    for s in "${ONLY[@]}"; do [[ "$s" == "$p" ]] && return 0; done
+    return 1
+}
+
+for phase_file in "$REPO_DIR"/lib/[0-9][0-9]-*.sh; do
+    # shellcheck source=/dev/null
+    source "$phase_file"
+done
+
+run_phase() { should_run "$1" && "phase_$1"; return 0; }
+
+run_phase preflight
+run_phase base
+run_phase desktop
+run_phase apps
+run_phase fonts
+run_phase shell
+run_phase services
+run_phase summary
+
+# An `--only` run that filters out `summary` must still exit 0. The previous
+# project ended on `should_run summary && phase_summary`, so every such run
+# reported failure while having done exactly what was asked.
+exit 0

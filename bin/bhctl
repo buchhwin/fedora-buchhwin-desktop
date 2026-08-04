@@ -1,0 +1,70 @@
+#!/usr/bin/env bash
+# buchhwin control — a thin front for the shell's own IPC.
+#
+# Deliberately small. Anything that needs to know how the desktop works lives
+# in QML; this only routes.
+set -uo pipefail
+REPO_DIR="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/.." && pwd)"
+CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
+
+usage() {
+    cat <<'EOF'
+bhctl theme [<palette> [<accent>]]   switch or show the colour scheme
+bhctl theme apply                    re-render foreign app themes
+bhctl doctor                         check the installation
+bhctl shell reset                    restore default settings and restart
+EOF
+}
+
+render() {
+    BUCHHWIN_TOOL=render QT_QPA_PLATFORM=offscreen timeout 60 qs -p "$REPO_DIR/shell" >/dev/null 2>&1
+}
+
+case "${1:-}" in
+theme)
+    shift
+    case "${1:-}" in
+    ""|show)
+        jq -r '.theme | "palette: \(.palette)  accent: \(.accent)"' \
+            "$CONFIG_HOME/buchhwin/shell.json" 2>/dev/null || echo "no settings yet"
+        printf 'available: '; tr '\n' ' ' < "$REPO_DIR/shell/theme/palettes/index.txt" 2>/dev/null; echo
+        ;;
+    apply) render && echo "themes re-rendered" ;;
+    *)
+        pal="$1"; accent="${2:-}"
+        [[ -f "$REPO_DIR/shell/theme/palettes/$pal.json" ]] || { echo "no such palette: $pal" >&2; exit 1; }
+        [[ -n "$accent" ]] || accent="$(jq -r '.accents[0]' "$REPO_DIR/shell/theme/palettes/$pal.json")"
+        f="$CONFIG_HOME/buchhwin/shell.json"
+        tmp="$(mktemp)"
+        jq --arg p "$pal" --arg a "$accent" '.theme.palette=$p | .theme.accent=$a' "$f" > "$tmp" \
+            && mv "$tmp" "$f"
+        render
+        echo "palette: $pal  accent: $accent"
+        ;;
+    esac
+    ;;
+doctor)
+    printf 'niri        %s\n' "$(niri --version 2>/dev/null | head -1 || echo MISSING)"
+    printf 'quickshell  %s\n' "$(qs --version 2>/dev/null | cut -d, -f1 || echo MISSING)"
+    printf 'shell unit  %s\n' "$(systemctl --user is-active buchhwin-shell 2>/dev/null || echo inactive)"
+    printf 'config      %s\n' "$([[ -f $CONFIG_HOME/buchhwin/shell.json ]] && echo ok || echo MISSING)"
+    # "as little XWayland as possible" is only a claim until something counts.
+    if command -v niri >/dev/null && niri msg -j windows >/dev/null 2>&1; then
+        if pgrep -x Xwayland >/dev/null 2>&1; then
+            printf 'xwayland    RUNNING — these windows are not Wayland-native:\n'
+            command -v xlsclients >/dev/null && xlsclients 2>/dev/null | sed 's/^/            /'
+        else
+            printf 'xwayland    not running (every window is Wayland-native)\n'
+        fi
+    fi
+    ;;
+"shell")
+    [[ "${2:-}" == "reset" ]] || { usage; exit 2; }
+    cp "$CONFIG_HOME/buchhwin/shell.json" "$CONFIG_HOME/buchhwin/shell.json.bak" 2>/dev/null
+    printf '{\n  "theme": { "palette": "everforest-dark", "accent": "green" }\n}\n' \
+        > "$CONFIG_HOME/buchhwin/shell.json"
+    systemctl --user restart buchhwin-shell 2>/dev/null
+    echo "settings reset (previous kept as shell.json.bak)"
+    ;;
+*) usage ;;
+esac

@@ -1,0 +1,16 @@
+# Base system. Installed on every profile.
+dnf-plugins-core
+git-core
+curl
+jq                  # the installer's only structured-data tool; there is no python here
+tar
+unzip
+zsh
+NetworkManager
+pipewire
+pipewire-pulseaudio
+wireplumber
+polkit
+xdg-user-dirs
+libnotify
+desktop-file-utils

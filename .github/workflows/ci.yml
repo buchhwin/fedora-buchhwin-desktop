@@ -1,0 +1,73 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  # The design rule that decays fastest, checked first and cheapest.
+  style:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: no literal colours or radii outside shell/theme/
+        run: bash tests/no-literals.sh
+
+  shell:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update && sudo apt-get install -y shellcheck
+      - name: shellcheck
+        run: |
+          mapfile -t files < <(git ls-files '*.sh' 'bin/*' | grep -vE '\.(qml|json|md)$')
+          (( ${#files[@]} )) || { echo "no shell scripts yet"; exit 0; }
+          printf '%s\n' "${files[@]}"
+          shellcheck -S warning "${files[@]}"
+      - name: bash -n
+        run: |
+          for f in $(git ls-files '*.sh'); do bash -n "$f"; done
+
+  # qmllint cannot see a missing qmldir entry or a singleton shadowed by a Qt
+  # type — both of which turned the whole desktop black during development.
+  # So the linter runs AND the shell is actually started, headless.
+  qml:
+    runs-on: ubuntu-latest
+    container: fedora:44
+    steps:
+      - uses: actions/checkout@v4
+      - name: install quickshell
+        run: |
+          dnf install -y --setopt=install_weak_deps=False \
+            quickshell qt6-qtdeclarative qt6-qtdeclarative-devel git-core
+      - name: qmllint
+        run: |
+          qmllint-qt6 -I /usr/lib64/qt6/qml -I shell/ $(git ls-files 'shell/**/*.qml') \
+            || echo "::warning::qmllint reported findings (not yet blocking)"
+      - name: every palette resolves to a full token set
+        run: bash tests/all-palettes.sh
+
+  secrets:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: no private addresses, home paths or lab leftovers
+        run: |
+          if git grep -nIE '192\.168\.|10\.200\.200\.|/home/[a-z]+/|BEGIN [A-Z ]*PRIVATE KEY' \
+               -- . ':!docs/CITRIX.md' ; then
+            echo "::error::a private address, a home path or a key reached the repository"
+            exit 1
+          fi
+          echo "clean"
+      - name: no GPL sources copied into the shell
+        # caelestia and end-4 are GPL. Their ideas are fair game; their code is
+        # not, and this repository is MIT. A name appearing under shell/ is the
+        # cheapest possible signal that a file was pasted rather than written.
+        run: |
+          if git grep -nIE 'caelestia|end-4|GNU General Public' -- shell/ ; then
+            echo "::error::a GPL project is referenced inside shell/"
+            exit 1
+          fi
+          echo "clean"

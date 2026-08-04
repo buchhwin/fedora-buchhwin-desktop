@@ -1,0 +1,60 @@
+# The desktop itself.
+#
+# ⚠️ Installed with --setopt=install_weak_deps=False, deliberately.
+# Fedora's niri package RECOMMENDS waybar, alacritty, fuzzel and swaylock, and
+# its shipped default config even has `spawn-at-startup "waybar"`. We replace
+# all four, so pulling them in would put a second bar on the screen.
+niri
+quickshell
+qt6-qtdeclarative           # quickshell's runtime
+qt6-qtdeclarative-devel     # qmllint/qmlformat, used by CI and `bhctl doctor`
+
+# Greeter. The theme is ours, generated from the palette.
+sddm
+sddm-wayland-generic
+
+# Terminal.
+kitty
+
+# Fonts: the two the token layer names, plus the icon font the shell draws with.
+rsms-inter-vf-fonts         # variable Inter — one file, real weight interpolation
+material-icons-fonts        # Material Symbols Rounded, variable
+google-noto-color-emoji-fonts
+google-noto-sans-cjk-fonts
+# JetBrainsMono *Nerd* Font is not packaged anywhere; lib/50-fonts.sh fetches it.
+jetbrains-mono-fonts
+
+# The five things quickshell genuinely cannot do, driven through Process.
+brightnessctl               # no brightness API
+ddcutil                     # external monitor brightness
+cliphist                    # no clipboard-history API
+wl-clipboard
+gammastep                   # no gamma/night-light API
+wf-recorder                 # no screen-recording API (niri has none either)
+grim                        # screenshots for scripting; niri has its own UI
+
+# Portals: file dialogs and screen capture. Not replaceable.
+xdg-desktop-portal
+xdg-desktop-portal-gtk
+xdg-desktop-portal-gnome
+
+# Secrets.
+gnome-keyring
+libsecret
+
+# Foreign-application theming. We do not USE gtk or qt — third-party programs
+# do, and these let the generated colours actually apply to them.
+adw-gtk3-theme
+papirus-icon-theme
+qt6ct
+
+# Drives.
+udisks2
+gvfs
+gvfs-smb
+gvfs-fuse
+
+# ⚠️ OPEN DECISION — no file manager is listed on purpose.
+# Every mature Linux file manager is GTK (nemo, nautilus, thunar) or Qt
+# (dolphin, pcmanfm-qt). The project rule is "no GTK", so this needs a
+# decision rather than a quiet default. See docs/ for the question.

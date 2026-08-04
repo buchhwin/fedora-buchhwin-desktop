@@ -1,0 +1,4 @@
+# Applications. Skipped with --minimal.
+brave-browser       # launched Wayland-native; see lib/60-shell.sh for the flags
+code
+keepassxc
