@@ -140,6 +140,20 @@ PanelWindow {
     // ------------------------------------------------------------- triggers
     // Volume changes turn the island INTO the slider. Not an OSD next to it —
     // the same shape, a different size and a different page.
+    // A new notification turns the island into the notification page.
+    //
+    // ⚠️ This Connections object is also what CREATES the notification service.
+    // QML builds a singleton on first access, so a service nobody references
+    // never starts — and the notification daemon that never registers answers
+    // notify-send with "The name is not activatable", which reads like a D-Bus
+    // fault rather than "nothing asked for it". Same lesson as the palette
+    // layer in M2, one floor down.
+    Connections {
+        target: Services.Notifications
+        enabled: root.notchEnabled
+        function onArrived(n) { Ipc.show("notifications") }
+    }
+
     Connections {
         target: Services.Audio
         enabled: Services.Audio.available && root.notchEnabled

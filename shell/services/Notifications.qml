@@ -1,0 +1,99 @@
+pragma Singleton
+
+// The notification server.
+//
+// Quickshell IS the server here — there is no dunst or swaync underneath, which
+// is why `Config.surfaces.notifications` switching it off means notifications
+// go nowhere at all rather than to somebody else's popup. That is a real
+// consequence and it is written down rather than discovered.
+//
+// `keepOnReload` matters more than it looks: without it every shell reload
+// throws away what is on screen, and a reload happens on every palette change.
+import QtQuick
+import Quickshell
+import Quickshell.Services.Notifications
+import "../config"
+
+Singleton {
+    id: root
+
+    readonly property bool available: Config.surfaces.notifications
+
+    property var list: []
+    readonly property int count: list.length
+    readonly property var latest: list.length ? list[0] : null
+
+    signal arrived(var notification)
+
+    function dismiss(n) { if (n) n.dismiss() }
+
+    function dismissAll() {
+        var copy = list.slice()
+        for (var i = 0; i < copy.length; i++)
+            copy[i].dismiss()
+    }
+
+    // ⚠️ NotificationServer has NO `enabled` property — assigning one fails the
+    // whole services module, because they share a qmldir and one broken file
+    // takes the rest with it ("Type Compositor unavailable" for a fault in
+    // Media.qml, and so on up the chain).
+    //
+    // Switching notifications off therefore means not BEING the server, not
+    // being it quietly: registering on the bus and then hiding what arrives
+    // would swallow every notification on the machine with nothing to show for
+    // it. A Loader is the honest way to say "we are not the daemon".
+    Loader {
+        id: serverLoader
+        active: root.available
+        // ⚠️ An explicit Component. Writing `sourceComponent: NotificationServer {}`
+        // assigns an INSTANCE where a Component is expected; QML accepts it
+        // without complaint and the server never registers on the bus, so
+        // notify-send answers "The name is not activatable" and it looks like
+        // a D-Bus problem rather than a typo.
+        sourceComponent: serverComponent
+    }
+
+    Component {
+        id: serverComponent
+
+        NotificationServer {
+            keepOnReload: true
+            bodySupported: true
+            bodyMarkupSupported: true
+            imageSupported: true
+            actionsSupported: true
+
+            onNotification: function (n) {
+                // Tracking is opt-in: without this the object is destroyed as
+                // soon as the handler returns and the list holds dangling
+                // entries.
+                n.tracked = true
+                root._rebuild()
+                // A notification the sender marks transient is one it says is
+                // not worth keeping — another program's volume popup, usually.
+                // It still arrives, it just does not deserve to interrupt.
+                if (!n.transient)
+                    root.arrived(n)
+            }
+        }
+    }
+
+    readonly property var server: serverLoader.item
+
+    Connections {
+        target: root.server ? root.server.trackedNotifications : null
+        function onValuesChanged() { root._rebuild() }
+    }
+
+    function _rebuild() {
+        var s = root.server
+        var vals = s && s.trackedNotifications ? s.trackedNotifications.values : null
+        var out = []
+        if (vals)
+            for (var i = 0; i < vals.length; i++)
+                out.push(vals[i])
+        // Newest first — the list is read top down.
+        out.reverse()
+        root.list = out
+    }
+}

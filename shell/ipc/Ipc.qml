@@ -28,7 +28,7 @@ Singleton {
     // Not called "transient": that is a reserved word in QML, and the error it
     // produces names this file but surfaces two levels up as the useless
     // "Type ShellSurface unavailable".
-    readonly property var autoClosing: ["volume", "brightness"]
+    readonly property var autoClosing: ["volume", "brightness", "notifications"]
 
     function show(name) {
         root.page = name

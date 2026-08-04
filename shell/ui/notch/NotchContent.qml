@@ -50,6 +50,7 @@ Item {
         asynchronous: true
         sourceComponent: root.page === "volume" ? volumePage
                        : root.page === "media" ? mediaPage
+                       : root.page === "notifications" ? notificationsPage
                        : null
 
         // The shape leads, the contents follow — that is what makes the change
@@ -63,4 +64,5 @@ Item {
 
     Component { id: volumePage; VolumePage {} }
     Component { id: mediaPage; MediaPage {} }
+    Component { id: notificationsPage; NotificationsPage {} }
 }

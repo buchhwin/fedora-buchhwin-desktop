@@ -16,6 +16,7 @@
 import QtQuick
 import Quickshell
 import "../config"
+import "../ipc"
 import "surface"
 import "common"
 
@@ -57,6 +58,13 @@ Scope {
                     barEnabled: perScreen.barHere
                     notchEnabled: perScreen.notchHere
                 }
+            }
+
+            // Only while the island is open. A permanent fullscreen surface
+            // that swallows clicks is the kind of bug nobody suspects.
+            LazyLoader {
+                activeAsync: perScreen.notchHere && Ipc.expanded
+                component: ClickCatcher { modelData: perScreen.modelData }
             }
 
             // Space is reserved by its own window, so the visible surface can
