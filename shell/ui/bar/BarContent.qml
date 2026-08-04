@@ -117,8 +117,12 @@ Item {
             }
         }
 
-        // The notch lives here in M4. Empty on purpose.
+        // The island sits here. Empty on purpose — the silhouette draws
+        // through this gap, so nothing may be placed in it.
         Item { Layout.fillWidth: true }
+
+        // Media, left of the status group as in the reference screenshot.
+        MediaPill {}
 
         // A failed reload leaves the PREVIOUS config running, which from
         // the outside looks like "my change did nothing". Say which it was.

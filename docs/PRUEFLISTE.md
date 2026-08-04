@@ -33,8 +33,9 @@ cd ~/repo && bash install.sh      # oder nur: bhctl niri apply
 - [ ] **niri startet und kein waybar ist zu sehen.** Falls doch eine fremde
       Leiste erscheint: `rpm -q waybar` — dann wurde mit Empfehlungen installiert.
 - [ ] `niri msg -j windows` liefert Fenster, kein Xwayland-Prozess (`pgrep Xwayland`)
-- [ ] Die Notch ist **nicht** da und die Bar auch nicht — beides ist in M2 noch
-      nicht gebaut. Erwartet ist ein **leerer, funktionierender** Desktop.
+- [ ] Insel und Bar **sind** da (seit M3, siehe unten). Wenn du nur M2 prüfen
+      willst: `bhctl shell reset` setzt auf die Vorgabe zurück — dann ist nur die
+      Insel an, die Bar aus.
 
 ## 2. Tasten durchgehen
 
@@ -101,10 +102,47 @@ Eine kaputte `config.kdl` ist kein Drama: die Tasten stehen im Compositor, und
 
 ## Bewusst noch nicht gebaut
 
-Bar, Notch, Mitteilungen, Starter, Dock, Einstellungsfenster, Sperr- und
-Anmeldebildschirm (M3–M9) · Wallpaper-Auswahl mit abgeleitetem Farbschema
-(M3.5) · XWayland-Messung (M10).
+Mitteilungen, Starter, Dock, Einstellungsfenster, Sperr- und Anmeldebildschirm
+(M5–M9) · Wallpaper-Auswahl mit abgeleitetem Farbschema (M3.5) ·
+XWayland-Messung (M10). Bar und Insel stehen seit M3.
 
 **SDDM ist noch installiert** und wird erst entfernt, wenn der eigene
 greetd-Greeter nachweislich bis zum Desktop durchkommt — ein kaputter Greeter
 hieße kein Login mehr.
+
+---
+
+# Prüfliste M3 — Shell, Bar und Insel
+
+## Schon am Bildschirm belegt (VM, mit echten Screenshots)
+
+| | |
+|---|---|
+| Bar und Insel sind **eine** Silhouette | Insel sitzt mittig in der Leiste, Schultern verschmolzen |
+| Insel im Ruhezustand | nahezu schwarz, unten abgerundet, konkave Schultern, Uhr darin |
+| Lautstärke verwandelt die Insel | Lautsprecher, gefüllte Spur, „80 %" — wie in deiner Vorlage |
+| Strut reserviert exakt 34 px | gegen die Kachelhöhe nachgerechnet |
+| Palettenwechsel wirkt live | `bhctl theme nord`, gleiche Prozess-ID |
+| Uhr steht nur einmal | in der Bar, wenn sie an ist; sonst in der Insel |
+
+## Was nur du prüfen kannst
+
+- [ ] **Medien-Pille.** Auf der VM ist kein MPRIS-Spieler installiert, sie bleibt dort
+      korrekt unsichtbar. Auf deinem Gerät: Spotify oder Discord starten — es müssen
+      **Albumbild, Titel und ein Play/Pause-Knopf** erscheinen, sonst nichts.
+      Gegenprobe: Spieler beenden → die Pille verschwindet, sie wird nicht leer.
+- [ ] **Tray.** Auf der VM lief kein Tray-Programm. Prüfen: Symbol erscheint,
+      Linksklick aktiviert, Rechtsklick öffnet das Menü.
+- [ ] **Akku.** Die VM hat keinen. Auf dem Laptop: Prozentzahl stimmt, Symbol wechselt
+      beim Anstecken, unter 15 % wird es gelb, unter 5 % rot.
+- [ ] **Wie fühlt sich die Bewegung an?** Die VM hat eine Virtio-GPU — flüssig dort sagt
+      nichts. Auf echter Hardware: klappt die Insel weich auf, ohne Nachfedern?
+- [ ] **Blur hinter der Insel.** Die Layer-Regel steht in `config.kdl`, sichtbar wird sie
+      erst mit einem Wallpaper dahinter.
+- [ ] **Zwei Bildschirme.** Bekommt jeder Schirm seine eigene Silhouette?
+
+## Bekannt und noch nicht gebaut
+
+Notch-Seiten für Einstellungen, Medien und Mitteilungen (bisher nur Lautstärke) ·
+Einstellungsfenster (M8, Vorlage aus deinem Screenshot liegt vor) · Starter · Dock ·
+Sperr- und Anmeldebildschirm.

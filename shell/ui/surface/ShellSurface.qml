@@ -122,6 +122,9 @@ PanelWindow {
                 id: notch
                 anchors.fill: parent
                 page: root.page
+                // The clock moves into the island exactly when the bar is not
+                // there to hold it.
+                showClock: !root.barEnabled
             }
         }
     }

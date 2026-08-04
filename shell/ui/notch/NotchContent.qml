@@ -13,6 +13,11 @@ Item {
     id: root
 
     property string page: ""
+    // With the bar on, the clock lives out on the strip and the island stays
+    // empty. From the plan: "Bar aus: nur Notch — Uhr · Media · Status wandern
+    // in die Notch." So it is one clock that moves, never two on one screen.
+    property bool showClock: true
+
     readonly property bool expanded: page !== ""
 
     // The island asks the content how wide it wants to be, never the reverse.
@@ -20,10 +25,10 @@ Item {
         ? Math.max(Config.notch.minExpandedWidth, loader.item.implicitWidth)
         : Config.notch.collapsedWidth
 
-    // Collapsed: the clock.
+    // Collapsed: the clock — but only when the bar is not already showing one.
     BarText {
         anchors.centerIn: parent
-        visible: !root.expanded
+        visible: !root.expanded && root.showClock
         opacity: root.expanded ? 0 : 1
         text: {
             function p(n) { return n < 10 ? "0" + n : "" + n }
