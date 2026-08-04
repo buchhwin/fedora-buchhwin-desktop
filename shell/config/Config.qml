@@ -275,6 +275,19 @@ Singleton {
                     { key: "Mod+O",       action: "toggle-overview",   desc: "Uebersicht" },
                     { key: "Mod+Shift+Slash", action: "show-hotkey-overlay", desc: "Tastenuebersicht" },
 
+                    // --- the island ------------------------------------------
+                    // Keys reach the shell through its ipc socket, which is
+                    // also why they keep working when the shell is dead: they
+                    // simply reach nobody, instead of the compositor eating
+                    // them. ⚠️ `qs ipc call` takes no ARGUMENTS in 0.2.1, so
+                    // each page is its own parameterless verb — see ipc/Ipc.qml.
+                    { key: "Mod+M", action: "spawn-sh",
+                      arg: "qs -c buchhwin ipc call notch media",
+                      desc: "Medien in der Insel" },
+                    { key: "Mod+Escape", action: "spawn-sh",
+                      arg: "qs -c buchhwin ipc call notch collapse",
+                      desc: "Insel schliessen" },
+
                     // --- screenshots (niri does all three itself) ------------
                     { key: "Print",       action: "screenshot",        desc: "Screenshot: Auswahl" },
                     { key: "Mod+S",       action: "screenshot",        desc: "Screenshot: Auswahl" },

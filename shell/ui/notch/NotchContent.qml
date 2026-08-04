@@ -48,7 +48,9 @@ Item {
         width: parent.width - Theme.space5 * 2
         active: root.expanded
         asynchronous: true
-        sourceComponent: root.page === "volume" ? volumePage : null
+        sourceComponent: root.page === "volume" ? volumePage
+                       : root.page === "media" ? mediaPage
+                       : null
 
         // The shape leads, the contents follow — that is what makes the change
         // read as one movement rather than two things happening at once.
@@ -60,4 +62,5 @@ Item {
     }
 
     Component { id: volumePage; VolumePage {} }
+    Component { id: mediaPage; MediaPage {} }
 }

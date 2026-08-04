@@ -15,6 +15,7 @@ import Quickshell.Wayland
 import "../../theme"
 import "../../config"
 import "../../services" as Services
+import "../../ipc"
 import "../bar"
 import "../notch"
 
@@ -46,11 +47,11 @@ PanelWindow {
     }
 
     // ---------------------------------------------------------------- state
-    property string page: ""
-    readonly property bool expanded: page !== "" && root.notchEnabled
-
-    function show(name) { if (root.notchEnabled) root.page = name }
-    function collapse() { root.page = "" }
+    // Held in one place, not per screen: two monitors must not disagree about
+    // whether the island is open, and a keybinding cannot say which screen it
+    // meant. See ipc/Ipc.qml — that is also what `qs ipc call notch …` drives.
+    readonly property string page: root.notchEnabled ? Ipc.page : ""
+    readonly property bool expanded: page !== ""
 
     readonly property real barH: root.barEnabled ? Config.bar.height : 0
 
@@ -118,6 +119,13 @@ PanelWindow {
             visible: root.notchEnabled
             clip: true
 
+            // Clicking the island opens it, and clicking it again closes it.
+            // Media when something is playing, otherwise the volume page —
+            // "show me what is going on" without having to choose first.
+            TapHandler {
+                onTapped: Ipc.toggle(Services.Media.available ? "media" : "volume")
+            }
+
             NotchContent {
                 id: notch
                 anchors.fill: parent
@@ -134,14 +142,8 @@ PanelWindow {
     // the same shape, a different size and a different page.
     Connections {
         target: Services.Audio
-        enabled: Services.Audio.available
-        function onVolumeChanged() { root.show("volume"); idle.restart() }
-        function onMutedChanged() { root.show("volume"); idle.restart() }
-    }
-
-    Timer {
-        id: idle
-        interval: 1600
-        onTriggered: root.collapse()
+        enabled: Services.Audio.available && root.notchEnabled
+        function onVolumeChanged() { Ipc.show("volume") }
+        function onMutedChanged() { Ipc.show("volume") }
     }
 }

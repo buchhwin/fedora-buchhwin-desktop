@@ -97,6 +97,26 @@ Also different from the predecessor: `Super+arrow` moves **focus** and
 
 **Minimising does not exist** in niri. Workspaces and the overview replace it.
 
+### Reaching the island
+
+| Key | What |
+|---|---|
+| `Super+M` | media page in the island |
+| `Super+Escape` | close the island |
+
+⚠️ These go through the shell's ipc socket, and `qs ipc call` takes **no
+arguments** in quickshell 0.2.1 — `qs ipc show` lists `show(page: string)`
+happily, but calling it with a page answers "The following argument was not
+expected". So each page is its own parameterless verb:
+
+```
+qs -c buchhwin ipc call notch media
+qs -c buchhwin ipc call notch collapse
+```
+
+`Super+M` was the predecessor's power menu. That does not exist yet; when the
+session menu arrives in M5 one of the two has to move.
+
 ### Keys that are not bound yet
 
 `programs.launcher` is empty, so the launcher key is **not** generated. A
