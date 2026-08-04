@@ -39,7 +39,22 @@ cd ~/repo && bash install.sh      # oder nur: bhctl niri apply
 
 ## 2. Tasten durchgehen
 
-Die vollständige Liste steht in `docs/NIRI.md`. Stichproben, die wirklich zählen:
+⚠️ **Nicht über VNC testen.** Über VNC injizierte Tasten erreichen niris Bindungen
+nicht — gemessen: weder mit `Super`, noch mit `Alt`, nicht einmal ein blankes `F9`,
+obwohl die Konfiguration geladen ist. Der Zeiger geht, die Tastatur nicht. Dazu
+fangen viele VNC-Betrachter die Super-Taste schon auf deinem eigenen Rechner ab.
+Wer so testet, hält funktionierende Kürzel für kaputt.
+
+**Nimm die Proxmox-Konsole** (`https://192.168.2.84:8006` → VM 9002 → Console) — die
+emulierte USB-Tastatur sieht niri als echtes Gerät. Oder ferngesteuert vom Host:
+
+```
+ssh-proxmox.sh "qm sendkey 9002 meta_l-ret"   # Super+Return
+ssh-proxmox.sh "qm sendkey 9002 meta_l-e"     # Super+E
+```
+
+Auf diesem Weg bereits belegt: **Super+Return startet kitty, Super+E Nautilus,
+Super+O öffnet die Übersicht.** Die restlichen Stichproben:
 
 - [ ] `Super+Return` öffnet kitty
 - [ ] `Super+E` öffnet Nautilus, `Super+B` den Browser
