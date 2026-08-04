@@ -147,10 +147,23 @@ Singleton {
 
         // Meaning first, image second. Each anchor is pulled a sixth of the way
         // towards the seed hue — enough to belong, not enough to lie.
+        //
+        // ⚠️ Hue is a CIRCLE. Subtracting two hues gives the wrong answer
+        // whenever the shorter way round crosses zero: a pink seed at 0.94
+        // against the red anchor at 0.0 is 0.06 away, not 0.94, and treating it
+        // as 0.94 moved "red" a sixth of the way to 0.157 — which is yellow.
+        // Measured on a real wallpaper, where the error colour came out
+        // yellow-green.
+        function _towards(from, to, amount) {
+            var d = to - from
+            if (d > 0.5) d -= 1
+            if (d < -0.5) d += 1
+            var out = from + d * amount
+            return (out % 1 + 1) % 1
+        }
+
         function anchored(anchorHue, sat, light) {
-            var target = _tone(anchorHue, sat, light)
-            var tinted = _tone(anchorHue + (h - anchorHue) / 6, sat, light)
-            return _mix(target, tinted, 1.0)
+            return _tone(_towards(anchorHue, h, 1 / 6), sat, light)
         }
         put("red",    anchored(0.00, 0.65, dark ? 0.62 : 0.45))
         put("maroon", anchored(0.02, 0.55, dark ? 0.58 : 0.42))

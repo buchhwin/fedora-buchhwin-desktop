@@ -8,3 +8,4 @@
 # black. Never name a singleton after a Qt built-in.
 singleton Scheme 1.0 Scheme.qml
 singleton Theme 1.0 Theme.qml
+singleton FromImage 1.0 FromImage.qml
