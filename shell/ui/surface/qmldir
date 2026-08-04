@@ -1,0 +1,3 @@
+# The one surface: bar and island as a single drawn shape. See ../../common/qmldir.
+Silhouette 1.0 Silhouette.qml
+ShellSurface 1.0 ShellSurface.qml

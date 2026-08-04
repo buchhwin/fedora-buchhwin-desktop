@@ -1,0 +1,9 @@
+# Services are singletons with a flat property surface and, without exception,
+# an `available` flag. They may never import ui/ — the dependency runs one way.
+#
+# Registered here because Quickshell loads through a virtual filesystem, where
+# QML's implicit same-folder rule does not apply. See common/qmldir.
+singleton Compositor 1.0 Compositor.qml
+singleton Niri 1.0 Niri.qml
+singleton Power 1.0 Power.qml
+singleton Audio 1.0 Audio.qml

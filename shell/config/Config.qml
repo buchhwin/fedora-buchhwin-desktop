@@ -136,7 +136,13 @@ Singleton {
                 property bool shadows: true
                 property string fontUi: "Inter"
                 property string fontMono: "JetBrainsMono Nerd Font"
-                property string fontIcon: "Material Symbols Rounded"
+                // ⚠️ "Material Symbols Rounded" is NOT what Fedora ships.
+                // material-icons-fonts provides the older "Material Icons Round";
+                // fc-match resolves the Symbols name to Noto Sans, so every icon
+                // silently renders as a fallback glyph or as tofu. Measured, not
+                // assumed — the gear only appeared because U+2699 happens to
+                // exist in Noto Sans.
+                property string fontIcon: "Material Icons Round"
                 property int fontSize: 11          // pt
                 // full | minimal — minimal turns motion and effects off wholesale
                 property string profile: "full"

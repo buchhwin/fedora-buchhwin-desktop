@@ -183,7 +183,10 @@ Scope {
         return headerHash.replace(/^#/gm, "//") +
             "// Colours only — see tools/render.qml. Structure lives in config.kdl.\n" +
             "layout {\n" +
-            "    background-color \"" + Theme.hex(Theme.bgDeep) + "\"\n" +
+            // Not bgDeep: that is the island's colour, and a backdrop in the
+            // same shade makes the notch disappear on a machine with no
+            // wallpaper. This is what shows THROUGH, so it stays a step lighter.
+            "    background-color \"" + Theme.hex(Theme.bg) + "\"\n" +
             "    border {\n" +
             "        active-color \"" + Theme.hex(Theme.accent) + "\"\n" +
             "        inactive-color \"" + Theme.hex(Theme.outline) + "\"\n" +

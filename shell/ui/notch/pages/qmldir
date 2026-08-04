@@ -1,0 +1,3 @@
+# Pages the notch turns into. Each states its own implicitWidth; the notch
+# animates to it. None of them is a window.
+VolumePage 1.0 VolumePage.qml

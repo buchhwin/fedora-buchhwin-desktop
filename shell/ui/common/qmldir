@@ -1,0 +1,5 @@
+# Shared surface pieces. See ../../common/qmldir for why this file must exist.
+Strut 1.0 Strut.qml
+Pill 1.0 Pill.qml
+Icon 1.0 Icon.qml
+BarText 1.0 BarText.qml
