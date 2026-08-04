@@ -161,3 +161,33 @@ hieße kein Login mehr.
 Notch-Seiten für Einstellungen, Medien und Mitteilungen (bisher nur Lautstärke) ·
 Einstellungsfenster (M8, Vorlage aus deinem Screenshot liegt vor) · Starter · Dock ·
 Sperr- und Anmeldebildschirm.
+
+---
+
+# Prüfliste M4 — die Insel als Seiten-Wirt
+
+## Am Bildschirm belegt
+
+| | |
+|---|---|
+| Lautstärke | Insel wird zum Regler, Lautsprecher · Spur · Prozent |
+| Medien | Albumbild, Titel, Play/Pause — Leerzustand ist ein Satz Text |
+| Mitteilungen | `notify-send` verwandelt die Insel, Eintrag mit Schließen-Knopf |
+| Schnelleinstellungen | Lautstärkeregler; die Helligkeitszeile fehlt korrekt, weil die VM keinen Bildschirmregler hat |
+| Öffnen und Schließen | Klick auf die Insel, Klick daneben, `ipc call notch …` |
+
+## Was nur du prüfen kannst
+
+- [ ] **Helligkeit** auf dem Laptop: Zeile erscheint, Ziehen ändert wirklich die
+      Bildschirmhelligkeit. ⚠️ Ohne `-c backlight` griff `brightnessctl` auf der VM die
+      **Numlock-LED** ab — auf deiner Hardware bitte gegenprüfen, dass es der Bildschirm ist.
+- [ ] **Wie fühlen sich die Übergänge an?** Wächst die Insel weich in die Seite hinein,
+      ohne Nachfedern? Die Virtio-GPU der VM sagt darüber nichts.
+- [ ] **Größe der Insel** gegen deinen Screenshot halten — eingeklappt 150×34,
+      ausgeklappt 135 hoch. Auf echter Hardware nachmessen.
+- [ ] **Medien** mit Spotify oder Discord: Albumbild und Titel korrekt, Play/Pause wirkt.
+
+## Noch nicht gebaut
+
+Kalender/Wetter und Tray als Insel-Seiten · Wallpaper-Auswahl wartet auf deine Bilder
+(der `desktop`-Ordner ist noch nicht angekommen, das Arbeitsgerät war offline).

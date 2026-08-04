@@ -69,6 +69,8 @@ Singleton {
 
         function media(): void { root.toggle("media") }
         function volume(): void { root.toggle("volume") }
+        function quick(): void { root.toggle("quick") }
+        function notifications(): void { root.toggle("notifications") }
         function collapse(): void { root.collapse() }
         function state(): string { return root.page }
     }

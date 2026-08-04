@@ -51,6 +51,7 @@ Item {
         sourceComponent: root.page === "volume" ? volumePage
                        : root.page === "media" ? mediaPage
                        : root.page === "notifications" ? notificationsPage
+                       : root.page === "quick" ? quickPage
                        : null
 
         // The shape leads, the contents follow — that is what makes the change
@@ -65,4 +66,5 @@ Item {
     Component { id: volumePage; VolumePage {} }
     Component { id: mediaPage; MediaPage {} }
     Component { id: notificationsPage; NotificationsPage {} }
+    Component { id: quickPage; QuickPage {} }
 }
