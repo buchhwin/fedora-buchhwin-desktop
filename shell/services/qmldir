@@ -15,3 +15,5 @@ singleton Ical 1.0 Ical.qml
 singleton Calendar 1.0 Calendar.qml
 singleton Weather 1.0 Weather.qml
 singleton Location 1.0 Location.qml
+singleton Tray 1.0 Tray.qml
+singleton Clipboard 1.0 Clipboard.qml

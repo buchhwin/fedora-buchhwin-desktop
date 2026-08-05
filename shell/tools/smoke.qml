@@ -124,7 +124,7 @@ Scope {
             // without its verb.
             var verbs = ["media", "volume", "quick", "notifications", "calendar",
                          "tray", "wallpaper", "event", "brightness", "session",
-                         "collapse", "state"]
+                         "clipboard", "collapse", "state"]
             var binds = Config.keys.binds
             var orphans = []
             for (var b = 0; b < binds.length; b++) {
@@ -149,6 +149,8 @@ Scope {
             root.service("Calendar", Services.Calendar)
             root.service("Weather", Services.Weather)
             root.service("Location", Services.Location)
+            root.service("Tray", Services.Tray)
+            root.service("Clipboard", Services.Clipboard)
 
             // Ical is a parser rather than a device, so it has no `available`;
             // it still has to build, and it is the one piece with real logic.

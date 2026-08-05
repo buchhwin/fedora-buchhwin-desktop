@@ -13,8 +13,8 @@ pragma ComponentBehavior: Bound
 // plan reserved a separate popup host for this. It turned out not to be needed:
 // the island is a real window and it is present exactly when this page is.
 import QtQuick
-import Quickshell.Services.SystemTray
 import "../../../theme"
+import "../../../services" as Services
 import "../../common"
 
 Item {
@@ -26,11 +26,12 @@ Item {
 
     readonly property int cell: Theme.space6 * 2
 
-    // Guarded the way the other services guard their models: the tray host may
-    // not have registered yet, and reading `.values` off nothing is a hard
-    // error that takes the whole page down rather than showing it empty.
-    readonly property int itemCount:
-        SystemTray.items && SystemTray.items.values ? SystemTray.items.values.length : 0
+    // The guard used to be rebuilt here by hand, because the tray was reached
+    // through a direct import rather than through a service. It lives in
+    // services/Tray.qml now, where the other services keep theirs — the tray
+    // host registers on the bus asynchronously, so for the first moments of a
+    // session `items.values` does not exist and reading it throws.
+    readonly property int itemCount: Services.Tray.count
 
     implicitWidth: Math.max(Theme.space6 * 10,
                             itemCount * (cell + Theme.space2))
@@ -50,7 +51,7 @@ Item {
         spacing: Theme.space2
 
         Repeater {
-            model: SystemTray.items
+            model: Services.Tray.items
 
             Pill {
                 id: trayPill
@@ -72,10 +73,10 @@ Item {
                         if (button === Qt.RightButton && root.hostWindow)
                             // Anchored to the island's own window, below it —
                             // the same call the bar makes, with a different host.
-                            trayPill.modelData.display(root.hostWindow,
-                                                       trayPill.x, root.height)
+                            Services.Tray.menu(trayPill.modelData, root.hostWindow,
+                                               trayPill.x, root.height)
                         else
-                            trayPill.modelData.activate()
+                            Services.Tray.activate(trayPill.modelData)
                     }
                 }
             }

@@ -92,6 +92,7 @@ Item {
                        : root.page === "event" ? eventPage
                        : root.page === "brightness" ? brightnessPage
                        : root.page === "session" ? sessionPage
+                       : root.page === "clipboard" ? clipboardPage
                        : null
 
         // The shape leads, the contents follow — that is what makes the change
@@ -137,4 +138,5 @@ Item {
     Component { id: eventPage; EventPage {} }
     Component { id: brightnessPage; BrightnessPage {} }
     Component { id: sessionPage; SessionPage {} }
+    Component { id: clipboardPage; ClipboardPage {} }
 }

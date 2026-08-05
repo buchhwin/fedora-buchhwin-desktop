@@ -13,7 +13,6 @@
 import QtQuick
 import QtQuick.Layouts
 import Quickshell
-import Quickshell.Services.SystemTray
 import "../../theme"
 import "../../config"
 import "../../services" as Services
@@ -145,9 +144,16 @@ Item {
         // ------------------------------------------------------- tray
         RowLayout {
             spacing: Theme.space1
+            // Through the service, like everything else. Reaching into
+            // Quickshell.Services.SystemTray from here meant no `available` and
+            // no guard: for the first moments of a session the tray host has
+            // not registered, `items.values` does not exist yet, and reading it
+            // throws inside a binding — which takes the whole bar down rather
+            // than showing an empty tray.
+            visible: Services.Tray.available
 
             Repeater {
-                model: SystemTray.items
+                model: Services.Tray.items
 
                 Pill {
                     id: trayPill
@@ -167,9 +173,10 @@ Item {
                         acceptedButtons: Qt.LeftButton | Qt.RightButton
                         onTapped: function (point, button) {
                             if (button === Qt.RightButton)
-                                trayPill.modelData.display(root.hostWindow, 0, root.height)
+                                Services.Tray.menu(trayPill.modelData,
+                                                   root.hostWindow, 0, root.height)
                             else
-                                trayPill.modelData.activate()
+                                Services.Tray.activate(trayPill.modelData)
                         }
                     }
                 }

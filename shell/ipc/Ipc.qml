@@ -88,6 +88,7 @@ Singleton {
         function event(): void { root.toggle("event") }
         function brightness(): void { root.toggle("brightness") }
         function session(): void { root.toggle("session") }
+        function clipboard(): void { root.toggle("clipboard") }
         function collapse(): void { root.collapse() }
         function state(): string { return root.page }
     }

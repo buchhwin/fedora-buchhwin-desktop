@@ -28,6 +28,7 @@ Singleton {
     readonly property alias theme: adapter.theme
     readonly property alias surfaces: adapter.surfaces
     readonly property alias notifications: adapter.notifications
+    readonly property alias clipboard: adapter.clipboard
     readonly property alias notch: adapter.notch
     readonly property alias bar: adapter.bar
 
@@ -331,6 +332,17 @@ Singleton {
                 property list<string> monitors: []
             }
 
+            // The clipboard history page. Counts belong here rather than in the
+            // page: a token decides what a row LOOKS like, a setting decides
+            // how many of them you want to see. Anything that is a matter of
+            // taste gets a key — see the plan's second promise, "alles
+            // einstellbar, und zwar aus demselben Satz".
+            property JsonObject clipboard: JsonObject {
+                // How tall the page opens, in rows. Six fits a laptop screen
+                // without the island covering half of it.
+                property int visibleRows: 6
+            }
+
             // ⚠️ NO `dock` BLOCK. There was one — iconSize, pinned, monitors —
             // and nothing in the shell ever read a single key of it, because
             // the dock is M7 and has not been built. A setting that does
@@ -463,6 +475,15 @@ Singleton {
                     { key: "Mod+T", action: "spawn-sh",
                       arg: "qs -c buchhwin ipc call notch tray",
                       desc: "Infobereich" },
+                    // ⚠️ Mod+V, NOT Ctrl+V. Copy and paste belong to the
+                    // application you are in — Ctrl+C and Ctrl+V go straight to
+                    // it through the Wayland clipboard, and binding either of
+                    // them here would take them away from every program on the
+                    // machine. This opens the HISTORY; picking an entry puts it
+                    // on the clipboard and you paste it as you always would.
+                    { key: "Mod+V", action: "spawn-sh",
+                      arg: "qs -c buchhwin ipc call notch clipboard",
+                      desc: "Zwischenablage-Verlauf" },
                     { key: "Mod+Shift+N", action: "spawn-sh",
                       arg: "qs -c buchhwin ipc call notch event",
                       desc: "Neuer Termin" },
