@@ -246,17 +246,17 @@ PanelWindow {
     // Both then float under the notch, and the notch steps aside while they
     // are up — see `mode` above.
     //
-    // ⚠️ This Connections object is also what CREATES the notification service.
-    // QML builds a singleton on first access, so a service nobody references
-    // never starts — and the notification daemon that never registers answers
-    // notify-send with "The name is not activatable", which reads like a D-Bus
-    // fault rather than "nothing asked for it". Same lesson as the palette
-    // layer in M2, one floor down.
-    Connections {
-        target: Services.Notifications
-        enabled: root.notchEnabled
-        function onArrived(n) { Ipc.show("notifications") }
-    }
+    // ⚠️ A NOTIFICATION NO LONGER OPENS THE NOTCH. It used to: an arriving
+    // message called Ipc.show("notifications"), which took over whatever the
+    // notch was showing and then closed again after 1.6 s, so the message was
+    // both an interruption and gone before it could be acted on. Toasts have
+    // their own surface now (ui/notif/ToastSurface.qml), in the top-right,
+    // where they leave the notch alone — which is also the stated rule: only
+    // surfaces that open AT the notch displace it.
+    //
+    // The reference that STARTS the notification server moved with it, into
+    // Shell.qml. It used to live here, which quietly meant there was no
+    // notification daemon at all on a machine with the notch switched off.
 
     Connections {
         target: Services.Audio

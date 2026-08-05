@@ -391,6 +391,10 @@ Scope {
         s += surface("buchhwin-notch", L.rounding, false)
         s += "\n" + surface("buchhwin-overlay", L.rounding, blurOn)
         s += "\n" + surface("buchhwin-bar", 0, blurOn)
+        // The toasts are translucent panes like the pages, so they get the same
+        // treatment. Their surface is sized to the cards, so the shadow niri
+        // draws behind the whole thing is the cards' shadow.
+        s += "\n" + surface("buchhwin-toast", L.rounding, blurOn)
         return s
     }
 

@@ -27,6 +27,7 @@ Singleton {
     readonly property alias look: adapter.look
     readonly property alias theme: adapter.theme
     readonly property alias surfaces: adapter.surfaces
+    readonly property alias notifications: adapter.notifications
     readonly property alias notch: adapter.notch
     readonly property alias bar: adapter.bar
     readonly property alias dock: adapter.dock
@@ -267,6 +268,31 @@ Singleton {
                 // like any other — leaving whatever is behind it, which is the
                 // compositor's own background.
                 property bool wallpaper: true
+            }
+
+            // How arriving notifications behave on screen. They are their own
+            // surface in the top-right corner, NOT a page of the notch: the
+            // notch is where you go to look at something, and a message that
+            // arrives on its own has not been asked for. Making it take over
+            // the notch meant every notification interrupted whatever the notch
+            // was showing and then vanished after 1.6 s, whether it had been
+            // read or not.
+            property JsonObject notifications: JsonObject {
+                // How long an ordinary toast stays. Senders may ask for their
+                // own duration via `expireTimeout`, and that is honoured; this
+                // is the answer when they do not.
+                property int timeoutMs: 5000
+                // ⚠️ Critical notifications never time out on their own. That
+                // is the whole meaning of the urgency level, and a disk-full
+                // warning that disappears while you are in another window is
+                // worse than none.
+                property int maxVisible: 3
+                // ⚠️ Empty means every screen — which on two monitors means the
+                // same message twice, once in each top-right corner. That is
+                // the honest default (a message must not land on a screen you
+                // are not looking at) but it is worth naming one output here
+                // once a second monitor is in play.
+                property list<string> monitors: []
             }
 
             // Off by default: the notch IS the surface. That is a design

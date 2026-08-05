@@ -25,6 +25,53 @@ Singleton {
 
     signal arrived(var notification)
 
+    // ------------------------------------------------------------------ toasts
+    //
+    // What is on screen RIGHT NOW, newest first, as opposed to `list`, which is
+    // everything still unacknowledged. Two different questions: `list` answers
+    // "what have I missed", `toasts` answers "what is interrupting me".
+    //
+    // It lives here rather than in the surface because a service owns state and
+    // the ui draws it — and because two screens must not each keep their own
+    // idea of which notifications are showing.
+    property var toasts: []
+
+    // How long this one should stay, in ms; 0 means "until dismissed".
+    //
+    // ⚠️ Critical never expires on its own. That is what the urgency level
+    // means, and a disk-full warning that vanishes while you are looking at
+    // another window is worse than no warning.
+    function toastDuration(n) {
+        if (!n) return 0
+        if (n.urgency === NotificationUrgency.Critical) return 0
+        // The sender's own wish wins when it expressed one. -1 is the spec's
+        // "you decide", 0 is the spec's "never" — both are theirs to say.
+        if (n.expireTimeout > 0) return n.expireTimeout
+        if (n.expireTimeout === 0) return 0
+        return Config.notifications.timeoutMs
+    }
+
+    function _showToast(n) {
+        var out = [n]
+        for (var i = 0; i < root.toasts.length; i++)
+            if (root.toasts[i] !== n)
+                out.push(root.toasts[i])
+        // Oldest fall off the end rather than newest being refused: a burst of
+        // messages should show you the newest, not the first three.
+        var max = Math.max(1, Config.notifications.maxVisible)
+        root.toasts = out.slice(0, max)
+    }
+
+    // Take it off the screen but leave it in the list — it has not been read,
+    // it has only stopped shouting. `Mod+N` is where it still is.
+    function hideToast(n) {
+        var out = []
+        for (var i = 0; i < root.toasts.length; i++)
+            if (root.toasts[i] !== n)
+                out.push(root.toasts[i])
+        root.toasts = out
+    }
+
     function dismiss(n) { if (n) n.dismiss() }
 
     function dismissAll() {
@@ -72,8 +119,10 @@ Singleton {
                 // A notification the sender marks transient is one it says is
                 // not worth keeping — another program's volume popup, usually.
                 // It still arrives, it just does not deserve to interrupt.
-                if (!n.transient)
+                if (!n.transient) {
+                    root._showToast(n)
                     root.arrived(n)
+                }
             }
         }
     }
@@ -95,5 +144,16 @@ Singleton {
         // Newest first — the list is read top down.
         out.reverse()
         root.list = out
+
+        // A notification that has been closed — by the sender, by a click, by
+        // anything — must leave the screen with it. Without this a toast for a
+        // withdrawn message stays up pointing at something that no longer
+        // exists.
+        var live = []
+        for (var j = 0; j < root.toasts.length; j++)
+            if (out.indexOf(root.toasts[j]) !== -1)
+                live.push(root.toasts[j])
+        if (live.length !== root.toasts.length)
+            root.toasts = live
     }
 }

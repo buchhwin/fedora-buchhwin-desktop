@@ -20,6 +20,7 @@ import "../ipc"
 import "../services" as Services
 import "surface"
 import "wallpaper"
+import "notif"
 import "common"
 
 Scope {
@@ -116,6 +117,23 @@ Scope {
                 component: ClickCatcher { modelData: perScreen.modelData }
             }
 
+            // Arriving messages, top-right, on their own surface. Not a page of
+            // the notch — see notif/ToastSurface.qml for why that was wrong.
+            //
+            // ⚠️ THIS IS ALSO WHAT STARTS THE NOTIFICATION SERVER. QML builds a
+            // singleton on first access, so a service nothing references never
+            // runs, and a daemon that never registers answers notify-send with
+            // "The name is not activatable" — which reads like a D-Bus fault
+            // rather than "nothing asked for it". The reference used to sit in
+            // ShellSurface, which meant the server only existed if the notch
+            // did.
+            LazyLoader {
+                activeAsync: Config.surfaces.notifications
+                             && root.wants(Config.notifications.monitors,
+                                           perScreen.modelData)
+                component: ToastSurface { modelData: perScreen.modelData }
+            }
+
             // Space is reserved by its own window, so the visible surface can
             // be taller than the room it takes. In notch-only mode this is
             // simply not created — not hidden, not zero-height.
@@ -127,7 +145,13 @@ Scope {
                     // The COLLAPSED height, never the expanded one. Reserving
                     // the expanded size would push every window 135 px down and
                     // leave a permanent empty band under the notch.
-                    reserve: Config.bar.height
+                    //
+                    // Whichever of the two is actually on screen: with the bar
+                    // off, reserving the bar's height was reserving room for
+                    // something that is not there.
+                    reserve: Math.max(perScreen.notchHere
+                                      ? Config.notch.collapsedHeight : 0,
+                                      perScreen.barHere ? Config.bar.height : 0)
                 }
             }
         }
