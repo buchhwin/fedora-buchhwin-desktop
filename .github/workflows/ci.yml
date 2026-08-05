@@ -98,6 +98,8 @@ jobs:
         run: bash tests/location.sh
       - name: the wallpaper's palette, and where it is cached
         run: bash tests/wallpaper.sh
+      - name: which column a program lands in, and what never reaches the list
+        run: bash tests/launcher.sh
 
   secrets:
     runs-on: ubuntu-latest
