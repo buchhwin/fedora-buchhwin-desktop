@@ -132,6 +132,18 @@ Scope {
         return headerHash +
             "foreground " + Theme.hex(Theme.fg) + "\n" +
             "background " + Theme.hex(Theme.bg) + "\n" +
+            // ⚠️ The terminal's own transparency, not the compositor's.
+            //
+            // It looked "nicely transparent" only while UNFOCUSED and went
+            // solid black the moment it was selected — because the only
+            // translucency it had was niri's `opacity 0.96` on inactive
+            // windows. That is the wrong tool twice over: it fades the TEXT
+            // along with the background, and it inverts the meaning, making
+            // the window you are not using the readable one.
+            //
+            // background_opacity affects the background alone, so the type
+            // stays crisp, and it does not care whether the window has focus.
+            "background_opacity " + Theme.terminalOpacity + "\n" +
             "selection_foreground " + Theme.hex(Theme.accentFg) + "\n" +
             "selection_background " + Theme.hex(Theme.accent) + "\n" +
             "cursor " + Theme.hex(Theme.accent) + "\n" +

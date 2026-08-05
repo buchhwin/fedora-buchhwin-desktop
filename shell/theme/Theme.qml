@@ -92,6 +92,12 @@ Singleton {
     // an alpha value itself — that is how six different "panel background"
     // opacities crept into the old stack.
     readonly property real panelOpacity: Config.look.opacityPanel
+
+    // The terminal's own background transparency, written into kitty's config.
+    // Separate from panelOpacity on purpose: a panel sits over a wallpaper and
+    // wants to stay legible, a terminal sits over whatever is behind it and is
+    // read as a foreground object regardless.
+    readonly property real terminalOpacity: Config.look.opacityTerminal
     readonly property color barBg:     alpha(bgDeep, panelOpacity)
     readonly property color panelBg:   alpha(bgDeep, panelOpacity + 0.06)
     readonly property color pillBg:    alpha(surface, panelOpacity)

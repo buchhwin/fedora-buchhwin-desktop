@@ -186,8 +186,11 @@ Singleton {
                 // three you actually feel.
                 property int gapsOut: 16
                 property real opacityActive: 1.0
-                property real opacityInactive: 0.96
+                property real opacityInactive: 0.98
                 property real opacityPanel: 0.88   // translucency the blur sits behind
+                // The terminal's own background, through kitty rather than
+                // through the compositor — see tools/render.qml for why.
+                property real opacityTerminal: 0.90
                 property bool blur: true
                 // The most expensive number in the whole desktop: every pass is
                 // another full-screen GPU read on every frame. It gets a key of

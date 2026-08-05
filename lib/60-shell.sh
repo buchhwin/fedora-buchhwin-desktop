@@ -80,6 +80,34 @@ phase_shell() {
              "$CONFIG_HOME/gtk-3.0" "$CONFIG_HOME/gtk-4.0" \
              "$CONFIG_HOME/kitty" "$CONFIG_HOME/qt6ct/colors"
 
+    # ⚠️ TWO OF THE GENERATED FILES ARE NOT READ BY ANYBODY UNLESS SOMETHING
+    # POINTS AT THEM, and for months nothing did.
+    #
+    # GTK finds gtk.css and settings.ini on its own. kitty and qt6ct do not:
+    # kitty reads kitty.conf and only the files it `include`s, and qt6ct reads
+    # qt6ct.conf and only the colour scheme named there. The renderer was
+    # faithfully writing theme.conf and colors/buchhwin.conf into a void — so
+    # the terminal sat at kitty's own black no matter which palette was chosen,
+    # which is exactly how it was noticed.
+    #
+    # Seeded once, never overwritten: these are the user's files. If one exists
+    # without the pointer, say so rather than editing it behind their back.
+    if [[ ! -f "$CONFIG_HOME/kitty/kitty.conf" ]]; then
+        printf '# buchhwin: colours, font and transparency come from theme.conf,\n# which is regenerated on every palette change. Your own settings go below.\ninclude theme.conf\n' \
+            > "$CONFIG_HOME/kitty/kitty.conf"
+        ok "kitty.conf seeded (includes the generated theme)"
+    elif ! grep -q '^ *include  *theme\.conf' "$CONFIG_HOME/kitty/kitty.conf"; then
+        warn "kitty.conf exists but does not 'include theme.conf' — the palette will not reach the terminal"
+    fi
+
+    if [[ ! -f "$CONFIG_HOME/qt6ct/qt6ct.conf" ]]; then
+        printf '[Appearance]\ncustom_palette=true\ncolor_scheme_path=%s/qt6ct/colors/buchhwin.conf\nstyle=Fusion\nstandard_dialogs=default\n' \
+            "$CONFIG_HOME" > "$CONFIG_HOME/qt6ct/qt6ct.conf"
+        ok "qt6ct.conf seeded (selects the generated colours)"
+    elif ! grep -q 'buchhwin\.conf' "$CONFIG_HOME/qt6ct/qt6ct.conf"; then
+        warn "qt6ct.conf exists but does not select colors/buchhwin.conf — Qt apps keep their own colours"
+    fi
+
     section "Theme"
     step "rendering GTK, Qt, kitty and niri colours from the palette"
     # ⚠️ This also BUILDS the derived palette when the seed above chose it:
