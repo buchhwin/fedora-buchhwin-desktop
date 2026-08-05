@@ -11,6 +11,7 @@ usage() {
     cat <<'EOF'
 bhctl theme [<palette> [<accent>]]   switch or show the colour scheme
 bhctl theme apply                    re-render foreign app themes
+bhctl wallpaper [<file>]             show or set the wallpaper
 bhctl niri apply                     regenerate ~/.config/niri/config.kdl
 bhctl niri diff                      show what a regeneration would change
 bhctl doctor                         check the installation
@@ -62,6 +63,37 @@ theme)
             && mv "$tmp" "$f"
         render
         echo "palette: $pal  accent: $accent"
+        ;;
+    esac
+    ;;
+wallpaper)
+    shift
+    f="$CONFIG_HOME/buchhwin/shell.json"
+    case "${1:-}" in
+    ""|show)
+        jq -r '.wallpaper.current // "none"' "$f" 2>/dev/null || echo "no settings yet"
+        ;;
+    *)
+        img="$1"
+        [[ -f "$img" ]] || { echo "no such file: $img" >&2; exit 1; }
+        # An ABSOLUTE file:// URL, because that is what the shell stores and
+        # what Image.source needs. A bare relative path would resolve against
+        # whatever directory the shell happened to start in.
+        url="file://$(readlink -f "$img")"
+        tmp="$(mktemp)"
+        jq --arg u "$url" '.wallpaper.current=$u' "$f" > "$tmp" && mv "$tmp" "$f"
+        # The running shell notices by itself (shell.json is watched) and
+        # re-derives. This is for when there is no shell: it rebuilds the
+        # derived palette and rewrites GTK, Qt, kitty and niri from it.
+        run_tool wallpaper-palette && render
+        echo "wallpaper: $url"
+        # A refusal is not a failure — the image is set, it just cannot make a
+        # readable scheme, so the previous one stays. Say so instead of letting
+        # the colours quietly not change.
+        if grep -q REFUSED /tmp/buchhwin-wallpaper-palette.log 2>/dev/null; then
+            grep REFUSED /tmp/buchhwin-wallpaper-palette.log >&2
+            echo "  the colour scheme was left as it was" >&2
+        fi
         ;;
     esac
     ;;

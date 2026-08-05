@@ -17,7 +17,9 @@ import QtQuick
 import Quickshell
 import "../config"
 import "../ipc"
+import "../services" as Services
 import "surface"
+import "wallpaper"
 import "common"
 
 Scope {
@@ -47,6 +49,22 @@ Scope {
 
             readonly property bool notchHere:
                 Config.notch.enabled && root.wants(Config.notch.monitors, modelData)
+
+            // No image, no surface — an empty black layer over the compositor's
+            // own background is not a wallpaper, it is a bug that looks like one.
+            readonly property bool wallpaperHere:
+                Config.surfaces.wallpaper
+                && String(Services.Wallpaper.current).length > 0
+                && root.wants(Config.wallpaper.monitors, modelData)
+
+            // Furthest back, under everything including the bar's own strut.
+            // niri zooms the background layer along with the overview, which is
+            // the correct behaviour rather than a side effect: the wallpaper
+            // belongs to the workspace you are looking at.
+            LazyLoader {
+                activeAsync: perScreen.wallpaperHere
+                component: WallpaperSurface { modelData: perScreen.modelData }
+            }
 
             // ONE window carries both. They are one drawn silhouette, so two
             // windows would mean two shapes that overlap and hide each other —

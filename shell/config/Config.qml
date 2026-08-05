@@ -90,6 +90,59 @@ Singleton {
 
     function save() { file.writeAdapter() }
 
+    // Migration ran and could not finish. Empty while all is well; the settings
+    // window will show it, because a config that refused to move forward is
+    // something the user has to know about rather than something to log.
+    property string migrationError: ""
+
+    // Bring an older file forward, before anything reads meaning into it.
+    //
+    // ⚠️ This runs on the RAW TEXT, not through the adapter — JsonAdapter drops
+    // every key it does not declare, so by the time the adapter has parsed the
+    // file the old field a migration exists to rescue is already gone.
+    //
+    // The rewrite goes through the same FileView that read it. A second view on
+    // this path would be the trap that has cost this project three debugging
+    // rounds; and because `watchChanges` reloads afterwards, the adapter ends up
+    // parsing the MIGRATED text rather than the original.
+    function _migrate() {
+        var raw = file.text()
+        if (!raw || !raw.length)
+            return                    // no file: the defaults are correct
+
+        var cfg
+        try {
+            cfg = JSON.parse(raw)
+        } catch (e) {
+            // A file we cannot parse must not be "migrated" — that would mean
+            // replacing it with guesswork. Leave it; FileView already shouted.
+            root.migrationError = "shell.json is not valid JSON: " + e
+            return
+        }
+
+        if (Migrations.fromFuture(cfg)) {
+            root.migrationError =
+                "shell.json was written by a newer build (version " +
+                Migrations.versionOf(cfg) + " > " + Migrations.current +
+                "); leaving it untouched"
+            return
+        }
+        if (!Migrations.needed(cfg)) {
+            root.migrationError = ""
+            return
+        }
+
+        var res = Migrations.migrate(cfg)
+        if (!res.ok) {
+            root.migrationError = res.error
+            return
+        }
+        root.migrationError = ""
+        // Triggers onFileChanged → reload → onLoaded, where `needed` is now
+        // false. One pass, then it settles.
+        file.setText(JSON.stringify(res.config, null, 2) + "\n")
+    }
+
     FileView {
         id: file
         path: Quickshell.env("XDG_CONFIG_HOME")
@@ -102,7 +155,10 @@ Singleton {
         onFileChanged: reload()
         // A parse failure must NOT overwrite the user's file with defaults.
         printErrors: true
-        onLoaded: root._failed = false
+        onLoaded: {
+            root._failed = false
+            root._migrate()
+        }
         onLoadFailed: root._failed = true
 
         JsonAdapter {
@@ -110,7 +166,7 @@ Singleton {
 
             // Bumped only when a key is RENAMED or REMOVED, never when one is
             // added. 0 means "written before versioning existed".
-            property int version: 1
+            property int version: 2
 
             property JsonObject theme: JsonObject {
                 property string palette: "everforest-dark"
@@ -154,6 +210,11 @@ Singleton {
                 property bool notifications: true
                 property bool osd: true
                 property bool dock: false
+                // The wallpaper is drawn by the shell rather than by a second
+                // daemon, so it is a surface like any other and switches off
+                // like any other — leaving whatever is behind it, which is the
+                // compositor's own background.
+                property bool wallpaper: true
             }
 
             // Off by default: the notch IS the surface. That is a design
@@ -281,9 +342,28 @@ Singleton {
                     // simply reach nobody, instead of the compositor eating
                     // them. ⚠️ `qs ipc call` takes no ARGUMENTS in 0.2.1, so
                     // each page is its own parameterless verb — see ipc/Ipc.qml.
+                    //
+                    // Every page has a key, without exception. The bar is OFF
+                    // in the default setup, so a page reachable only by
+                    // clicking the bar would not be reachable at all.
                     { key: "Mod+M", action: "spawn-sh",
                       arg: "qs -c buchhwin ipc call notch media",
                       desc: "Medien in der Insel" },
+                    { key: "Mod+N", action: "spawn-sh",
+                      arg: "qs -c buchhwin ipc call notch notifications",
+                      desc: "Mitteilungen" },
+                    { key: "Mod+comma", action: "spawn-sh",
+                      arg: "qs -c buchhwin ipc call notch quick",
+                      desc: "Schnelleinstellungen" },
+                    { key: "Mod+C", action: "spawn-sh",
+                      arg: "qs -c buchhwin ipc call notch calendar",
+                      desc: "Kalender" },
+                    { key: "Mod+T", action: "spawn-sh",
+                      arg: "qs -c buchhwin ipc call notch tray",
+                      desc: "Infobereich" },
+                    { key: "Mod+Shift+W", action: "spawn-sh",
+                      arg: "qs -c buchhwin ipc call notch wallpaper",
+                      desc: "Hintergrundbild waehlen" },
                     { key: "Mod+Escape", action: "spawn-sh",
                       arg: "qs -c buchhwin ipc call notch collapse",
                       desc: "Insel schliessen" },
@@ -370,12 +450,20 @@ Singleton {
 
             property list<string> workspaces: ["scratch"]
 
+            // The wallpaper, and the one key that makes it colour the desktop.
+            //
+            // There is no separate "derive" switch: `theme.palette` set to
+            // "wallpaper" IS the switch, and a second key that means the same
+            // thing is how a settings file starts to contradict itself. It
+            // existed until version 1 and is removed by a migration.
             property JsonObject wallpaper: JsonObject {
-                property string folder: ""     // set in M3.5; empty = none
+                // Where the picker looks. Set by the installer; empty means
+                // there is no wallpaper on this machine, not "the home folder".
+                property string folder: ""
+                // The image in use, as a file:// URL. THIS is what survives a
+                // restart — the derived palette is a cache keyed on it.
                 property string current: ""
-                // "none" = wallpaper does not touch the palette (default),
-                // "accent" = only the accent, "full" = surfaces and text too.
-                property string derive: "none"
+                property list<string> monitors: []
             }
         }
     }

@@ -31,7 +31,7 @@ Singleton {
     // Must match Config's `version` default. A file with a lower number is
     // brought forward; a HIGHER number means the config was written by a newer
     // build than this one, which we must not "migrate" — see needed().
-    readonly property int current: 1
+    readonly property int current: 2
 
     // step[n] upgrades a config at version n to version n+1.
     // Each is a pure function: take the parsed object, return it changed.
@@ -40,6 +40,24 @@ Singleton {
         // `version` key at all and no renamed fields to repair, so there is
         // nothing to do but stamp them.
         function (cfg) {
+            return cfg
+        },
+
+        // 1 → 2: `wallpaper.derive` removed.
+        //
+        // It named three modes ("none", "accent", "full") and only ever held
+        // the first, because the decision it described is already made by
+        // theme.palette: setting that to "wallpaper" derives the scheme from
+        // the image, and anything else does not. Two keys for one decision can
+        // disagree, and the one that loses is whichever the reader forgot.
+        //
+        // Deleting it is safe precisely because it did nothing. It still needs
+        // a migration rather than a default, since the old key is already
+        // sitting in files and JsonAdapter would otherwise carry it forward
+        // for ever as a fossil nobody dares remove.
+        function (cfg) {
+            if (cfg.wallpaper && typeof cfg.wallpaper === "object")
+                delete cfg.wallpaper.derive
             return cfg
         }
     ]

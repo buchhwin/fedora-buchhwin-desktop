@@ -71,6 +71,11 @@ Singleton {
         function volume(): void { root.toggle("volume") }
         function quick(): void { root.toggle("quick") }
         function notifications(): void { root.toggle("notifications") }
+        // None of these three closes itself: they are places you look around
+        // in or choose from, not reports that have finished being read.
+        function calendar(): void { root.toggle("calendar") }
+        function tray(): void { root.toggle("tray") }
+        function wallpaper(): void { root.toggle("wallpaper") }
         function collapse(): void { root.collapse() }
         function state(): string { return root.page }
     }
