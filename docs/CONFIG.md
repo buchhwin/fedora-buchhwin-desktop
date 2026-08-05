@@ -15,7 +15,7 @@ desktop — which is what makes it safe to add settings without a migration.
 | `version` | migration marker; bumped only on a rename or removal |
 | `theme` | `palette`, `accent`, `lightPalette` |
 | `look` | `rounding`, `borderWidth`, `gapsIn/Out`, opacities, `blur`, `blurPasses`, `shadows`, fonts, `fontSize`, `profile` |
-| `surfaces` | `notifications`, `osd`, `dock` — each on its own |
+| `surfaces` | `notifications`, `osd`, `dock`, `wallpaper` — each on its own |
 | `bar` / `notch` / `dock` | geometry, and a monitor list (empty = all) |
 | `programs` | argument **lists**: `terminal`, `browser`, `fileManager`, `editor`, `imageViewer`, `video`, `launcher` |
 | `keys` | `mod` plus `binds`: `{ key, action, arg, desc }` |
@@ -24,7 +24,40 @@ desktop — which is what makes it safe to add settings without a migration.
 | `outputs` | per-monitor overrides; empty = let niri decide |
 | `autostart` | extra programs — **not** the shell or the clipboard watcher |
 | `workspaces` | named workspaces |
-| `wallpaper` | folder, current image, `derive` mode (M3.5) |
+| `wallpaper` | `folder`, `current` image, `monitors` |
+
+## The wallpaper, and what survives a restart
+
+```json
+"theme":     { "palette": "wallpaper", "accent": "blue" },
+"wallpaper": { "folder": "/home/you/Bilder/Wallpaper",
+               "current": "file:///home/you/Bilder/Wallpaper/Lake_Color1.png" }
+```
+
+**`wallpaper.current` is the only thing that is remembered**, and it is written
+the moment you choose an image (`Super+Shift+W`, or `bhctl wallpaper <file>`).
+Everything else is downstream of it:
+
+- `theme.palette` set to **`"wallpaper"`** means the colour scheme is derived
+  from that image. **There is no second switch** — a `wallpaper.derive` key
+  existed until config version 1 and was removed, because two keys for one
+  decision can disagree.
+- The derived scheme is cached in `shell/theme/palettes/wallpaper.json`, an
+  ordinary palette file with one extra field, `source`. On the next start the
+  colours load from there instantly; the image is only read again when `source`
+  no longer matches `wallpaper.current`. The file is generated, never committed.
+- A wallpaper that cannot be decoded is **refused** and the previous scheme
+  stays. An unreadable desktop is worse than one that did not change — and much
+  worse if it comes back that way after every restart.
+- Light or dark is yours, not the image's: a bright photo does not turn a dark
+  desktop light. The image supplies hue, nothing else. **Meaning colours stay
+  put** — error is red on a forest wallpaper too. An image with no colour in it
+  yields a grey scheme rather than an invented one.
+
+Wallpapers are **not** in this repository — they are photographs and this
+repository is public. `install.sh --wallpapers <dir>` copies them to
+`~/Bilder/Wallpaper`; without it the installer falls back to
+`/usr/share/backgrounds`, and with no images anywhere it seeds Everforest Dark.
 
 ## Defaults worth knowing
 

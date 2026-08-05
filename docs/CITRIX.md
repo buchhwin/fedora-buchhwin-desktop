@@ -22,19 +22,32 @@ Two further facts worth knowing before you rely on it:
 - **Teams optimization is documented as "supported only on Ubuntu 20.04 or
   later".** It generally works elsewhere; it is simply not promised.
 
-## Installation — `install.sh --with citrix`
+## Installation — by hand, on purpose
 
-Off by default, because most people do not need a 405 MB proprietary client.
+**The installer does not do this and will not.** Citrix is a normal RPM, so it
+installs natively — but it is not *in a repository*: it lives only on
+citrix.com behind an Akamai-signed URL that is regenerated on every page load
+and expires after about an hour. There is no stable link a script can hardcode,
+and `dnf install icaclient` will never work. An `--with citrix` option that
+could only print "download it yourself" was a promise the installer did not
+keep, so it was removed rather than left standing.
 
-The package **is** a normal RPM. What it is not is *in a repository*: it lives
-only on citrix.com behind an Akamai-signed URL that is regenerated on every
-page load and expires after about an hour. So there is no stable link a script
-can hardcode, and `dnf install icaclient` will never work.
+The four steps, in order:
 
-The installer therefore accepts either:
+    # 1. the real dependencies, all of them in Fedora 44 (see below)
+    sudo dnf install gtk2 libcanberra-gtk2 libXaw libXp libsoup speex \
+        libcxx libcxxabi libunwind libsecret libvorbis libxml2 \
+        gstreamer1 gstreamer1-plugins-base gstreamer1-plugins-good \
+        libva alsa-lib pulseaudio-libs wget
 
-    install.sh --with citrix --citrix-rpm ~/Downloads/ICAClient-rhel-gcc-8-*.rpm
-    install.sh --with citrix            # prints the download page and waits
+    # 2. the client itself — --nodeps for the reason given below
+    sudo rpm -i --nodeps ~/Downloads/ICAClient-rhel-gcc-8-*.rpm
+
+    # 3. unpack the bundled WebKit the Self-Service GUI needs
+    sudo /opt/Citrix/ICAClient/util/integrate.sh install
+
+    # 4. check what is now going through XWayland
+    bhctl doctor
 
 Current package, verified 2026-08-04:
 
@@ -45,7 +58,7 @@ Current package, verified 2026-08-04:
 Download page:
 <https://www.citrix.com/downloads/workspace-app/linux/workspace-app-for-linux-latest.html>
 
-### Why it is installed with `--nodeps`
+### Why it must be installed with `--nodeps`
 
 Fedora 44 no longer ships `webkit2gtk4.0`; only `webkit2gtk4.1` exists, and
 the RPM asks for `libwebkit2gtk-4.0.so.37`. Citrix bundles its own copy at
@@ -55,10 +68,10 @@ bundled WebKit serve the Self-Service GUI is the clean route, not a hack
 around a broken package. Only `selfservice` and the `wfica` dialog use WebKit
 at all; sessions launched from a browser never touch it.
 
-The real dependencies are installed normally beforehand — all present in
-Fedora 44: `gtk2 libcanberra-gtk2 libXaw libXp libsoup speex libcxx libcxxabi
-libunwind libsecret libvorbis libxml2 gstreamer1 gstreamer1-plugins-base
-gstreamer1-plugins-good libva alsa-lib pulseaudio-libs wget`.
+This is why step 1 above exists: the real dependencies are installed normally
+first, and `--nodeps` then skips only the one requirement Fedora genuinely
+cannot satisfy. Installing with `--nodeps` and nothing else would give you a
+client that starts and then fails somewhere less obvious.
 
 ## Teams optimization
 

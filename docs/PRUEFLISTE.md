@@ -187,7 +187,56 @@ Sperr- und Anmeldebildschirm.
       ausgeklappt 135 hoch. Auf echter Hardware nachmessen.
 - [ ] **Medien** mit Spotify oder Discord: Albumbild und Titel korrekt, Play/Pause wirkt.
 
+---
+
+# Prüfliste M3.5 — Hintergrundbild und das Schema daraus
+
+## Am Bildschirm belegt (VM, echte Screenshots)
+
+| | |
+|---|---|
+| Das Bild wird gezeichnet | eigene Fläche auf der `background`-Ebene |
+| Auswahl als **Insel-Seite** | die Insel wächst zur Bilderreihe, kein zweites Fenster |
+| Das aktive Bild ist markiert | Häkchen; der Rahmen ist der Tastatur-Zeiger |
+| Das Schema folgt dem Bild | Desert1 → `#f5b648`, Lake3 → `#f88844` — die gemessenen Saattöne |
+| Es folgt bis in fremde Programme | `gtk.css` steht auf demselben Wert |
+| **Neustart** | echter Reboot: Bild **und** Schema stehen unverändert wieder da |
+| Everforest ist nicht mehr Vorgabe | frische Installation sät `palette: "wallpaper"` |
+
+## Was nur du prüfen kannst
+
+- [ ] **`Super+Shift+W`** öffnet die Auswahl — über die Proxmox-Konsole, nicht über VNC.
+- [ ] **Gefällt dir das abgeleitete Schema?** Alle zwölf Bilder durchgehen. Wenn eines
+      unangenehm aussieht: sagen, welches und warum — die Ableitung hat Stellschrauben.
+- [ ] **Die Übergänge:** wächst die Insel weich in die Bilderreihe, ohne Nachfedern?
+- [ ] **Auf echter Hardware**: sieht das Bild bei HiDPI scharf aus, und wie lange dauert
+      der Wechsel auf einem echten Laufwerk?
+
+# Prüfliste M4-Rest — Kalender und Infobereich
+
+## Am Bildschirm belegt
+
+| | |
+|---|---|
+| Kalender | ganzer Monat, sechs Wochen, heute im Akzent, Wochentage stimmen |
+| Die Insel wächst dafür | `expandedHeight` ist jetzt eine **Untergrenze**, wie die Breite |
+| Tray | Seite öffnet, Leerzustand ist ein Satz Text |
+| Alle sieben Seiten | über `ipc` und über Tasten erreichbar, keine Warnung im Log |
+
+## Was nur du prüfen kannst
+
+- [ ] **Tray mit einem echten Programm** (die VM hatte keines): Symbol erscheint,
+      Linksklick aktiviert, **Rechtsklick öffnet das Menü — bei ausgeschalteter Bar**.
+      Das ist der eigentliche Test, denn die Bar ist in der Vorgabe aus.
+- [ ] **Kalender blättern** mit ‹ › und mit den Pfeiltasten, „heute" springt zurück.
+- [ ] ⚠️ **Termine gibt es nicht.** Der Kalender zeigt den Monat, keine Einträge, und
+      synchronisiert nichts. Google-Kalender war nie im Plan (dort steht Google nur für
+      **Drive**), und Evolution steht auf der Debloat-Liste. Wenn du Termine willst, ist
+      das eine eigene Entscheidung — siehe unten.
+
 ## Noch nicht gebaut
 
-Kalender/Wetter und Tray als Insel-Seiten · Wallpaper-Auswahl wartet auf deine Bilder
-(der `desktop`-Ordner ist noch nicht angekommen, das Arbeitsgerät war offline).
+**Wetter** auf der Kalender-Seite — kommt in M8 zusammen mit der Ortssuche, weil ein
+Wetterfeld ohne Eingabefeld für den Ort auf einem fremden Gerät nur hübsch lügt.
+
+**Termine im Kalender** — offene Entscheidung, nicht vergessen.

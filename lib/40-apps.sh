@@ -32,8 +32,5 @@ phase_apps() {
     # X11 even with the ozone flags. Measured, not assumed.
     sudo flatpak override --socket=wayland com.discordapp.Discord 2>/dev/null || true
 
-    for w in "${WITH[@]:-}"; do
-        [[ "$w" == "citrix" ]] && warn "Citrix is not automated yet — see docs/CITRIX.md"
-    done
     ok "applications"
 }

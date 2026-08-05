@@ -99,10 +99,23 @@ Also different from the predecessor: `Super+arrow` moves **focus** and
 
 ### Reaching the island
 
+Every page has a key, without exception — the bar is **off** in the default
+setup, so a page you could only click on the bar would not be reachable at all.
+
 | Key | What |
 |---|---|
-| `Super+M` | media page in the island |
+| `Super+M` | media |
+| `Super+N` | notifications |
+| `Super+,` | quick settings |
+| `Super+C` | calendar |
+| `Super+T` | the system tray |
+| `Super+Shift+W` | choose a wallpaper |
 | `Super+Escape` | close the island |
+
+⚠️ **Tray menus need a window to open against.** With the bar off, that window
+is the island's own — which is why the tray page is a page and not a popup. If
+you switch the notch off *and* the bar off, there is no tray at all, and that is
+the honest consequence rather than a bug.
 
 ⚠️ These go through the shell's ipc socket, and `qs ipc call` takes **no
 arguments** in quickshell 0.2.1 — `qs ipc show` lists `show(page: string)`

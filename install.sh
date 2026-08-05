@@ -1,30 +1,35 @@
 #!/usr/bin/env bash
 # buchhwin desktop — turn a bare Fedora Server 44 into a niri desktop.
 #
-#   ./install.sh                  everything
-#   ./install.sh --minimal        no applications
-#   ./install.sh --with citrix    add the Citrix client (see docs/CITRIX.md)
-#   ./install.sh --only <phase>   one phase; repeatable
-#   ./install.sh --skip <phase>   all but one; repeatable
+#   ./install.sh                     everything
+#   ./install.sh --minimal           no applications
+#   ./install.sh --wallpapers <dir>  copy wallpapers from <dir> and use them
+#   ./install.sh --only <phase>      one phase; repeatable
+#   ./install.sh --skip <phase>      all but one; repeatable
+#
+# There is no `--with citrix`. Citrix cannot be automated — its RPM exists only
+# behind a link that is regenerated on every page load — and an option that only
+# prints "not automated yet" is a promise the installer does not keep.
+# docs/CITRIX.md has the manual route, including why it needs `--nodeps`.
 #
 set -uo pipefail
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=lib/common.sh
 source "$REPO_DIR/lib/common.sh"
 
-MINIMAL=0; WITH=(); ONLY=(); SKIP=()
+MINIMAL=0; WALLPAPERS=""; ONLY=(); SKIP=()
 while [[ $# -gt 0 ]]; do
     case "$1" in
-        --minimal) MINIMAL=1 ;;
-        --with)    WITH+=("${2:?}"); shift ;;
-        --only)    ONLY+=("${2:?}"); shift ;;
-        --skip)    SKIP+=("${2:?}"); shift ;;
-        -h|--help) sed -n '2,12p' "$0"; exit 0 ;;
+        --minimal)    MINIMAL=1 ;;
+        --wallpapers) WALLPAPERS="${2:?}"; shift ;;
+        --only)       ONLY+=("${2:?}"); shift ;;
+        --skip)       SKIP+=("${2:?}"); shift ;;
+        -h|--help) sed -n '2,17p' "$0"; exit 0 ;;
         *) die "unknown option: $1" ;;
     esac
     shift
 done
-export MINIMAL WITH
+export MINIMAL WALLPAPERS
 
 should_run() {
     local p="$1" s
