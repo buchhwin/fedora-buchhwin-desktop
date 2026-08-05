@@ -11,3 +11,5 @@ singleton Media 1.0 Media.qml
 singleton Notifications 1.0 Notifications.qml
 singleton Brightness 1.0 Brightness.qml
 singleton Wallpaper 1.0 Wallpaper.qml
+singleton Ical 1.0 Ical.qml
+singleton Calendar 1.0 Calendar.qml
