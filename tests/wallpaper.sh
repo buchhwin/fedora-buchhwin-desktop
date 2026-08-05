@@ -6,8 +6,14 @@
 # That promise has two halves, and both are checked here rather than assumed:
 #
 #   * shell.json remembers the image — one key, written atomically
-#   * theme/palettes/wallpaper.json is a CACHE keyed on that image, so a
-#     restart loads colours from disk instead of re-reading a 6000x3750 PNG
+#   * the derived palette is a CACHE keyed on that image, so a restart loads
+#     colours from disk instead of re-reading a 6000x3750 PNG
+#
+# ⚠️ That cache lives in XDG_STATE_HOME, NOT in the shell tree. It used to sit
+# in theme/palettes/ beside the eleven palettes that ship, which put generated
+# user state into a source checkout — one `git pull` or one deploy that mirrors
+# the tree and somebody's colours are gone. This test pins the new location so
+# it cannot drift back.
 #
 # The cache is the part that can rot silently. If it were not keyed on the
 # source, changing the wallpaper would leave the old colours in place for ever
@@ -40,8 +46,8 @@ work="$(mktemp -d)"
 trap 'rm -rf "$work"' EXIT
 
 cp -r shell "$work/shell"
-rm -f "$work/shell/theme/palettes/wallpaper.json"
-derived="$work/shell/theme/palettes/wallpaper.json"
+statedir="$work/state"; mkdir -p "$statedir/buchhwin"
+derived="$statedir/buchhwin/wallpaper.json"
 
 pics="$work/pics"; mkdir -p "$pics"
 
@@ -76,7 +82,8 @@ set_wallpaper() {
 
 derive() {
     rm -f /tmp/buchhwin-wallpaper-palette.log
-    XDG_CONFIG_HOME="$cfgdir" BUCHHWIN_TOOL=wallpaper-palette \
+    XDG_CONFIG_HOME="$cfgdir" XDG_STATE_HOME="$statedir" \
+        BUCHHWIN_TOOL=wallpaper-palette \
         QT_QPA_PLATFORM=offscreen timeout 40 qs -p "$work/shell" >/dev/null 2>&1
 }
 

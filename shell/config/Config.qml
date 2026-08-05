@@ -507,8 +507,22 @@ Singleton {
                     // binding for the same key is the kind of leftover the
                     // predecessor collected, and tests/niri-config.sh now fails
                     // on one.
+                    // ⚠️ Starts the locker DIRECTLY rather than asking logind
+                    // to. `loginctl lock-session` only emits a signal, and
+                    // nothing in this desktop was listening — so this key did
+                    // nothing at all, silently, which on a work machine is the
+                    // worst way for a lock to fail.
+                    //
+                    // Spawning it from the keybinding also means locking still
+                    // works when the shell is dead, which is the stated reason
+                    // keys live in KDL rather than in the shell.
+                    //
+                    // ⚠️ `-c buchhwin`, not a path: quickshell treats the
+                    // folder of the file it is given as the config root, so
+                    // starting it by path would put theme/ and config/ outside
+                    // that root and the singletons would never register.
                     { key: "Mod+Ctrl+L", action: "spawn-sh",
-                      arg: "loginctl lock-session", desc: "Sperren" },
+                      arg: "BUCHHWIN_MODE=lock qs -c buchhwin", desc: "Sperren" },
                     { key: "Mod+Shift+P", action: "power-off-monitors", desc: "Bildschirme aus" }
                 ]
             }

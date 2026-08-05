@@ -108,17 +108,48 @@ phase_shell() {
         warn "qt6ct.conf exists but does not select colors/buchhwin.conf — Qt apps keep their own colours"
     fi
 
+    # ⚠️ WITHOUT THIS FILE THE LOCK SCREEN CANNOT CHECK A PASSWORD. PamContext
+    # names a service in /etc/pam.d and there is no sensible fallback: a locker
+    # that cannot authenticate is a locker you get out of with a TTY.
+    #
+    # Our own service rather than borrowing another program's. swaylock ships
+    # /etc/pam.d/swaylock and it is tempting to point at it, but then locking
+    # breaks the day swaylock is uninstalled — and it is not a dependency of
+    # anything here. The shape is Fedora's own /etc/pam.d/vlock.
+    if [[ ! -f /etc/pam.d/buchhwin-lock ]]; then
+        sudo tee /etc/pam.d/buchhwin-lock >/dev/null <<'PAM'
+#%PAM-1.0
+# buchhwin lock screen. Same shape as Fedora's /etc/pam.d/vlock.
+auth       include      system-auth
+account    required     pam_permit.so
+PAM
+        ok "PAM service for the lock screen installed"
+    else
+        ok "PAM service for the lock screen already present"
+    fi
+
     section "Theme"
+    # FileView writes a file, it does not create the folder above it — and the
+    # derived palette is the one generated file that is NOT in the repository.
+    mkdir -p "${XDG_STATE_HOME:-$HOME/.local/state}/buchhwin"
+
     step "rendering GTK, Qt, kitty and niri colours from the palette"
     # ⚠️ This also BUILDS the derived palette when the seed above chose it:
     # loading the "wallpaper" palette is what makes the shell read the image
-    # and write theme/palettes/wallpaper.json. Which is why the listing below
-    # comes afterwards — before it, that file does not exist yet.
+    # and write the derived palette into XDG_STATE_HOME.
     run_tool render && ok "theme rendered"
 
     # The palette picker reads this instead of globbing at runtime.
+    #
+    # ⚠️ "wallpaper" is appended by hand rather than found by the listing: it is
+    # the one palette that is generated and therefore does NOT live in this
+    # folder. It used to, which meant a git pull could delete somebody's colour
+    # scheme — see the note in shell/theme/Scheme.qml.
     ( cd "$REPO_DIR/shell/theme/palettes" && ls -1 ./*.json 2>/dev/null \
         | sed 's|^\./||; s|\.json$||' ) > "$REPO_DIR/shell/theme/palettes/index.txt"
+    if [[ -f "${XDG_STATE_HOME:-$HOME/.local/state}/buchhwin/wallpaper.json" ]]; then
+        echo wallpaper >> "$REPO_DIR/shell/theme/palettes/index.txt"
+    fi
 
     section "Compositor"
     # ⚠️ Order matters on a fresh machine: if niri starts before this file

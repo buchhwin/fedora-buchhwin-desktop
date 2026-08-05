@@ -208,9 +208,27 @@ Singleton {
     readonly property list<string> available: dir.text().trim().length
         ? dir.text().trim().split("\n") : [root.name]
 
+    // ⚠️ THE DERIVED PALETTE IS NOT A REPOSITORY FILE. It used to be written to
+    // theme/palettes/wallpaper.json inside the shell tree, next to the eleven
+    // palettes that ship — which put generated user state into a source
+    // checkout. `git pull`, `git clean`, or any deploy that mirrors the tree
+    // deletes it, and the desktop silently loses its colours. Measured, not
+    // theorised: an rsync --delete of shell/ during this session wiped it and
+    // the next start came up on the fallback.
+    //
+    // XDG_STATE_HOME, not cache: it has to survive a reboot (that was tested
+    // for M3.5 and is a promise now), and a cache is something a cleaner is
+    // entitled to empty.
+    readonly property string derivedPath:
+        (Quickshell.env("XDG_STATE_HOME")
+         || (Quickshell.env("HOME") + "/.local/state"))
+        + "/buchhwin/wallpaper.json"
+
     FileView {
         id: file
-        path: Quickshell.shellPath("theme/palettes/" + root.name + ".json")
+        path: root.derived
+              ? root.derivedPath
+              : Quickshell.shellPath("theme/palettes/" + root.name + ".json")
         watchChanges: true
         // Loud on purpose. This failing silently is exactly how the whole
         // desktop ran on fallback colours without anyone noticing.
