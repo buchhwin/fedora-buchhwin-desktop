@@ -1,3 +1,6 @@
+# shellcheck shell=bash
+# Sourced by install.sh, never executed — so there is no shebang, and the
+# directive above is how shellcheck is told which shell to assume.
 # Phase: base — the packages nothing else works without.
 phase_base() {
     section "Base system"

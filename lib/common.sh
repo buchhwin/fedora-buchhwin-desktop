@@ -8,12 +8,22 @@
 
 set -uo pipefail
 
-C_OK=$'\033[38;5;114m'; C_WARN=$'\033[38;5;179m'; C_ERR=$'\033[38;5;203m'
-C_DIM=$'\033[2m'; C_OFF=$'\033[0m'
+C_OK=$'\033[38;5;114m'; C_WARN=$'\033[38;5;179m'; C_ERR=$'\033[38;5;203m'; C_OFF=$'\033[0m'
 
+# ⚠️ These four are used by the PHASE files that source this one, so shellcheck
+# — which reads one file at a time — cannot see it and reports them as unused.
+# Silenced with a reason rather than left to be scrolled past: a warning nobody
+# can act on trains everyone to ignore the ones that matter.
+#
+# `C_DIM` used to be here too and really was unused, in every file. It was
+# deleted rather than silenced, which is the other half of the same rule.
+# shellcheck disable=SC2034
 REPO_DIR="${REPO_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
+# shellcheck disable=SC2034
 CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
+# shellcheck disable=SC2034
 DATA_HOME="${XDG_DATA_HOME:-$HOME/.local/share}"
+# shellcheck disable=SC2034
 STATE_HOME="${XDG_STATE_HOME:-$HOME/.local/state}"
 
 WARNINGS=0

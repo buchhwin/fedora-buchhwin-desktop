@@ -92,28 +92,47 @@ Singleton {
                 // Twenty-six short strings, compared once per change. It is
                 // also the honest question: "did the colours change", not "did
                 // the setting that usually changes them change".
-                Scheme.dark, JSON.stringify(Scheme.colors)].join("")
+                // The palette as it was WRITTEN, not as a property reports it.
+                // See the FileView below for why that distinction had to be
+                // made the hard way.
+                paletteFile.text()].join("")
     }
 
     property string _seen: ""
 
-    onFingerprintChanged: { root.log("fingerprint moved, base=" + Scheme.colors.base); root._consider() }
+    onFingerprintChanged: root._consider()
 
-    // ⚠️ A BOUND PROPERTY, NOT `Connections`. This project already wrote the
-    // rule down after the first time it cost a day: "Connections { target:
-    // <Singleton> } on a singleton that is only just coming into existence
-    // misbehaves — use your own bound property and an on…Changed handler."
-    // Both of the forms tried before this were the forbidden ones: a JS block
-    // with an early `return` (whose skipped branch does not reliably register
-    // its dependencies) and a Connections on Scheme. Neither ever fired, while
-    // the palette demonstrably re-derived on disk.
+    // ⚠️ THE PALETTE IS WATCHED AS A FILE, NOT AS A SIGNAL — and that is the
+    // fourth attempt, after three that did not work and were each measured:
     //
-    // A plain binding has no branch to skip and no target to resolve late.
-    readonly property var schemeColors: Scheme.colors
-    readonly property bool schemeReady: Scheme.ready
-
-    onSchemeColorsChanged: root._consider()
-    onSchemeReadyChanged: root._consider()
+    //   1. reading Scheme.colors inside the fingerprint's JS block. Never fired
+    //      again after the first evaluation; a binding whose first run takes an
+    //      early `return` does not reliably carry the dependencies of the
+    //      branch it skipped.
+    //   2. `Connections { target: Scheme; onColorsChanged }`. Never fired —
+    //      and this project already had that written down as a trap for
+    //      singletons that are still coming into existence.
+    //   3. the prescribed replacement, a bound property plus on…Changed. Also
+    //      never fired, while the palette demonstrably re-derived: the cache
+    //      file on disk changed its `source` and its `base` inside the test
+    //      window, every time.
+    //
+    // What IS certain: the service is bound to the live Scheme, not a second
+    // instance — when it arms it reports the same `base` that is on disk.
+    //
+    // So this stops asking the singleton and asks the file, which is the one
+    // mechanism this project has never had trouble with: Config watches
+    // shell.json exactly this way and has been reliable since M1. It also makes
+    // the fingerprint honest — it now contains the palette AS WRITTEN rather
+    // than a property's opinion of it.
+    FileView {
+        id: paletteFile
+        path: Scheme.palettePath
+        watchChanges: true
+        printErrors: false
+        onFileChanged: reload()
+        onLoaded: root._consider()
+    }
 
     function _consider() {
         // Both guards matter. Before the config settles the fingerprint is
@@ -126,7 +145,7 @@ Singleton {
         if (root._seen === "") {
             // First settled state: record it, render nothing. See the note above.
             root._seen = root.fingerprint
-            root.log("armed — Scheme.name=" + Scheme.name + " base=" + Scheme.colors.base + " ready=" + Scheme.ready)
+            root.log("armed on palette " + Scheme.name)
             return
         }
         if (root._seen === root.fingerprint)
@@ -142,7 +161,12 @@ Singleton {
     // each would spawn three processes to produce one result.
     Timer {
         id: debounce
-        interval: 300
+        // ⚠️ 800 ms, not 300. Measured: a wallpaper change produced TWO renders
+        // in a row — the palette file is written, then read back, and each is a
+        // change the fingerprint sees. Two processes for one result. The window
+        // has to be wider than that write-then-reload round trip, and 800 ms is
+        // still nothing to a human who has just clicked a picture.
+        interval: 800
         onTriggered: root.render()
     }
 

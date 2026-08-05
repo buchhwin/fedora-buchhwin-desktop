@@ -4,7 +4,8 @@ Alles hier ist **gebaut und maschinell geprüft**, aber nicht mit Augen gesehen.
 Die VM kann Richtigkeit prüfen, nicht Aussehen — und sie hat weder Ton noch
 Akku noch echte Grafik.
 
-Test-VM: **Proxmox 9002 `niri-m0`, 192.168.2.79**, Login `buchhwin`/`buchhwin`,
+Test-VM: **Proxmox 9002 `niri-m0`**, Adresse und Zugang stehen nicht hier —
+dieses Repository ist öffentlich. Login `buchhwin`/`buchhwin`,
 VNC `:5900`. Arbeitsstand liegt in `~/repo`.
 
 ---
@@ -26,7 +27,7 @@ VNC `:5900`. Arbeitsstand liegt in `~/repo`.
 ## 1. Anmelden und schauen (das Wichtigste)
 
 ```
-ssh buchhwin@192.168.2.79
+ssh buchhwin@<test-vm>
 cd ~/repo && bash install.sh      # oder nur: bhctl niri apply
 ```
 
@@ -45,7 +46,7 @@ obwohl die Konfiguration geladen ist. Der Zeiger geht, die Tastatur nicht. Dazu
 fangen viele VNC-Betrachter die Super-Taste schon auf deinem eigenen Rechner ab.
 Wer so testet, hält funktionierende Kürzel für kaputt.
 
-**Nimm die Proxmox-Konsole** (`https://192.168.2.84:8006` → VM 9002 → Console) — die
+**Nimm die Proxmox-Konsole** (`https://<proxmox>:8006` → VM 9002 → Console) — die
 emulierte USB-Tastatur sieht niri als echtes Gerät. Oder ferngesteuert vom Host:
 
 ```

@@ -31,8 +31,8 @@ desktop — which is what makes it safe to add settings without a migration.
 
 ```json
 "theme":     { "palette": "wallpaper", "accent": "blue" },
-"wallpaper": { "folder": "/home/you/Bilder/Wallpaper",
-               "current": "file:///home/you/Bilder/Wallpaper/Lake_Color1.png" }
+"wallpaper": { "folder": "~/Pictures/Wallpaper",
+               "current": "file:///home/USER/Pictures/Wallpaper/Lake_Color1.png" }
 ```
 
 **`wallpaper.current` is the only thing that is remembered**, and it is written

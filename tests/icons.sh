@@ -24,6 +24,15 @@ trap 'rm -f "$names"' EXIT
 #
 # The first attempt grepped every `text:` in ui/ and duly reported that
 # "ganztägig" and "heute" are not in the icon font. They are not meant to be.
+# ⚠️ mapfile, not an unquoted $(find …). Word splitting is what makes the bare
+# form work at all, and it breaks the moment a path contains a space. SC2046
+# reports it, and is right to.
+#
+# (The reason for this wording: a comment line that BEGINS with the linter's
+# name is read as a directive, and this one broke the job it was fixing.)
+mapfile -t qml < <(find shell/ui shell/services -name '*.qml')
+(( ${#qml[@]} )) || { echo '  no QML files found'; exit 1; }
+
 awk '
   # Everything between `icon:` and the next `word:` on the same line. Taking
   # every quoted word instead swept up the neighbouring id: and label: values
@@ -75,7 +84,7 @@ awk '
           if (depth <= 0) inicon = 0
       }
   }
-' $(find shell/ui shell/services -name '*.qml') | sort -u > "$names"
+' "${qml[@]}" | sort -u > "$names"
 
 if [[ ! -s "$names" ]]; then
     echo "  found no icon names to check — has the markup changed?"

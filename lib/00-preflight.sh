@@ -1,3 +1,6 @@
+# shellcheck shell=bash
+# Sourced by install.sh, never executed — so there is no shebang, and the
+# directive above is how shellcheck is told which shell to assume.
 # Phase: preflight — refuse early and clearly rather than half-installing.
 phase_preflight() {
     section "Checking the system"

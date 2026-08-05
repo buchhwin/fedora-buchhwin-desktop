@@ -46,6 +46,15 @@ check() {   # $1 = label, $2 = shell.json contents ("" = no file at all)
         fail=1; rm -rf "$tmp"; return
     fi
     # Exit 0 is not enough — see the header.
+    #
+    # ⚠️ ONE warning is expected and is not a fault: the generated config ends
+    # with `include optional=true ~/.config/niri/colors.kdl`, and in a bare test
+    # (or in CI) the renderer has never run, so that file does not exist. That
+    # is exactly what `optional` means. It is filtered by its own text rather
+    # than by relaxing the check, so every OTHER warning still fails the test —
+    # the whole reason this check exists is that niri exits 0 on a config it has
+    # complained about.
+    out="$(grep -v 'optional include not found' <<< "$out")"
     if grep -qi 'warn' <<< "$out"; then
         printf '\033[38;5;203mvalid but warns\033[0m\n'
         grep -i warn <<< "$out" | sed 's/^/      /' | head -6

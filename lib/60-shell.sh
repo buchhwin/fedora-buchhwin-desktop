@@ -1,3 +1,6 @@
+# shellcheck shell=bash
+# Sourced by install.sh, never executed — so there is no shebang, and the
+# directive above is how shellcheck is told which shell to assume.
 # Phase: shell — put the Quickshell configuration where quickshell looks for
 # it, seed the user's settings once, and render every foreign application's
 # theme from the palette.
