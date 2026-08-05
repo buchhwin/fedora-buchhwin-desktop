@@ -214,20 +214,23 @@ Singleton {
             property JsonObject theming: JsonObject {
                 property bool enabled: true
                 property string mode: "colour"
-                property JsonObject targets: JsonObject {
-                    property string gtk: "inherit"
-                    property string qt: "inherit"
-                    property string kitty: "inherit"
-                    property string alacritty: "inherit"
-                    property string niri: "inherit"
-                    property string btop: "inherit"
-                    property string bat: "inherit"
-                    property string fastfetch: "inherit"
-                    property string delta: "inherit"
-                    property string tmux: "inherit"
-                    property string starship: "inherit"
-                    property string lazygit: "inherit"
-                }
+                // ⚠️ FLAT, not `targets: { gtk: … }`. Two levels of JsonObject
+                // nesting does not come back from the file — measured: the
+                // block parsed, the inner values stayed at their defaults, and
+                // every switch silently did nothing. Every other block in this
+                // file is one level deep, and now so is this one.
+                property string gtk: "inherit"
+                property string qt: "inherit"
+                property string kitty: "inherit"
+                property string alacritty: "inherit"
+                property string niri: "inherit"
+                property string btop: "inherit"
+                property string bat: "inherit"
+                property string fastfetch: "inherit"
+                property string delta: "inherit"
+                property string tmux: "inherit"
+                property string starship: "inherit"
+                property string lazygit: "inherit"
             }
 
             property JsonObject look: JsonObject {

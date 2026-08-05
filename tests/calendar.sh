@@ -15,7 +15,22 @@ cd "$(dirname "$0")/.." || exit 2
 command -v qs >/dev/null || { echo "quickshell (qs) not installed"; exit 2; }
 
 rm -f /tmp/buchhwin-ical-check.txt
-BUCHHWIN_TOOL=ical-check QT_QPA_PLATFORM=offscreen timeout 60 qs -p shell >/dev/null 2>&1
+# ⚠️ TZ IS PINNED, and without it this test is a lie that happens to pass.
+#
+# The fixtures are written as DTSTART;TZID=Europe/Berlin:…T100000, and the
+# checker prints wall-clock times with getHours() — the LOCAL time of whatever
+# machine runs it. On a machine set to Berlin that reads 10:00 and everything
+# agrees. In CI, which is UTC, the same instant reads 08:00, and four checks
+# failed by exactly two hours.
+#
+# The code was right: 10:00 in Berlin IS 08:00 UTC. What was wrong is a test
+# that asserts wall-clock strings without saying which wall it means.
+#
+# Not fixed by changing the expectations to 08:00 (that would nail the test to
+# UTC and lose the point), and not by printing UTC (the desktop shows local
+# time, so the test should check local time). It is fixed by fixing the clock.
+TZ=Europe/Berlin BUCHHWIN_TOOL=ical-check QT_QPA_PLATFORM=offscreen \
+    timeout 60 qs -p shell >/dev/null 2>&1
 
 if [[ ! -f /tmp/buchhwin-ical-check.txt ]]; then
     echo "  no output — the checker did not run"

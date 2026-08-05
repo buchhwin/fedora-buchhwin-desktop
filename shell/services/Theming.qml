@@ -77,10 +77,8 @@ Singleton {
                 l.rounding, l.borderWidth, l.opacityPanel, l.opacityTerminal,
                 l.fontUi, l.fontMono, l.fontSize, l.profile,
                 g.enabled, g.mode,
-                g.targets.gtk, g.targets.qt, g.targets.kitty, g.targets.alacritty,
-                g.targets.niri, g.targets.btop, g.targets.bat,
-                g.targets.fastfetch, g.targets.delta, g.targets.tmux,
-                g.targets.starship, g.targets.lazygit,
+                g.gtk, g.qt, g.kitty, g.alacritty, g.niri, g.btop, g.bat,
+                g.fastfetch, g.delta, g.tmux, g.starship, g.lazygit,
                 // ⚠️ THE COLOURS THEMSELVES, not the palette's NAME. The first
                 // version watched `Scheme.name` and `theme.palette`, and the
                 // acceptance test failed on the very case this service exists
