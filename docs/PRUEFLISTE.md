@@ -229,14 +229,47 @@ Sperr- und Anmeldebildschirm.
       Linksklick aktiviert, **Rechtsklick öffnet das Menü — bei ausgeschalteter Bar**.
       Das ist der eigentliche Test, denn die Bar ist in der Vorgabe aus.
 - [ ] **Kalender blättern** mit ‹ › und mit den Pfeiltasten, „heute" springt zurück.
-- [ ] ⚠️ **Termine gibt es nicht.** Der Kalender zeigt den Monat, keine Einträge, und
-      synchronisiert nichts. Google-Kalender war nie im Plan (dort steht Google nur für
-      **Drive**), und Evolution steht auf der Debloat-Liste. Wenn du Termine willst, ist
-      das eine eigene Entscheidung — siehe unten.
+
+---
+
+# Prüfliste — Google-Kalender
+
+**Das kann ich ohne dein Konto nicht prüfen.** Ich habe gegen feste Beispieldateien
+getestet (23 Prüfungen, alle grün, ohne Netz); das Zusammenspiel mit Google prüfst du.
+Zugangsdaten brauche ich dafür nicht — das Konto legst du an, das Token holt sich die
+Shell zur Laufzeit aus den Online-Konten.
+
+## Schon belegt (ohne Konto)
+
+| | |
+|---|---|
+| Ohne Konto sagt die Seite das | „Kein Google-Konto mit eingeschaltetem Kalender" — ein Satz, kein leeres Raster |
+| Das **+** ist dann nicht da | ein Knopf, der ein Formular öffnet das nicht speichern kann, wäre schlimmer als keiner |
+| Anlege-Seite | Titel · Datum · Von–Bis · ganztägig; „Speichern" bleibt grau, solange etwas nicht stimmt |
+| Zeitzonen | 14:00 Berlin = 12:00 UTC im August, 13:00 UTC im Januar — aus der `VTIMEZONE` |
+| Serien | wöchentlich erscheint an **jedem** Termin, Ausfälle fehlen, verschobene Einzeltermine gewinnen |
+| Monatsrechnung | Februar 2028 = 29, Februar 2100 = 28, Februar 2400 = 29 |
+
+## Was du prüfen musst
+
+1. [ ] `gnome-online-accounts-gtk` starten, **Google-Konto hinzufügen, Kalender
+       einschalten**.
+2. [ ] `bhctl calendar` → Konto, Token-Restlaufzeit, `HTTP 207` und „reachable".
+       ⚠️ Das Token selbst wird bewusst **nicht** ausgegeben.
+3. [ ] `Super+C`: stehen die Termine dieses Monats da? Gegen calendar.google.com halten.
+4. [ ] Ein **wöchentlicher** Termin muss an jedem Termin erscheinen, nicht nur einmal.
+5. [ ] Ein **ganztägiger** Termin muss auf seinem Tag stehen — nicht einen daneben.
+6. [ ] Punkt unter den Tagen mit Terminen; Tag antippen → Liste darunter stimmt.
+7. [ ] **Die Abnahme:** `Super+Shift+N`, Termin anlegen → **auf dem Handy nachsehen**.
+8. [ ] Umgekehrt: Termin im Handy anlegen → Insel neu öffnen → er ist da.
+9. [ ] Gegenprobe ohne Netz (`nmcli networking off`): eine Zeile Text, kein Hänger.
 
 ## Noch nicht gebaut
 
 **Wetter** auf der Kalender-Seite — kommt in M8 zusammen mit der Ortssuche, weil ein
 Wetterfeld ohne Eingabefeld für den Ort auf einem fremden Gerät nur hübsch lügt.
 
-**Termine im Kalender** — offene Entscheidung, nicht vergessen.
+**Ändern und Löschen** von Terminen. Der Dienst kann es (`remove()` mit `If-Match`),
+die Oberfläche dafür fehlt bewusst noch: ein falsches Löschen trifft einen echten
+Termin, und dafür will ich erst, dass die Anzeige nachweislich stimmt — Punkte 3 bis 6
+oben.

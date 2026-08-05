@@ -108,6 +108,7 @@ setup, so a page you could only click on the bar would not be reachable at all.
 | `Super+N` | notifications |
 | `Super+,` | quick settings |
 | `Super+C` | calendar |
+| `Super+Shift+N` | new appointment |
 | `Super+T` | the system tray |
 | `Super+Shift+W` | choose a wallpaper |
 | `Super+Escape` | close the island |
