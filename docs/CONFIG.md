@@ -103,3 +103,48 @@ it is a QJSValue wrapper, not a JS array. Use `.length` and indexing.
 step before the adapter applies them, so a one-shot read in the same tick
 returns the defaults — silently. That deferral lives in `common/WaitFor.qml`;
 wait on it rather than on `loaded`.
+
+## The calendar, and Google
+
+Appointments come from your Google account over CalDAV, using the account that
+lives in `gnome-online-accounts` — the same one that puts Google Drive in
+Nautilus. There is deliberately **no setting for it in `shell.json`**: the
+account IS the setting.
+
+```
+gnome-online-accounts-gtk        # add the account, switch the calendar on
+bhctl calendar                   # check that it arrived
+```
+
+`Super+C` shows the month. A dot under a day means something is on; the
+appointments of the day you tap are listed under the grid. The **+** creates one
+— on the day you are looking at, not on today.
+
+**What is written here goes to Google, and therefore to your phone.** This is
+real CalDAV, not a local scratch copy.
+
+### Why not evolution-data-server
+
+EDS is the usual route. It was measured and it cannot work from here: EDS ties
+an opened calendar to the **calling D-Bus connection**, and since Quickshell
+ships no DBus module the only door is `busctl` — where every invocation is a new
+connection, so the object is gone before it can be queried
+(`Object does not exist at path …`). Rescuing that would take a permanently
+running helper in C, with a build step. GOA hands out a token in **one** short
+call instead, and Google's CalDAV endpoint is already baked into GOA. The
+difference is 32 packages and a build system.
+
+### Limits, stated plainly
+
+- **Time zones come from the `VTIMEZONE` inside the appointment**, not from the
+  system. Quickshell's JS engine has **no `Intl`** — measured, `typeof Intl` is
+  `undefined` — so there is no way to ask what offset a named zone had on a
+  given day. Reading VTIMEZONE has the side benefit of not depending on this
+  machine's zone database agreeing with Google's.
+- **Recurrences** are expanded for `FREQ=DAILY|WEEKLY|MONTHLY|YEARLY` with
+  `INTERVAL`, `COUNT`, `UNTIL` and `BYDAY`, plus `EXDATE` and moved instances.
+  Anything more exotic (`BYSETPOS`, `BYWEEKNO`) is **not** expanded rather than
+  half-guessed.
+- No invitations, no attendees, no reminders, no attachments.
+- **No offline queue.** With no network the page says so. Collecting changes to
+  send later is the worse promise.

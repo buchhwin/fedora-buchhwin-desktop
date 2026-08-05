@@ -12,6 +12,7 @@ usage() {
 bhctl theme [<palette> [<accent>]]   switch or show the colour scheme
 bhctl theme apply                    re-render foreign app themes
 bhctl wallpaper [<file>]             show or set the wallpaper
+bhctl calendar                       check the Google calendar connection
 bhctl niri apply                     regenerate ~/.config/niri/config.kdl
 bhctl niri diff                      show what a regeneration would change
 bhctl doctor                         check the installation
@@ -65,6 +66,49 @@ theme)
         echo "palette: $pal  accent: $accent"
         ;;
     esac
+    ;;
+calendar)
+    # Deliberately its own busctl calls rather than asking the shell: when the
+    # calendar is empty the first question is whether the ACCOUNT is there, and
+    # that has to be answerable with the shell dead.
+    objs="$(busctl --user --json=short call org.gnome.OnlineAccounts \
+             /org/gnome/OnlineAccounts org.freedesktop.DBus.ObjectManager \
+             GetManagedObjects 2>/dev/null)"
+    if [[ -z "$objs" ]]; then
+        echo "online accounts are not answering (is goa-daemon running?)" >&2
+        exit 1
+    fi
+
+    path="$(jq -r '.data[0] | to_entries[]
+            | select(.value["org.gnome.OnlineAccounts.Account"].ProviderType.data == "google")
+            | select(.value["org.gnome.OnlineAccounts.Account"].CalendarDisabled.data != true)
+            | .key' <<<"$objs" | head -1)"
+
+    if [[ -z "$path" ]]; then
+        echo "no Google account with the calendar switched on"
+        echo "add one with: gnome-online-accounts-gtk"
+        exit 1
+    fi
+
+    name="$(jq -r --arg p "$path" '.data[0][$p]["org.gnome.OnlineAccounts.Account"].PresentationIdentity.data' <<<"$objs")"
+    echo "account:  $name"
+    echo "path:     $path"
+
+    tok="$(busctl --user --json=short call org.gnome.OnlineAccounts "$path" \
+           org.gnome.OnlineAccounts.OAuth2Based GetAccessToken 2>/dev/null)"
+    if [[ -z "$tok" ]]; then
+        echo "token:    REFUSED — reconnect the account" >&2
+        exit 1
+    fi
+    # The token itself is never printed. It is a bearer credential, and a
+    # diagnostic that leaks one is worse than no diagnostic.
+    echo "token:     ok, valid for $(jq -r '.data[1]' <<<"$tok")s"
+
+    url="https://apidata.googleusercontent.com/caldav/v2/$name/events/"
+    code="$(curl -s -o /dev/null -w '%{http_code}' -X PROPFIND -H "Depth: 0" \
+            -H "Authorization: Bearer $(jq -r '.data[0]' <<<"$tok")" "$url" 2>/dev/null)"
+    echo "calendar:  HTTP $code  $url"
+    [[ "$code" == "207" || "$code" == "200" ]] && echo "reachable" || echo "NOT reachable"
     ;;
 wallpaper)
     shift

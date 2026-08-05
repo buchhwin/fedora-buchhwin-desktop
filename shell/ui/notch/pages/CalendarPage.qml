@@ -2,9 +2,14 @@ pragma ComponentBehavior: Bound
 
 // The month, as a page of the island.
 //
-// Pure arithmetic: no service, no network, nothing that can be unavailable. The
-// clock it reads is the same SystemClock the collapsed island shows, so the two
-// can never disagree about what day it is.
+// The month itself is pure arithmetic: no service, no network, nothing that can
+// be unavailable. The clock it reads is the same SystemClock the collapsed
+// island shows, so the two can never disagree about what day it is.
+//
+// Appointments come from services/Calendar.qml — Google, over CalDAV, using the
+// account in gnome-online-accounts. They are ADDED to the month rather than
+// required by it: with no account, no network or a refused token, the grid is
+// still a working calendar and one line of text says why there are no entries.
 //
 // Weather belongs on this page and is deliberately absent. It needs a location,
 // and the place to type a location in is the settings window, which M8 builds.
@@ -14,6 +19,8 @@ import QtQuick
 import QtQuick.Layouts
 import Quickshell
 import "../../../theme"
+import "../../../ipc"
+import "../../../services" as Services
 import "../../common"
 
 ColumnLayout {
@@ -39,10 +46,49 @@ ColumnLayout {
     // Sunday is read wrong at a glance rather than read slowly.
     readonly property var dayNames: ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"]
 
+    // Which day's appointments are listed below the grid. -1 = today's, so the
+    // page opens on the question you actually had.
+    property int selectedDay: onToday ? clock.date.getDate() : 1
+
     function step(months) {
         var m = shownMonth + months
         shownYear += Math.floor(m / 12)
         shownMonth = ((m % 12) + 12) % 12
+        selectedDay = onToday ? clock.date.getDate() : 1
+    }
+
+    // Ask for the month being shown, and again whenever something was written.
+    // ⚠️ The service is a singleton, and QML builds those on FIRST ACCESS —
+    // touching it here is what starts it. A load triggered from inside the
+    // handler that reads the result would find it empty every time.
+    Component.onCompleted: Services.Calendar.loadMonth(shownYear, shownMonth)
+    onShownMonthChanged: Services.Calendar.loadMonth(shownYear, shownMonth)
+    onShownYearChanged: Services.Calendar.loadMonth(shownYear, shownMonth)
+
+    Connections {
+        target: Services.Calendar
+        function onChanged() {
+            Services.Calendar.loadMonth(root.shownYear, root.shownMonth)
+        }
+    }
+
+    readonly property var dayEvents:
+        Services.Calendar.pickDay(Services.Calendar.events,
+                                  shownYear, shownMonth, selectedDay)
+
+    // Hand the day being looked at to the new-appointment page before switching
+    // to it. Otherwise "new appointment" would always mean today, which is
+    // almost never the day you were pointing at.
+    function newEvent() {
+        Services.Calendar.draftDate = new Date(shownYear, shownMonth, selectedDay)
+        Ipc.show("event")
+    }
+
+    function timeLabel(e) {
+        if (e.allDay)
+            return "ganztägig"
+        function p(n) { return n < 10 ? "0" + n : "" + n }
+        return p(e.start.getHours()) + ":" + p(e.start.getMinutes())
     }
 
     // Blank cells before the 1st. getDay() is 0=Sunday, so Monday-first needs
@@ -91,6 +137,16 @@ ColumnLayout {
             Icon { text: "chevron_right"; size: Theme.fontSizeLg }
             TapHandler { onTapped: root.step(1) }
         }
+
+        // Only where it can do something. Without a connected calendar there is
+        // nowhere to put an appointment, and a button that opens a form which
+        // cannot save is worse than no button.
+        Pill {
+            interactive: true
+            visible: Services.Calendar.available
+            Icon { text: "add"; size: Theme.fontSizeLg }
+            TapHandler { onTapped: root.newEvent() }
+        }
     }
 
     // --------------------------------------------------------------- weekdays
@@ -133,17 +189,27 @@ ColumnLayout {
                 readonly property bool inMonth: day >= 1 && day <= root.daysInMonth
                 readonly property bool isToday:
                     inMonth && root.onToday && day === clock.date.getDate()
+                readonly property bool isSelected: inMonth && day === root.selectedDay
+                // O(1): the index is built once per load, not scanned per cell.
+                readonly property bool hasEvents:
+                    inMonth && Services.Calendar.anyOn(Services.Calendar.dayIndex,
+                                                       root.shownYear, root.shownMonth, day)
 
                 Layout.fillWidth: true
-                implicitHeight: Theme.space5
+                implicitHeight: Theme.space5 + Theme.space2
 
                 Rectangle {
-                    anchors.centerIn: parent
+                    id: pill
+                    anchors { horizontalCenter: parent.horizontalCenter; top: parent.top }
                     width: Math.min(parent.width, Theme.space5)
                     height: width
                     radius: Theme.radiusPill
-                    // Accent marks today and nothing else on this page.
-                    color: cellItem.isToday ? Theme.accent : "transparent"  // literal-ok: absence of colour
+                    // Accent is today. The day you are LOOKING at is marked by
+                    // surface, not by a second accent — two accents on one grid
+                    // and neither means anything any more.
+                    color: cellItem.isToday ? Theme.accent
+                         : cellItem.isSelected ? Theme.surfaceHigh
+                         : "transparent"                     // literal-ok: absence of colour
 
                     BarText {
                         anchors.centerIn: parent
@@ -153,8 +219,87 @@ ColumnLayout {
                         font.weight: cellItem.isToday ? Theme.weightSemibold : Theme.weightNormal
                         color: cellItem.isToday ? Theme.accentFg : Theme.fg
                     }
+
+                    TapHandler {
+                        enabled: cellItem.inMonth
+                        onTapped: root.selectedDay = cellItem.day
+                    }
+                }
+
+                // A day with appointments carries a dot. It is the smallest
+                // mark that answers "is anything on" without reading anything.
+                Rectangle {
+                    anchors { horizontalCenter: parent.horizontalCenter; top: pill.bottom
+                              topMargin: Theme.space1 / 2 }
+                    visible: cellItem.hasEvents
+                    width: Theme.space1
+                    height: width
+                    radius: Theme.radiusPill
+                    color: cellItem.isToday ? Theme.accent : Theme.fgMuted
                 }
             }
         }
     }
+
+    // --------------------------------------------------------- the day's list
+    // Under the grid, and only when there is something to say. An empty box
+    // under every day would make the island taller for nothing.
+    ColumnLayout {
+        Layout.fillWidth: true
+        spacing: Theme.space1
+        visible: root.dayEvents.length > 0 || root.calendarNote.length > 0
+
+        BarText {
+            Layout.fillWidth: true
+            visible: root.calendarNote.length > 0
+            text: root.calendarNote
+            color: Theme.fgMuted
+            font.pixelSize: Theme.fontSizeSm
+            wrapMode: Text.WordWrap
+        }
+
+        Repeater {
+            // Four at most: the island is for a glance. The fifth line would be
+            // the one that makes it a window.
+            model: Math.min(root.dayEvents.length, 4)
+
+            RowLayout {
+                id: line
+                required property int index
+                readonly property var ev: root.dayEvents[index]
+
+                Layout.fillWidth: true
+                spacing: Theme.space2
+
+                BarText {
+                    text: root.timeLabel(line.ev)
+                    color: Theme.fgMuted
+                    font.pixelSize: Theme.fontSizeSm
+                    Layout.minimumWidth: Theme.space6 * 2
+                }
+
+                BarText {
+                    Layout.fillWidth: true
+                    text: line.ev.summary.length ? line.ev.summary : "(ohne Titel)"
+                    font.pixelSize: Theme.fontSizeSm
+                    elide: Text.ElideRight
+                }
+            }
+        }
+
+        BarText {
+            Layout.fillWidth: true
+            visible: root.dayEvents.length > 4
+            text: "und " + (root.dayEvents.length - 4) + " weitere"
+            color: Theme.fgMuted
+            font.pixelSize: Theme.fontSizeSm
+        }
+    }
+
+    // Why there are no appointments, when that is the interesting part. Empty
+    // while everything works — a calendar with nothing on Tuesday should say
+    // nothing, not "0 Termine".
+    readonly property string calendarNote:
+        Services.Calendar.status.length > 0 ? Services.Calendar.status
+      : (Services.Calendar.busy ? "Termine werden geladen …" : "")
 }

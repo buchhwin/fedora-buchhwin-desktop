@@ -7,3 +7,4 @@ QuickPage 1.0 QuickPage.qml
 CalendarPage 1.0 CalendarPage.qml
 TrayPage 1.0 TrayPage.qml
 WallpaperPage 1.0 WallpaperPage.qml
+EventPage 1.0 EventPage.qml

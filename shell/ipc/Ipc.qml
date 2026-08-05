@@ -76,6 +76,7 @@ Singleton {
         function calendar(): void { root.toggle("calendar") }
         function tray(): void { root.toggle("tray") }
         function wallpaper(): void { root.toggle("wallpaper") }
+        function event(): void { root.toggle("event") }
         function collapse(): void { root.collapse() }
         function state(): string { return root.page }
     }

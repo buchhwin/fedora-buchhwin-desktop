@@ -68,6 +68,7 @@ Item {
                        : root.page === "calendar" ? calendarPage
                        : root.page === "tray" ? trayPage
                        : root.page === "wallpaper" ? wallpaperPage
+                       : root.page === "event" ? eventPage
                        : null
 
         // The shape leads, the contents follow — that is what makes the change
@@ -88,4 +89,5 @@ Item {
     Component { id: calendarPage; CalendarPage {} }
     Component { id: trayPage; TrayPage { hostWindow: root.hostWindow } }
     Component { id: wallpaperPage; WallpaperPage {} }
+    Component { id: eventPage; EventPage {} }
 }
