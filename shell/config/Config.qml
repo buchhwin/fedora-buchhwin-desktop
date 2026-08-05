@@ -177,7 +177,7 @@ Singleton {
             }
 
             property JsonObject look: JsonObject {
-                property int rounding: 12          // every radius derives from this
+                property int rounding: 16          // every radius derives from this
                 property int borderWidth: 0        // 0: no window borders anywhere
                 property int gapsIn: 8
                 // Windows should read as separate objects lying on the
@@ -191,13 +191,38 @@ Singleton {
                 property real opacityPanel: 0.88   // translucency the blur sits behind
                 // The terminal's own background, through kitty rather than
                 // through the compositor — see tools/render.qml for why.
-                property real opacityTerminal: 0.90
+                //
+                // ⚠️ This is the single biggest lever on the glass look, bigger
+                // than any blur setting: blur is only visible where the window
+                // is see-through, so at 0.90 there was nothing to see and every
+                // blur pass behind it was paid for and wasted. Measured against
+                // the reference screenshot, which is open enough to read the
+                // wallpaper through the terminal while the text stays sharp —
+                // that last part is why this lives in kitty's own
+                // background_opacity and not in compositor opacity, which would
+                // fade the glyphs out with it.
+                property real opacityTerminal: 0.62
                 property bool blur: true
                 // The most expensive number in the whole desktop: every pass is
                 // another full-screen GPU read on every frame. It gets a key of
                 // its own rather than being buried in the generator, because it
                 // is the first thing to turn down on a slow machine.
                 property int blurPasses: 3
+                // ⚠️ The FREE one, and therefore the one to reach for first.
+                // niri's own words: "Larger values produce a smoother blur, at
+                // no additional GPU cost", and "try increasing offset first
+                // until you start getting artifacts. Then, if you still need
+                // smoother blur, increase passes by 1." niri's default is 3.
+                property real blurOffset: 5
+                // Pixel noise over the blur. It exists to break up the colour
+                // banding that a wide blur produces on a gradient — which is
+                // exactly what a sunset wallpaper is. niri's default is 0.02.
+                property real blurNoise: 0.03
+                // Saturation of what shows through: 0 is grey, 1 is untouched,
+                // 2 is doubled. This is the difference between glass and frosted
+                // plastic — blur alone washes the colour out, and the reference
+                // screenshots are anything but washed out. niri's default is 1.5.
+                property real blurSaturation: 1.8
                 property bool shadows: true
                 // A shadow you notice as depth rather than as a shadow. These
                 // are niri's own numbers (CSS box-shadow semantics): softness

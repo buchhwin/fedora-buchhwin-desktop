@@ -236,12 +236,28 @@ Scope {
         return s
     }
 
+    // All four numbers that decide what the glass looks like, in one place.
+    //
+    // ⚠️ Writing only `passes` did NOT mean the rest were switched off — niri
+    // ships defaults (passes 3, offset 3, noise 0.02, saturation 1.5) and a
+    // partial block leaves them standing. So this is not "turning on" three
+    // effects; it is taking three numbers that were being decided elsewhere and
+    // putting them where they can be seen and changed.
+    //
+    // Order matters when tuning: `offset` is free and `passes` is not.
     function blurSection() {
         // look.profile "minimal" is the one switch that turns the expensive
         // things off everywhere at once, rather than a setting per effect.
-        if (Config.look.profile === "minimal" || !Config.look.blur)
+        var L = Config.look
+        if (L.profile === "minimal" || !L.blur)
             return "blur {\n    off\n}\n"
-        return "blur {\n    passes " + Config.look.blurPasses + "\n}\n"
+        var s = "blur {\n"
+        s += "    passes " + L.blurPasses + "\n"
+        s += "    offset " + L.blurOffset + "\n"
+        s += "    noise " + L.blurNoise + "\n"
+        s += "    saturation " + L.blurSaturation + "\n"
+        s += "}\n"
+        return s
     }
 
     function workspacesSection() {
