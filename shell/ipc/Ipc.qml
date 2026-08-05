@@ -14,6 +14,7 @@ pragma Singleton
 import QtQuick
 import Quickshell
 import Quickshell.Io
+import "../config"
 
 Singleton {
     id: root
@@ -30,7 +31,15 @@ Singleton {
     // "Type ShellSurface unavailable".
     readonly property var autoClosing: ["volume", "brightness", "notifications"]
 
+    // The two that are readouts rather than places: they appear on their own
+    // when something changes, and `surfaces.osd` is what stops them doing that.
+    // The setting existed with nothing reading it, so switching it off changed
+    // nothing at all — which is worse than not having it.
+    readonly property var osdPages: ["volume", "brightness"]
+
     function show(name) {
+        if (root.osdPages.indexOf(name) >= 0 && !Config.surfaces.osd)
+            return          // the key still works; it just says nothing about it
         root.page = name
         if (root.autoClosing.indexOf(name) >= 0)
             idle.restart()

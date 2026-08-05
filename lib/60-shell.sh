@@ -17,7 +17,15 @@ phase_shell() {
     # copies them from wherever they actually live and the default falls back
     # to what Fedora already ships. A stranger who clones this gets a working
     # picker; the machine it was built for gets its own pictures.
-    local wp_dir="$HOME/Bilder/Wallpaper"
+    # ⚠️ NOT "$HOME/Bilder": that is the German name for the pictures folder,
+    # and this repository is public. `xdg-user-dir` answers with whatever the
+    # machine actually calls it; the fallback is the XDG default rather than a
+    # translation, because a machine with no user-dirs file has no German
+    # folder either.
+    local pics
+    pics="$(xdg-user-dir PICTURES 2>/dev/null)"
+    [[ -n "$pics" && "$pics" != "$HOME" ]] || pics="$HOME/Pictures"
+    local wp_dir="$pics/Wallpaper"
     local wp_src="${WALLPAPERS:-}"
     if [[ -z "$wp_src" ]]; then
         if [[ -d "$REPO_DIR/wallpapers" ]]; then
@@ -52,13 +60,14 @@ phase_shell() {
         # The default scheme is derived from the wallpaper, not shipped. Which
         # image it is does not matter — any of them produces a palette, and the
         # picker changes it in one keystroke.
-        printf '{\n  "version": 2,\n  "theme": { "palette": "wallpaper", "accent": "blue" },\n  "wallpaper": { "folder": "%s", "current": "file://%s" }\n}\n' \
+        # No "version": the code owns that number, see bin/bhctl and Config.qml.
+        printf '{\n  "theme": { "palette": "wallpaper", "accent": "blue" },\n  "wallpaper": { "folder": "%s", "current": "file://%s" }\n}\n' \
             "$wp_dir" "$wp_first" > "$CONFIG_HOME/buchhwin/shell.json"
         ok "settings seeded — scheme derived from $(basename "$wp_first")"
     else
         # No pictures anywhere. Everforest is the raft, not the destination:
         # a desktop with no colours at all is worse than a green one.
-        printf '{\n  "version": 2,\n  "theme": { "palette": "everforest-dark", "accent": "green" }\n}\n' \
+        printf '{\n  "theme": { "palette": "everforest-dark", "accent": "green" }\n}\n' \
             > "$CONFIG_HOME/buchhwin/shell.json"
         warn "no wallpapers found — seeded with Everforest Dark instead"
     fi

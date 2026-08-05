@@ -230,7 +230,8 @@ Scope {
     function miscSection() {
         var s = ""
         s += Config.windows.noCsd ? "prefer-no-csd\n" : ""
-        s += "screenshot-path " + q("~/Bilder/Screenshots/%Y-%m-%d %H-%M-%S.png") + "\n"
+        s += "screenshot-path "
+             + q(root.picturesDir() + "/Screenshots/%Y-%m-%d %H-%M-%S.png") + "\n"
         s += "\ncursor {\n    hide-when-typing\n}\n"
         s += "\nhotkey-overlay {\n    skip-at-startup\n}\n"
         return s
@@ -520,6 +521,31 @@ Scope {
     FileView { id: fConfig; blockLoading: true; printErrors: false }
     FileView { id: fEnv; blockLoading: true; printErrors: false }
     FileView { id: log; path: "/tmp/buchhwin-niri.log" }
+
+    // ⚠️ WHERE SCREENSHOTS GO IS NOT OURS TO INVENT. This used to write
+    // "~/Bilder/Screenshots" — the German name — straight into the generated
+    // config. On any machine that is not set to German that is a folder nobody
+    // has, created on first screenshot, and never looked in. The repository is
+    // public, so most of the people it lands on are exactly those machines.
+    //
+    // xdg-user-dirs is the answer everyone else uses, and it is a plain file:
+    // XDG_PICTURES_DIR="$HOME/Bilder". Absent on minimal installs — the VM this
+    // was tested on has no such file — so the fallback matters as much as the
+    // lookup, and the fallback is the XDG default, not a translation.
+    FileView { id: fUserDirs; blockLoading: true; printErrors: false
+               path: root.cfg + "/user-dirs.dirs" }
+
+    function picturesDir() {
+        var txt = fUserDirs.text()
+        if (txt && txt.length) {
+            var m = txt.match(/^\s*XDG_PICTURES_DIR\s*=\s*"([^"]*)"/m)
+            if (m && m[1].length) {
+                // The file writes $HOME literally; it is not a shell here.
+                return m[1].replace("$HOME", Quickshell.env("HOME") || "~")
+            }
+        }
+        return (Quickshell.env("HOME") || "~") + "/Pictures"
+    }
 
     WaitFor {
         condition: Config.settled

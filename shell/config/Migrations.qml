@@ -31,7 +31,7 @@ Singleton {
     // Must match Config's `version` default. A file with a lower number is
     // brought forward; a HIGHER number means the config was written by a newer
     // build than this one, which we must not "migrate" — see needed().
-    readonly property int current: 3
+    readonly property int current: 4
 
     // step[n] upgrades a config at version n to version n+1.
     // Each is a pure function: take the parsed object, return it changed.
@@ -89,6 +89,25 @@ Singleton {
                 delete cfg.location.source
                 delete cfg.weather
             }
+            return cfg
+        },
+
+        // 3 → 4: the `dock` block and `surfaces.dock` removed.
+        //
+        // They described a dock that does not exist — iconSize, pinned,
+        // monitors, and a switch to turn the whole thing off — and not one key
+        // of it was ever read, because the dock is M7. A setting that does
+        // nothing is worse than a missing one: it is a promise, and the only
+        // way to discover it was empty is to try it and watch nothing happen.
+        //
+        // They come back with the dock itself, and then they will mean
+        // something. Until then they are removed rather than left as furniture,
+        // which is the same judgement the plan makes about the predecessor's
+        // dead `bar.*` keys and its `dock.height`.
+        function (cfg) {
+            delete cfg.dock
+            if (cfg.surfaces && typeof cfg.surfaces === "object")
+                delete cfg.surfaces.dock
             return cfg
         }
     ]

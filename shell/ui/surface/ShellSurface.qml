@@ -258,9 +258,14 @@ PanelWindow {
     // Shell.qml. It used to live here, which quietly meant there was no
     // notification daemon at all on a machine with the notch switched off.
 
+    // The on-screen readouts for volume and brightness. `surfaces.osd` is what
+    // switches them off — it had been sitting in the config with nothing
+    // reading it since M4, so turning it off changed nothing and the setting
+    // was a lie. The keys still work; they just stop showing a panel about it.
     Connections {
         target: Services.Audio
         enabled: Services.Audio.available && root.notchEnabled
+                 && Config.surfaces.osd
         function onVolumeChanged() { Ipc.show("volume") }
         function onMutedChanged() { Ipc.show("volume") }
     }

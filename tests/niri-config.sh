@@ -62,7 +62,7 @@ check "defaults (no shell.json)" ""
 check "everforest-dark" '{"version":1,"theme":{"palette":"everforest-dark","accent":"green"}}'
 check "borders on, wide gaps" '{"version":1,"look":{"borderWidth":3,"gapsOut":24}}'
 check "minimal profile (blur off)" '{"version":1,"look":{"profile":"minimal"}}'
-check "bar on, dock on" '{"version":1,"bar":{"enabled":true},"surfaces":{"dock":true}}'
+check "bar on, osd off" '{"version":1,"bar":{"enabled":true},"surfaces":{"osd":false}}'
 check "german keyboard, no touchpad tap" \
       '{"version":1,"input":{"keyboard":{"layout":"de","variant":"nodeadkeys"},"touchpad":{"tap":false,"naturalScroll":false}}}'
 check "an output override" \

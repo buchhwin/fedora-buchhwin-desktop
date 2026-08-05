@@ -231,7 +231,12 @@ doctor)
 "shell")
     [[ "${2:-}" == "reset" ]] || { usage; exit 2; }
     cp "$CONFIG_HOME/buchhwin/shell.json" "$CONFIG_HOME/buchhwin/shell.json.bak" 2>/dev/null
-    printf '{\n  "version": 1,\n  "theme": { "palette": "everforest-dark", "accent": "green" }\n}\n' \
+    # ⚠️ NO "version" KEY, deliberately. This used to write 1 while the
+    # installer wrote 2 and the code said 3 — three places claiming to know the
+    # schema version, two of them wrong. A file without one reads as 0 and is
+    # migrated forward, which is the same path a genuinely old file takes, so
+    # the only place that has to know the number is the code.
+    printf '{\n  "theme": { "palette": "everforest-dark", "accent": "green" }\n}\n' \
         > "$CONFIG_HOME/buchhwin/shell.json"
     systemctl --user restart buchhwin-shell 2>/dev/null
     echo "settings reset (previous kept as shell.json.bak)"

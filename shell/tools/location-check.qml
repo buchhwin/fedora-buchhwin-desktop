@@ -71,7 +71,11 @@ Scope {
             root.near("… mit den Koordinaten", r.config.location.lat, 48.5667)
             root.eq("… ohne source-Feld (eine Vermutung wird nie geschrieben)",
                     r.config.location.source === undefined, true)
-            root.eq("… Version steht auf 3", r.config.version, 3)
+            // Against Migrations.current rather than a number typed here: a
+            // migration added later must not turn this into a failing test
+            // about a step it has nothing to do with.
+            root.eq("… Version steht auf Migrations.current",
+                    r.config.version, Migrations.current)
 
             // Ein schon vorhandener location-Block gewinnt.
             var both = { version: 2,

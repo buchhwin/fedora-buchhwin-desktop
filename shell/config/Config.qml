@@ -30,7 +30,6 @@ Singleton {
     readonly property alias notifications: adapter.notifications
     readonly property alias notch: adapter.notch
     readonly property alias bar: adapter.bar
-    readonly property alias dock: adapter.dock
 
     // Everything below feeds the generated niri config.
     readonly property alias programs: adapter.programs
@@ -168,7 +167,15 @@ Singleton {
 
             // Bumped only when a key is RENAMED or REMOVED, never when one is
             // added. 0 means "written before versioning existed".
-            property int version: 3
+            //
+            // ⚠️ This number and Migrations.current must match, and NOTHING
+            // ELSE may state it. The installer used to seed `"version": 2` and
+            // `bhctl shell reset` used to write `"version": 1` while the code
+            // said 3 — three places claiming to know, two of them wrong, and
+            // only the migration chain quietly papering over it. Both now write
+            // no version at all: a file without one reads as 0 and is migrated
+            // forward, which is exactly the path a genuinely old file takes.
+            property int version: 4
 
             property JsonObject theme: JsonObject {
                 property string palette: "everforest-dark"
@@ -262,7 +269,6 @@ Singleton {
             property JsonObject surfaces: JsonObject {
                 property bool notifications: true
                 property bool osd: true
-                property bool dock: false
                 // The wallpaper is drawn by the shell rather than by a second
                 // daemon, so it is a surface like any other and switches off
                 // like any other — leaving whatever is behind it, which is the
@@ -325,11 +331,14 @@ Singleton {
                 property list<string> monitors: []
             }
 
-            property JsonObject dock: JsonObject {
-                property int iconSize: 40
-                property list<string> pinned: []
-                property list<string> monitors: []
-            }
+            // ⚠️ NO `dock` BLOCK. There was one — iconSize, pinned, monitors —
+            // and nothing in the shell ever read a single key of it, because
+            // the dock is M7 and has not been built. A setting that does
+            // nothing is worse than a missing one: it is a promise, and the
+            // only way to find out it was empty is to try it.
+            //
+            // It comes back with the dock, and then it will mean something.
+            // Same for `surfaces.dock`, removed with it.
 
             // ---------------------------------------------------------------
             // Programs the key bindings point at.
