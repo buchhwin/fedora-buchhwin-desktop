@@ -25,6 +25,29 @@ import "common"
 Scope {
     id: root
 
+    // ⚠️ THIS IS WHAT STARTS THE LOCATION SERVICE. QML builds a singleton on
+    // FIRST ACCESS, so one that nothing references never runs — and without
+    // this line the timezone guess only happened the first time the quick
+    // panel was opened, which is exactly the moment you would rather it were
+    // already done. Measured: the guess simply never happened. The project has
+    // now paid for this lesson four times.
+    //
+    // ⚠️ AND THE WEATHER IS DELIBERATELY *NOT* STARTED HERE.
+    //
+    // Creating it at shell construction crashes quickshell. Not a guess — the
+    // backtrace is inside `JsonAdapter::deserializeRec` → `QMetaProperty::write`
+    // → `QObjectWrapper::wrap`, SIGSEGV, and it was isolated to this by adding
+    // and removing this one term: without it, zero crashes across many
+    // restarts; with it, a crash loop and then intermittent crashes even after
+    // the obvious causes (a Connections on a half-built singleton, an
+    // XMLHttpRequest during construction) were fixed. It is a race inside
+    // Quickshell's adapter, not something this file can hold correctly.
+    //
+    // So Weather is created when the quick panel first opens, exactly as it was
+    // before. The cost is one second before the first temperature appears. The
+    // alternative is a desktop that segfaults, which is not a trade.
+    readonly property string startServices: Services.Location.timezone
+
     // Whether a surface belongs on this screen. An empty list means all of
     // them, which is the only sane default for a machine whose monitor names
     // nobody has typed in yet.

@@ -40,7 +40,7 @@ Singleton {
     readonly property alias autostart: adapter.autostart
     readonly property alias workspaces: adapter.workspaces
     readonly property alias wallpaper: adapter.wallpaper
-    readonly property alias weather: adapter.weather
+    readonly property alias location: adapter.location
 
     readonly property alias version: adapter.version
 
@@ -167,7 +167,7 @@ Singleton {
 
             // Bumped only when a key is RENAMED or REMOVED, never when one is
             // added. 0 means "written before versioning existed".
-            property int version: 2
+            property int version: 3
 
             property JsonObject theme: JsonObject {
                 property string palette: "everforest-dark"
@@ -511,14 +511,25 @@ Singleton {
             // "wallpaper" IS the switch, and a second key that means the same
             // thing is how a settings file starts to contradict itself. It
             // existed until version 1 and is removed by a migration.
-            // Where the weather is. COORDINATES, not a search term — a name is
-            // ambiguous, would need resolving on every start, and resolving
-            // needs the network, so a laptop opened in a tunnel would show no
-            // weather for a place it has known for months.
-            property JsonObject weather: JsonObject {
+            // Where this machine is — for EVERYTHING that needs a place, not
+            // for the weather alone. Today: the weather; next: sunrise and
+            // sunset for automatic light/dark, and gammastep's night light.
+            //
+            // COORDINATES, not a search term. A name is ambiguous, would need
+            // resolving on every start, and resolving needs the network — so a
+            // laptop opened in a tunnel would show nothing for a place it has
+            // known for months.
+            //
+            // ⚠️ No timezone here. The system knows it, and a copy drifts.
+            property JsonObject location: JsonObject {
                 property string name: ""      // for display only
                 property real lat: NaN
                 property real lon: NaN
+                // ⚠️ No `source` field. A guess is never written here, so
+                // anything in this block IS the answer you gave — the presence
+                // of a name is the whole distinction. The guess is recomputed
+                // from the timezone on every start, in memory, which also keeps
+                // it current when the machine travels.
             }
 
             property JsonObject wallpaper: JsonObject {

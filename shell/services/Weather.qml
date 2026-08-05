@@ -12,10 +12,12 @@ pragma Singleton
 //   geocoding-api.open-meteo.com/v1/search?name=…   town  → coordinates
 //   api.open-meteo.com/v1/forecast?latitude=…       coords → weather
 //
-// ⚠️ COORDINATES are stored, never the search term. A name is ambiguous
-// (there are thirty Springfields), it would have to be resolved again on every
-// start, and resolving it needs the network — so a laptop opening its lid in a
-// tunnel would show no weather for a place it has known for months.
+// ⚠️ IT DOES NOT OWN THE PLACE. That lives in services/Location.qml, because a
+// location is a property of the machine and three things want it — this, the
+// sunrise/sunset that will drive automatic light/dark, and gammastep's night
+// light. Set the place once, anywhere, and this follows: it is a binding, so
+// choosing "Passau" in the settings window changes what the quick panel shows
+// in the same instant, with nothing to keep in step.
 //
 // Fetched hourly, and only when a place is set. Weather does not change faster
 // than that, and this runs on a battery: a service that polls because polling
@@ -23,94 +25,20 @@ pragma Singleton
 
 import QtQuick
 import Quickshell
-import "../config"
+import "." as Services
 
 Singleton {
     id: root
 
-    readonly property bool configured:
-        Config.weather.name.length > 0 && !isNaN(Config.weather.lat)
+    readonly property bool configured: Services.Location.known
 
     readonly property bool available: root.configured && root.temperature !== null
 
-    property string place: Config.weather.name
+    readonly property string place: Services.Location.name
     property var temperature: null        // °C, or null while unknown
     property int code: -1                 // WMO weather code
     property string status: ""            // why there is nothing, in one line
     property bool busy: false
-
-    // ---------------------------------------------------------------- search
-    // Results of the last town lookup: [{name, country, lat, lon}]
-    property var matches: []
-    property bool searching: false
-
-    function search(text) {
-        var q = String(text).trim()
-        matches = []
-        if (q.length < 3) {           // below three letters everything matches
-            searching = false
-            debounce.stop()
-            return
-        }
-        root._query = q
-        debounce.restart()
-    }
-
-    property string _query: ""
-
-    Timer {
-        id: debounce
-        // Typing "Frankfurt" is nine keystrokes and must not be nine requests.
-        interval: 400
-        onTriggered: {
-            root.searching = true
-            var x = new XMLHttpRequest()
-            x.onreadystatechange = function () {
-                if (x.readyState !== XMLHttpRequest.DONE) return
-                root.searching = false
-                if (x.status < 200 || x.status >= 300) {
-                    root.status = "Ortssuche nicht erreichbar"
-                    return
-                }
-                try {
-                    var j = JSON.parse(x.responseText)
-                    var out = []
-                    var r = j.results || []
-                    for (var i = 0; i < r.length && i < 5; i++) {
-                        out.push({ name: r[i].name,
-                                   country: r[i].country || "",
-                                   admin: r[i].admin1 || "",
-                                   lat: r[i].latitude, lon: r[i].longitude })
-                    }
-                    root.matches = out
-                    root.status = out.length ? "" : "Kein Ort gefunden"
-                } catch (e) {
-                    root.status = "Ortssuche lieferte Unsinn"
-                }
-            }
-            x.open("GET", "https://geocoding-api.open-meteo.com/v1/search?count=5&language=de&format=json&name="
-                          + encodeURIComponent(root._query))
-            x.send()
-        }
-    }
-
-    // Remember a place. One write, and everything else follows from it.
-    function choose(m) {
-        Config.weather.name = m.name + (m.country.length ? ", " + m.country : "")
-        Config.weather.lat = m.lat
-        Config.weather.lon = m.lon
-        Config.save()
-        root.matches = []
-        root.temperature = null
-        root.refresh()
-    }
-
-    function forget() {
-        Config.weather.name = ""
-        Config.save()
-        root.temperature = null
-        root.matches = []
-    }
 
     // --------------------------------------------------------------- forecast
     function refresh() {
@@ -137,19 +65,64 @@ Singleton {
             }
         }
         x.open("GET", "https://api.open-meteo.com/v1/forecast"
-                      + "?latitude=" + Config.weather.lat
-                      + "&longitude=" + Config.weather.lon
+                      + "?latitude=" + Services.Location.lat
+                      + "&longitude=" + Services.Location.lon
                       + "&current=temperature_2m,weather_code&timezone=auto")
         x.send()
     }
 
-    // Hourly, and only with a place set. `triggeredOnStart` gets the first
-    // reading without a second code path for "the first time".
+    // ⚠️ THE FIRST FETCH IS DELAYED, AND THAT IS NOT POLITENESS.
+    //
+    // This timer had `triggeredOnStart: true`, which fires while the object is
+    // being constructed. Once the shell started this service at startup rather
+    // than when a panel first opened, that meant an XMLHttpRequest — and so a
+    // DNS lookup — during shell construction. Measured: SIGSEGV, in
+    // getaddrinfo loading an NSS module, 32 restarts in a crash loop.
+    //
+    // So the first reading happens a few seconds in, once everything is up. It
+    // is weather; nobody is waiting on the second.
+    Timer {
+        id: firstFetch
+        interval: 4000
+        repeat: false
+        running: root.configured
+        onTriggered: root.refresh()
+    }
+
+    // Hourly after that. Weather does not change faster, and this runs on a
+    // battery: a service that polls because polling is easy is exactly what
+    // this desktop is not allowed to do.
     Timer {
         interval: 3600000
         repeat: true
         running: root.configured
-        triggeredOnStart: true
+        onTriggered: root.refresh()
+    }
+
+    // ⚠️ A BOUND PROPERTY, NOT `Connections`.
+    //
+    // This was `Connections { target: Services.Location; onNameChanged: … }`,
+    // and it segfaulted the shell in a restart loop — isolated by removing that
+    // one block and nothing else. Both singletons are created by the same
+    // binding when the shell starts, so the Connections attached itself to a
+    // Location that was still being constructed, and the crash landed inside
+    // `JsonAdapter::deserializeRec` when the config first arrived.
+    //
+    // Watching our own bound property has neither problem: the binding is
+    // evaluated when Location is ready, and the reaction is deferred out of
+    // whatever handler set it off, so nothing re-enters the adapter mid-parse.
+    readonly property string watchedPlace: Services.Location.name
+
+    onWatchedPlaceChanged: {
+        // A stale temperature under a new town name is worse than none.
+        root.temperature = null
+        again.restart()
+    }
+
+    Timer {
+        id: again
+        interval: 200
+        repeat: false
         onTriggered: root.refresh()
     }
 

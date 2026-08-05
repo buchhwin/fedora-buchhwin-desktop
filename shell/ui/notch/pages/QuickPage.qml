@@ -69,7 +69,7 @@ RowLayout {
                 Item { Layout.fillWidth: true }
 
                 BarText {
-                    text: Config.weather.name
+                    text: Services.Location.name
                     font.pixelSize: Theme.fontSizeSm
                     color: Theme.fgMuted
                     elide: Text.ElideRight
@@ -77,75 +77,14 @@ RowLayout {
                 }
             }
 
-            // The place is set HERE rather than in the settings window, so the
-            // weather works today instead of waiting for M8. It is three
-            // letters and a click, and after that this row is never seen again.
-            ColumnLayout {
+            // The place is set through the shared picker, so the settings
+            // window (M8) will use the same component rather than a second one
+            // — and choosing "Passau" anywhere shows up here in the same
+            // instant, because both read one binding.
+            LocationPicker {
                 Layout.fillWidth: true
-                spacing: Theme.space1
-                visible: !Services.Weather.available
-
-                Rectangle {
-                    Layout.fillWidth: true
-                    implicitHeight: Theme.space6
-                    radius: Theme.radiusSm
-                    color: Theme.surface
-                    border.width: townInput.activeFocus ? Theme.space1 / 2 : 0
-                    border.color: Theme.accent
-
-                    TextInput {
-                        id: townInput
-                        anchors.fill: parent
-                        anchors.leftMargin: Theme.space2
-                        anchors.rightMargin: Theme.space2
-                        verticalAlignment: TextInput.AlignVCenter
-                        font.family: Theme.fontUi
-                        font.pixelSize: Theme.fontSize
-                        color: Theme.fg
-                        selectionColor: Theme.accent
-                        selectedTextColor: Theme.accentFg
-                        selectByMouse: true
-                        clip: true
-                        onTextChanged: Services.Weather.search(text)
-                        Keys.onEscapePressed: Ipc.collapse()
-                    }
-
-                    BarText {
-                        anchors { left: parent.left; leftMargin: Theme.space2
-                                  verticalCenter: parent.verticalCenter }
-                        visible: townInput.text.length === 0
-                        text: "Ort für das Wetter"
-                        color: Theme.fgDim
-                    }
-                }
-
-                Repeater {
-                    model: Services.Weather.matches
-
-                    Pill {
-                        id: hit
-                        required property var modelData
-                        Layout.fillWidth: true
-                        interactive: true
-                        BarText {
-                            text: hit.modelData.name
-                                  + (hit.modelData.admin.length ? ", " + hit.modelData.admin : "")
-                                  + (hit.modelData.country.length ? " · " + hit.modelData.country : "")
-                            font.pixelSize: Theme.fontSizeSm
-                            elide: Text.ElideRight
-                        }
-                        TapHandler { onTapped: Services.Weather.choose(hit.modelData) }
-                    }
-                }
-
-                BarText {
-                    Layout.fillWidth: true
-                    visible: Services.Weather.status.length > 0
-                             || Services.Weather.searching
-                    text: Services.Weather.searching ? "sucht …" : Services.Weather.status
-                    font.pixelSize: Theme.fontSizeSm
-                    color: Theme.fgMuted
-                }
+                compact: true
+                visible: !Services.Weather.available || Services.Location.guessed
             }
         }
 

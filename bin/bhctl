@@ -13,6 +13,7 @@ bhctl theme [<palette> [<accent>]]   switch or show the colour scheme
 bhctl theme apply                    re-render foreign app themes
 bhctl wallpaper [<file>]             show or set the wallpaper
 bhctl calendar                       check the Google calendar connection
+bhctl location [<town>]              show or set where this machine is
 bhctl niri apply                     regenerate ~/.config/niri/config.kdl
 bhctl niri diff                      show what a regeneration would change
 bhctl doctor                         check the installation
@@ -64,6 +65,35 @@ theme)
             && mv "$tmp" "$f"
         render
         echo "palette: $pal  accent: $accent"
+        ;;
+    esac
+    ;;
+location)
+    shift
+    f="$CONFIG_HOME/buchhwin/shell.json"
+    case "${1:-}" in
+    ""|show)
+        jq -r '.location // {} | if .name then
+                 "place:  \(.name)\ncoords: \(.lat), \(.lon)\nsource: \(.source // "unknown")"
+               else "nothing set" end' "$f" 2>/dev/null || echo "no settings yet"
+        # Where the guess would come from, so "nothing set" is actionable.
+        printf 'timezone: %s\n' "$(timedatectl show -p Timezone --value 2>/dev/null)"
+        ;;
+    *)
+        town="$*"
+        # The same geocoder the shell uses. No API key, which is the only
+        # reason this works without a setup step.
+        r="$(curl -s --max-time 10 "https://geocoding-api.open-meteo.com/v1/search?count=1&language=de&format=json&name=$(jq -rn --arg t "$town" '$t|@uri')")"
+        name="$(jq -r '.results[0].name // empty' <<<"$r")"
+        [[ -n "$name" ]] || { echo "no such place: $town" >&2; exit 1; }
+        country="$(jq -r '.results[0].country // empty' <<<"$r")"
+        lat="$(jq -r '.results[0].latitude' <<<"$r")"
+        lon="$(jq -r '.results[0].longitude' <<<"$r")"
+        tmp="$(mktemp)"
+        jq --arg n "$name${country:+, $country}" --argjson la "$lat" --argjson lo "$lon" \
+           '.location = {name: $n, lat: $la, lon: $lo, source: "manual"}' "$f" > "$tmp" \
+            && mv "$tmp" "$f"
+        echo "place: $name${country:+, $country}  ($lat, $lon)"
         ;;
     esac
     ;;

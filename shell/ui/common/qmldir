@@ -4,3 +4,4 @@ Pill 1.0 Pill.qml
 Icon 1.0 Icon.qml
 BarText 1.0 BarText.qml
 LevelRow 1.0 LevelRow.qml
+LocationPicker 1.0 LocationPicker.qml

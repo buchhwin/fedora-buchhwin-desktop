@@ -31,7 +31,7 @@ Singleton {
     // Must match Config's `version` default. A file with a lower number is
     // brought forward; a HIGHER number means the config was written by a newer
     // build than this one, which we must not "migrate" — see needed().
-    readonly property int current: 2
+    readonly property int current: 3
 
     // step[n] upgrades a config at version n to version n+1.
     // Each is a pure function: take the parsed object, return it changed.
@@ -58,6 +58,37 @@ Singleton {
         function (cfg) {
             if (cfg.wallpaper && typeof cfg.wallpaper === "object")
                 delete cfg.wallpaper.derive
+            return cfg
+        },
+
+        // 2 → 3: `weather` became `location`.
+        //
+        // The place was stored under the one feature that happened to need it
+        // first. It is a property of the machine — the weather wants it, and so
+        // do sunrise/sunset for automatic light/dark and gammastep's night
+        // light. Moving it is a RENAME, which is exactly what this chain is for:
+        // the old key is already sitting in files, and only code can know that
+        // `weather.lat` and `location.lat` mean the same thing.
+        //
+        // Anything already under `location` wins — a newer build may have
+        // written it, and a migration must not undo that.
+        function (cfg) {
+            if (cfg.weather && typeof cfg.weather === "object") {
+                if (!cfg.location || typeof cfg.location !== "object")
+                    cfg.location = {}
+                var w = cfg.weather
+                if (cfg.location.name === undefined && w.name !== undefined)
+                    cfg.location.name = w.name
+                if (cfg.location.lat === undefined && w.lat !== undefined)
+                    cfg.location.lat = w.lat
+                if (cfg.location.lon === undefined && w.lon !== undefined)
+                    cfg.location.lon = w.lon
+                // No `source` is carried over: a place in this block IS the
+                // answer you gave. The timezone guess is never written, so the
+                // presence of a name is the whole distinction.
+                delete cfg.location.source
+                delete cfg.weather
+            }
             return cfg
         }
     ]
