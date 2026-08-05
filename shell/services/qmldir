@@ -17,3 +17,4 @@ singleton Weather 1.0 Weather.qml
 singleton Location 1.0 Location.qml
 singleton Tray 1.0 Tray.qml
 singleton Clipboard 1.0 Clipboard.qml
+singleton Theming 1.0 Theming.qml

@@ -16,6 +16,7 @@
 import QtQuick
 import Quickshell
 import "../config"
+import "../theme"
 import "../ipc"
 import "../services" as Services
 import "surface"
@@ -48,6 +49,26 @@ Scope {
     // before. The cost is one second before the first temperature appears. The
     // alternative is a desktop that segfaults, which is not a trade.
     readonly property string startServices: Services.Location.timezone
+
+    // ⚠️ AND THE THEMING WATCHER IS STARTED LATE, FOR THE SAME REASON AS
+    // WEATHER — but it must be started, because without it changing the palette
+    // recolours the shell and nothing else. That was the state until today:
+    // tools/render.qml's header claimed the running shell re-rendered on a
+    // palette change, and nothing in shell/ ever launched it. Pick a wallpaper,
+    // and GTK, Qt, kitty and niri kept the old colours until somebody typed
+    // `bhctl theme apply` by hand.
+    //
+    // A Timer rather than a property reference: the service reads two dozen
+    // JsonAdapter values, and doing that during shell construction is the shape
+    // that segfaults quickshell. It also guards itself on `Config.settled`, so
+    // this is the belt to that file's braces — the crash cost this project a
+    // whole debugging round once, and one line of deferral is cheap insurance.
+    Timer {
+        running: true
+        interval: Theme.durSlow
+        onTriggered: root.themingStarted = Services.Theming.available
+    }
+    property bool themingStarted: false
 
     // Whether a surface belongs on this screen. An empty list means all of
     // them, which is the only sane default for a machine whose monitor names

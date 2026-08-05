@@ -151,6 +151,7 @@ Scope {
             root.service("Location", Services.Location)
             root.service("Tray", Services.Tray)
             root.service("Clipboard", Services.Clipboard)
+            root.service("Theming", Services.Theming)
 
             // Ical is a parser rather than a device, so it has no `available`;
             // it still has to build, and it is the one piece with real logic.
