@@ -43,7 +43,7 @@ Item {
         anchors.centerIn: parent
         visible: root.itemCount === 0
         color: Theme.fgMuted
-        text: "Keine Symbole im Infobereich"
+        text: "Nothing in the tray"
     }
 
     Row {

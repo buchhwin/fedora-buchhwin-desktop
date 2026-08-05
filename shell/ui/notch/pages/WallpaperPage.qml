@@ -61,8 +61,8 @@ Item {
         wrapMode: Text.WordWrap
         width: parent.width
         text: Config.wallpaper.folder.length === 0
-              ? "Kein Bilderordner eingestellt — wallpaper.folder in shell.json"
-              : "In diesem Ordner liegen keine unterstützten Bilder"
+              ? "No picture folder set — wallpaper.folder in shell.json"
+              : "No supported images in that folder"
     }
 
     ListView {

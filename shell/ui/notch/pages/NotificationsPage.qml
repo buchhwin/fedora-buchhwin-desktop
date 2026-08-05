@@ -16,7 +16,7 @@ ColumnLayout {
     BarText {
         Layout.fillWidth: true
         visible: Services.Notifications.count === 0
-        text: "Keine Mitteilungen"
+        text: "No notifications"
         color: Theme.fgMuted
         horizontalAlignment: Text.AlignHCenter
     }

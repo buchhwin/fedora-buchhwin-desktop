@@ -40,7 +40,7 @@ Singleton {
 
     // What to say when `available` is false. A calendar page that is simply
     // empty cannot be told apart from a calendar with nothing in it.
-    property string status: "Kein Konto eingerichtet"
+    property string status: "No account set up"
 
     property string accountName: ""      // the address, for display
     property string accountPath: ""      // GOA object path
@@ -95,7 +95,7 @@ Singleton {
                     root._tokenUntil = new Date().getTime() + (secs - 60) * 1000
                 } catch (e) {
                     root._token = ""
-                    root.status = "Kein Zugriffstoken von den Online-Konten"
+                    root.status = "Online Accounts returned no access token"
                     return
                 }
                 if (fn) fn(root._token)
@@ -125,7 +125,7 @@ Singleton {
                 try {
                     objs = JSON.parse(text).data[0]
                 } catch (e) {
-                    root.status = "Online-Konten antworten nicht"
+                    root.status = "Online Accounts is not answering"
                     return
                 }
 
@@ -151,10 +151,10 @@ Singleton {
                 }
 
                 if (!root.accountPath.length) {
-                    root.status = "Kein Google-Konto mit eingeschaltetem Kalender"
+                    root.status = "No Google account with the calendar switched on"
                     return
                 }
-                root.status = "Kalender wird gesucht …"
+                root.status = "Looking for the calendar …"
                 root._findCalendar()
             }
         }
@@ -168,7 +168,7 @@ Singleton {
     // that is simply always empty.
     function _findCalendar() {
         if (!root.accountName.length) {
-            root.status = "Konto ohne Adresse"
+            root.status = "The account has no address"
             return
         }
         var guess = root.endpoint + encodeURIComponent(root.accountName) + "/events/"
@@ -186,7 +186,7 @@ Singleton {
                     root._token = ""
                     root.status = "Anmeldung abgelehnt — Konto neu verbinden"
                 } else {
-                    root.status = "Kalender nicht gefunden (HTTP " + x.status + ")"
+                    root.status = "Calendar not found (HTTP " + x.status + ")"
                 }
             }
             x.open("PROPFIND", guess)
@@ -244,7 +244,7 @@ Singleton {
                     return
                 }
                 if (x.status < 200 || x.status >= 300) {
-                    root.status = "Termine nicht abrufbar (HTTP " + x.status + ")"
+                    root.status = "Events could not be fetched (HTTP " + x.status + ")"
                     return
                 }
                 root.status = ""
@@ -312,7 +312,7 @@ Singleton {
     // --------------------------------------------------------------- writing
     // Create an appointment. This is the call that ends up on the phone.
     function create(ev, done) {
-        if (!root.available) { if (done) done(false, "Kein Kalender verbunden"); return }
+        if (!root.available) { if (done) done(false, "No calendar connected"); return }
 
         var uid = Ical.newUid()
         var body = Ical.build({ uid: uid, summary: ev.summary, location: ev.location,
@@ -329,10 +329,10 @@ Singleton {
                     if (done) done(true, "")
                 } else if (x.status === 412) {
                     // If-None-Match refused it: something is already there.
-                    if (done) done(false, "Termin gibt es schon")
+                    if (done) done(false, "That event already exists")
                 } else {
                     if (x.status === 401) root._token = ""
-                    if (done) done(false, "Nicht gespeichert (HTTP " + x.status + ")")
+                    if (done) done(false, "Not saved (HTTP " + x.status + ")")
                 }
             }
             x.open("PUT", url)
@@ -349,7 +349,7 @@ Singleton {
     // changed on the phone since it was displayed is NOT deleted blind.
     function remove(ev, done) {
         if (!root.available || !ev.href || !ev.href.length) {
-            if (done) done(false, "Kein Termin ausgewaehlt")
+            if (done) done(false, "No event selected")
             return
         }
         var url = /^https?:/.test(ev.href)
@@ -363,10 +363,10 @@ Singleton {
                     root.changed()
                     if (done) done(true, "")
                 } else if (x.status === 412) {
-                    if (done) done(false, "Termin wurde anderswo geaendert — neu laden")
+                    if (done) done(false, "The event changed elsewhere — reload")
                 } else {
                     if (x.status === 401) root._token = ""
-                    if (done) done(false, "Nicht geloescht (HTTP " + x.status + ")")
+                    if (done) done(false, "Not deleted (HTTP " + x.status + ")")
                 }
             }
             x.open("DELETE", url)

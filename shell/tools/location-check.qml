@@ -40,17 +40,17 @@ Scope {
             // ------------------------------------------------- ISO 6709
             var b = Services.Location.parseIso6709("+5230+01322")     // Europe/Berlin
             root.near("Berlin: Breite 52,50", b ? b.lat : null, 52.5)
-            root.near("Berlin: Länge 13,37 (NICHT 1,53)", b ? b.lon : null, 13.3667)
+            root.near("Berlin: longitude 13.37 (NOT 1.53)", b ? b.lon : null, 13.3667)
 
             var n = Services.Location.parseIso6709("+404251-0740023") // America/New_York
-            root.near("New York: Breite mit Sekunden", n ? n.lat : null, 40.7142)
-            root.near("New York: Länge negativ", n ? n.lon : null, -74.0064)
+            root.near("New York: latitude with seconds", n ? n.lat : null, 40.7142)
+            root.near("New York: longitude is negative", n ? n.lon : null, -74.0064)
 
             var s = Services.Location.parseIso6709("-3352+01825")     // Africa/Johannesburg
-            root.near("Südhalbkugel: Breite negativ", s ? s.lat : null, -33.8667)
+            root.near("southern hemisphere: latitude is negative", s ? s.lat : null, -33.8667)
 
-            root.eq("Unsinn wird abgelehnt",
-                    Services.Location.parseIso6709("nicht-koordinaten"), null)
+            root.eq("nonsense is refused",
+                    Services.Location.parseIso6709("not-coordinates"), null)
 
             // ------------------------------------------------- Stadtname
             root.eq("Europe/Berlin → Berlin",
@@ -65,32 +65,32 @@ Scope {
             var old = { version: 2, weather: { name: "Passau, Deutschland",
                                                lat: 48.5667, lon: 13.4667 } }
             var r = Migrations.migrate(old)
-            root.eq("Migration läuft durch", r.ok, true)
-            root.eq("… weather ist weg", r.config.weather === undefined, true)
-            root.eq("… der Ort ist übernommen", r.config.location.name, "Passau, Deutschland")
-            root.near("… mit den Koordinaten", r.config.location.lat, 48.5667)
-            root.eq("… ohne source-Feld (eine Vermutung wird nie geschrieben)",
+            root.eq("the migration runs through", r.ok, true)
+            root.eq("… weather is gone", r.config.weather === undefined, true)
+            root.eq("… the place was carried over", r.config.location.name, "Passau, Deutschland")
+            root.near("… with its coordinates", r.config.location.lat, 48.5667)
+            root.eq("… without a source field (a guess is never written)",
                     r.config.location.source === undefined, true)
             // Against Migrations.current rather than a number typed here: a
             // migration added later must not turn this into a failing test
             // about a step it has nothing to do with.
-            root.eq("… Version steht auf Migrations.current",
+            root.eq("… version is Migrations.current",
                     r.config.version, Migrations.current)
 
-            // Ein schon vorhandener location-Block gewinnt.
+            // An existing location block wins.
             var both = { version: 2,
                          weather: { name: "Alt", lat: 1, lon: 2 },
-                         location: { name: "Neu", lat: 3, lon: 4 } }
+                         location: { name: "New", lat: 3, lon: 4 } }
             var r2 = Migrations.migrate(both)
-            root.eq("Ein vorhandener location-Block wird nicht überschrieben",
-                    r2.config.location.name, "Neu")
+            root.eq("an existing location block is not overwritten",
+                    r2.config.location.name, "New")
 
-            // Ohne Ort: kein erfundener.
+            // No place set: none is invented.
             var empty = Migrations.migrate({ version: 2 })
-            root.eq("Ohne weather entsteht kein Ort",
+            root.eq("without weather, no place is invented",
                     empty.config.location === undefined, true)
 
-            note(root.failures === 0 ? "alles gruen"
+            note(root.failures === 0 ? "all good"
                                      : root.failures + " Pruefung(en) fehlgeschlagen")
             Qt.callLater(Qt.quit)
         }

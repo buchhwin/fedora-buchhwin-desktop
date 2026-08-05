@@ -1,0 +1,374 @@
+# Checklist M2 — what only you, at a screen, can tell
+
+Everything here is **built and machine-checked**, but has not been seen with
+eyes. The VM can check correctness, not appearance — and it has no sound, no
+battery and no real graphics.
+
+Test VM: **Proxmox 9002 `niri-m0`**. Its address and credentials are not written
+here — this repository is public. The working tree lives in `~/repo`.
+
+---
+
+## Already proven by machine (nothing for you to do)
+
+| | Evidence |
+|---|---|
+| `config.kdl` is generated and valid | `tests/niri-config.sh`, 10 cases, exit 0 |
+| Settings really take effect | `gapsOut 24 → gaps 24`, `borderWidth 3 → border { on; width 3 }`, `profile minimal → blur { off }` |
+| A second run writes nothing | `0 written, 2 unchanged` |
+| A fresh machine with no `shell.json` | produces valid defaults |
+| Colours separate from structure | `colors.kdl` holds colours only, `config.kdl` keeps `border { off }` |
+| All 11 palettes really load | `tests/all-palettes.sh`, 60 differing lines per palette pair |
+| Broken palettes are refused | missing key, broken JSON, `bg == fg` — all three FAIL |
+
+---
+
+## 1. Log in and look (the important one)
+
+```
+ssh buchhwin@<test-vm>
+cd ~/repo && bash install.sh      # or just: bhctl niri apply
+```
+
+- [ ] **niri starts and no waybar appears.** If a foreign bar shows up:
+      `rpm -q waybar` — then it was installed with recommendations.
+- [ ] `niri msg -j windows` returns windows, and no Xwayland process
+      (`pgrep Xwayland`)
+- [ ] The island and the bar **are** there (since M3, see below). If you only
+      want to check M2: `bhctl shell reset` restores the defaults — then only
+      the island is on and the bar is off.
+
+## 2. Walk through the keys
+
+⚠️ **Do not test over VNC.** Keys injected through VNC never reach niri's
+bindings — measured: not with `Super`, not with `Alt`, not even a bare `F9`,
+although the configuration is loaded. The pointer works, the keyboard does not.
+On top of that many VNC viewers swallow the Super key on your own machine
+already. Testing that way makes working shortcuts look broken.
+
+**Use the Proxmox console** (`https://<proxmox>:8006` → VM 9002 → Console) — its
+emulated USB keyboard looks like a real device to niri. Or remotely from the
+host:
+
+```
+ssh-proxmox.sh "qm sendkey 9002 meta_l-ret"   # Super+Return
+ssh-proxmox.sh "qm sendkey 9002 meta_l-e"     # Super+E
+```
+
+Already proven that way: **Super+Return starts kitty, Super+E Nautilus,
+Super+O opens the overview.** The remaining spot checks:
+
+- [ ] `Super+Return` opens kitty
+- [ ] `Super+E` opens Nautilus, `Super+B` the browser
+- [ ] `Super+←/→` moves the **focus**, `Super+Shift+←/→` the **window**
+- [ ] `Super+Ctrl+←/→` makes the column narrower/wider (this was snap on the
+      predecessor)
+- [ ] `Super+Ö` jumps to the scratch workspace, `Super+Shift+Ö` moves a window
+      there
+- [ ] `Super+1…9` switches workspaces
+- [ ] `Print` takes a screenshot
+- [ ] `Super+Shift+Slash` shows the keyboard shortcuts — **this is where you see
+      at a glance whether every label is right**
+- [ ] ⚠️ **Rescue keys**: stop the shell on purpose
+      (`systemctl --user stop buchhwin-shell`), then `Super+Shift+Return` must
+      still open a terminal and `Super+Ctrl+Shift+R` must restart the shell
+
+## 3. No window buttons — on real windows
+
+Open one window of each and look at the **top right**: minimise, maximise and
+close have to be gone, the header bar itself stays (that is intended, see
+NIRI.md).
+
+- [ ] Nautilus (GTK4/libadwaita) — should look like your screenshot
+- [ ] kitty
+- [ ] a Qt window (`vlc`, for instance)
+- [ ] VS Code and Brave (Electron — the most stubborn ones in practice)
+
+Whatever does not work: **write it down, do not argue it away.** The Electron
+part is deliberately not measured until M11.
+
+## 4. Nautilus, network shares, Google Drive
+
+- [ ] Start `gnome-online-accounts-gtk` and **actually add a Google account**.
+      ⚠️ The package is at 3.50.10 while GOA itself is at 3.58 — that version
+      gap is why this is not claimed rather than checked.
+- [ ] Afterwards: does Google Drive appear in Nautilus's sidebar?
+- [ ] Connect an SMB target (`Other Locations` → `smb://…`)
+- [ ] Counter-check for non-GTK programs: is the mount under
+      `/run/user/1000/gvfs/`, and can `ls` see it? (that is what `gvfs-fuse` is
+      for)
+- [ ] **The file-open dialog in any program** — it should be the Nautilus
+      dialog. That is the reason Nautilus is the one chosen.
+
+## 5. When something goes wrong
+
+```
+bhctl doctor                       versions, unit, config, XWayland, start time
+bhctl niri diff                    what a regeneration would change
+niri validate -c ~/.config/niri/config.kdl
+cat /tmp/buchhwin-niri.log         the generator's report
+cat /tmp/buchhwin-render.log       the theme renderer's report
+```
+
+A broken `config.kdl` is not a disaster: the keys live in the compositor, and
+`bhctl niri apply` tells you with exit 1 rather than failing quietly.
+
+---
+
+## Open from earlier milestones (not M2, but still unseen)
+
+- [ ] Whether the four test-addon decisions still hold
+- [ ] niri #2519 (dragging out of a GTK4 popover) — **not reproduced in M0, but
+      not disproved either**
+
+## Deliberately not built yet
+
+Launcher, dock, settings window, greeter (M6–M9) · XWayland measurement (M11).
+Bar and island have been there since M3; notifications, the lock screen and the
+wallpaper picker with its derived scheme are done.
+
+**SDDM is still installed** and will only be removed once our own greetd greeter
+demonstrably reaches a desktop — a broken greeter would mean no way to log in.
+
+---
+
+# Checklist M3 — shell, bar and island
+
+## Already proven on screen (VM, with real screenshots)
+
+| | |
+|---|---|
+| Bar and island are **one** silhouette | the island sits centred in the bar, shoulders merged |
+| The island at rest | nearly black, rounded below, concave shoulders, clock inside |
+| Volume transforms the island | speaker, filled track, "80 %" — as in your reference |
+| The strut reserves exactly 34 px | counted against the tile height |
+| A palette change takes effect live | `bhctl theme nord`, same process id |
+| The clock appears exactly once | in the bar when it is on, otherwise in the island |
+
+## What only you can check
+
+- [ ] **The media pill.** The VM has no MPRIS player installed, so it correctly
+      stays invisible there. On your machine: start Spotify or Discord — **album
+      art, title and a play/pause button** must appear, and nothing else.
+      Counter-check: quit the player → the pill disappears rather than going
+      empty.
+- [ ] **Tray.** No tray program was running on the VM. Check: the icon appears,
+      left click activates, right click opens the menu.
+- [ ] **Battery.** The VM has none. On the laptop: the percentage is right, the
+      icon changes when you plug in, below 15 % it turns yellow, below 5 % red.
+- [ ] **How does the motion feel?** The VM has a virtio GPU — smooth there means
+      nothing. On real hardware: does the island open softly, without
+      overshooting?
+- [ ] **Blur behind the island.** The layer rule is in `config.kdl`; it only
+      becomes visible with a wallpaper behind it.
+- [ ] **Two screens.** Does each screen get its own silhouette?
+
+---
+
+# Checklist M4 — the island as a host for pages
+
+## Proven on screen
+
+| | |
+|---|---|
+| Volume | the island becomes the slider: speaker · track · percentage |
+| Media | album art, title, play/pause — the empty state is one line of text |
+| Notifications | `notify-send` transforms the island, entry with a close button |
+| Quick settings | volume slider; the brightness row is correctly absent because the VM has no backlight |
+| Opening and closing | click the island, click beside it, `ipc call notch …` |
+
+## What only you can check
+
+- [ ] **Brightness** on the laptop: the row appears, dragging really changes the
+      screen. ⚠️ Without `-c backlight`, `brightnessctl` grabbed the **numlock
+      LED** on the VM — please confirm on your hardware that it is the screen.
+- [ ] **How do the transitions feel?** Does the island grow softly into the
+      page, without overshooting? The VM's virtio GPU says nothing about this.
+- [ ] **The size of the island** against your screenshot — 150×34 collapsed,
+      135 high expanded. Measure it on real hardware.
+- [ ] **Media** with Spotify or Discord: album art and title correct,
+      play/pause works.
+
+---
+
+# Checklist M3.5 — the wallpaper and the scheme derived from it
+
+## Proven on screen (VM, real screenshots)
+
+| | |
+|---|---|
+| The image is drawn | its own surface on the `background` layer |
+| The picker is an **island page** | the island grows into the row of images, not a second window |
+| The active image is marked | a tick; the outline is the keyboard cursor |
+| The scheme follows the image | Desert1 → `#f5b648`, Lake3 → `#f88844` — the measured seed tones |
+| It follows into foreign programs | `gtk.css` carries the same value |
+| **Restart** | a real reboot: image **and** scheme come back unchanged |
+| Everforest is no longer the default | a fresh installation seeds `palette: "wallpaper"` |
+
+## What only you can check
+
+- [ ] **`Super+Shift+W`** opens the picker — through the Proxmox console, not
+      over VNC.
+- [ ] **Do you like the derived scheme?** Go through all twelve images. If one
+      looks unpleasant: say which and why — the derivation has knobs.
+- [ ] **The transitions:** does the island grow softly into the row of images,
+      without overshooting?
+- [ ] **On real hardware**: does the image look sharp at HiDPI, and how long
+      does a change take on a real disk?
+
+# Checklist M4 remainder — calendar and tray
+
+## Proven on screen
+
+| | |
+|---|---|
+| Calendar | a whole month, six weeks, today in the accent, weekdays correct |
+| The island grows for it | `expandedHeight` is a **lower bound** now, like the width |
+| Tray | the page opens, the empty state is one line of text |
+| All seven pages | reachable through `ipc` and through keys, no warning in the log |
+
+## What only you can check
+
+- [ ] **Tray with a real program** (the VM had none): the icon appears, left
+      click activates, **right click opens the menu — with the bar switched
+      off**. That is the real test, because the bar is off by default.
+- [ ] **Page through the calendar** with ‹ › and with the arrow keys, and
+      "today" jumps back.
+
+---
+
+# Checklist — Google Calendar
+
+**This cannot be checked without your account.** It was tested against fixed
+sample files (23 checks, all green, with no network); the interplay with Google
+is yours to check. No credentials are needed for that — you create the account,
+and the shell fetches the token from Online Accounts at runtime.
+
+## Already proven (without an account)
+
+| | |
+|---|---|
+| Without an account the page says so | "No Google account with the calendar switched on" — one sentence, not an empty grid |
+| The **+** is then absent | a button opening a form that cannot save would be worse than no button |
+| The create page | title · date · from–to · all day; "Save" stays grey while anything is wrong |
+| Time zones | 14:00 Berlin = 12:00 UTC in August, 13:00 UTC in January — out of the `VTIMEZONE` |
+| Recurrences | a weekly rule appears on **every** occurrence, exceptions are missing, moved single occurrences win |
+| Month arithmetic | February 2028 = 29, February 2100 = 28, February 2400 = 29 |
+
+## What you have to check
+
+1. [ ] Start `gnome-online-accounts-gtk`, **add a Google account and switch the
+       calendar on**.
+2. [ ] `bhctl calendar` → account, remaining token lifetime, `HTTP 207` and
+       "reachable". ⚠️ The token itself is deliberately **not** printed.
+3. [ ] `Super+C`: are this month's events there? Hold it against
+       calendar.google.com.
+4. [ ] A **weekly** event must appear on every occurrence, not only once.
+5. [ ] An **all-day** event must sit on its day — not the one next to it.
+6. [ ] A dot under the days with events; tap a day → the list below is right.
+7. [ ] **The acceptance test:** `Super+Shift+N`, create an event → **look at it
+       on your phone**.
+8. [ ] The other way round: create an event on the phone → reopen the island →
+       it is there.
+9. [ ] Counter-check with no network (`nmcli networking off`): one line of text,
+       no hang.
+
+## Not built yet
+
+**Changing and deleting** events. The service can do it (`remove()` with
+`If-Match`); the interface for it is deliberately still missing: a wrong
+deletion hits a real appointment, and for that the display has to be
+demonstrably right first — points 3 to 6 above.
+
+---
+
+# Checklist M5 — session, brightness, volume
+
+## Proven on screen
+
+| | |
+|---|---|
+| Session menu | five tiles, every icon correct, keyboard hint underneath |
+| Volume is discreet again | ~256 × 34 instead of 619 × 135, thin track |
+| The blur follows the island | no more blurred fifth of the screen |
+| Windows are bubbles | space all round, rounded corners, top edge visible |
+| All 21 icon names resolve | `tests/icons.sh` measures them in the real font |
+| No key bound twice | `tests/niri-config.sh` checks it now |
+
+## What only you can check
+
+- [ ] **The scroll wheel over the volume page** changes it in 5 % steps, and the
+      page stays open while you scroll.
+- [ ] **`Super+Shift+E`** → the menu. Tap one of the three tiles on the right:
+      it has to **ask**, not act immediately. Escape withdraws the question, a
+      second press carries it out. ⚠️ Careful when trying "power off".
+- [ ] **`Super+Ctrl+L`** locks immediately (not `Super+L`, which is navigation).
+- [ ] **The brightness keys on the laptop**: the screen gets brighter **and**
+      the island shows the value. ⚠️ Counter-check: with the shell stopped
+      (`systemctl --user stop buchhwin-shell`) the keys must **still** brighten
+      the screen — only without the readout.
+- [ ] **How do the transitions feel?** The content should settle *into* the
+      shape rather than fade in over it — and never overshoot.
+- [ ] **Are the gaps between windows right?** `look.gapsOut` is 16.
+
+---
+
+# Checklist — notch behaviour, windows, weather
+
+## Proven on screen (VM, real screenshots)
+
+| | |
+|---|---|
+| The coloured fringe around the notch | **gone** — the surface is now exactly as large as what is drawn |
+| The notch disappears | as soon as a surface opens at it, and comes back afterwards |
+| Fullscreen | the notch becomes a discreet strip and moves to the `overlay` layer |
+| Quick panel | calendar · weather · sliders · gear, as its own floating surface |
+| Weather | Frankfurt: 27°, clear — place search and fetch both work |
+| Shadows | notch, surface and windows share the same three numbers |
+| Terminal | translucent in the palette's colours, blur behind it |
+
+## What only you can check
+
+- [ ] **Hover over the strip** in fullscreen: does the full notch come back, and
+      does it go again when you move away?
+- [ ] **`Super+F`** turns fullscreen on **and off again**. (`Super+Shift+F` is
+      "maximise column" now — the two swapped.)
+- [ ] **The scroll wheel** over the volume slider.
+- [ ] **Type a place into the weather field** (from three letters) and click a
+      result — then restart: the place has to still be there.
+- [ ] **Do the shadows look right?** `look.shadowSoftness/Spread/OffsetY` are the
+      three knobs; say so if it is too much or too little.
+- [ ] **Is the blur behind the terminal enough for you?** `look.opacityTerminal`
+      decides how much of it is visible at all — more transparency shows more
+      blur.
+- [ ] ⚠️ **The gear does not open anything yet** — and it says so. The settings
+      window is M8.
+
+---
+
+# Checklist — one state per program, and eight more programs
+
+## Proven on screen and by measurement
+
+| | |
+|---|---|
+| Every program can be themed on its own | `colour`, `neutral` grey, or `off` |
+| Neutral is colourless, not unstyled | transparency, fonts and corners stay; red, green and yellow stay coloured |
+| `off` takes our file back | a stub that overrides nothing and says why; no file of yours is touched |
+| qt6ct really receives the colours | measured with a QApplication: one colour list gave Qt's default palette, three give ours |
+| bat, tmux, delta, alacritty | asked of the programs themselves, not of the filesystem |
+| Every generated theme is pointed at | `bhctl doctor` checks it on the machine you are on |
+
+## What only you can check
+
+- [ ] **Does the grey actually look good?** Set one program to `neutral` while
+      the rest stay in colour — `theming.kitty = "neutral"` in `shell.json` —
+      and see whether the mix reads as one system or as an accident.
+- [ ] **A Qt program**, now that its colours arrive for the first time: does it
+      match the rest, or does the palette need different roles?
+- [ ] **btop, lazygit and starship in a terminal.** btop needs a real terminal,
+      so nothing about it has been seen; the same goes for the prompt.
+- [ ] **fastfetch and starship take their colours from the terminal's sixteen
+      ANSI colours** — neither has an include mechanism. If you would rather
+      they had real colours of their own, say so: that means we take over their
+      config files, and you lose the ability to edit them freely.

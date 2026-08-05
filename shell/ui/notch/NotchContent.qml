@@ -20,7 +20,7 @@ Item {
     property var hostWindow: null
 
     // With the bar on, the clock lives out on the strip and the island stays
-    // empty. From the plan: "Bar aus: nur Notch — Uhr · Media · Status wandern
+    // empty. From the plan: "Bar aus: nur Notch — Uhr · Media · Status wandern  english-ok: quoted brief
     // in die Notch." So it is one clock that moves, never two on one screen.
     property bool showClock: true
 

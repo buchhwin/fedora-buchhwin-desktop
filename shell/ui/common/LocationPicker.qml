@@ -38,7 +38,7 @@ ColumnLayout {
             }
             BarText {
                 visible: Services.Location.guessed
-                text: "aus der Zeitzone geraten"
+                text: "guessed from the time zone"
                 font.pixelSize: Theme.fontSizeSm
                 color: Theme.fgMuted
             }

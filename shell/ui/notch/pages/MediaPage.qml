@@ -44,7 +44,7 @@ RowLayout {
 
         BarText {
             Layout.fillWidth: true
-            text: Services.Media.available ? Services.Media.title : "Nichts läuft gerade"
+            text: Services.Media.available ? Services.Media.title : "Nothing is playing"
             font.pixelSize: Theme.fontSizeLg
             font.weight: Theme.weightSemibold
         }

@@ -214,7 +214,7 @@ Singleton {
                 if (x.readyState !== XMLHttpRequest.DONE) return
                 root.searching = false
                 if (x.status < 200 || x.status >= 300) {
-                    root.status = "Ortssuche nicht erreichbar"
+                    root.status = "Place search is not reachable"
                     return
                 }
                 try {
@@ -227,7 +227,7 @@ Singleton {
                                    admin: r[i].admin1 || "",
                                    lat: r[i].latitude, lon: r[i].longitude })
                     root.matches = out
-                    root.status = out.length ? "" : "Kein Ort gefunden"
+                    root.status = out.length ? "" : "No place found"
                 } catch (e) {
                     root.status = "Ortssuche lieferte Unsinn"
                 }

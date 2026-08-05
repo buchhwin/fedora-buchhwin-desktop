@@ -224,11 +224,31 @@ else
 fi
 
 if command -v alacritty >/dev/null; then
-    if alacritty migrate --dry-run -c "$cfg/alacritty/alacritty.toml" 2>&1 \
-       | grep -q 'buchhwin\.toml'; then
-        pass "alacritty parses the import chain"
+    # ⚠️ THE EXIT CODE, AND A DELIBERATELY BROKEN COPY — not a grep for a
+    # filename in the output. The first version of this check grepped stdout
+    # and failed once in about ten runs for reasons that never reproduced, and
+    # an intermittent check is worse than none: it teaches everyone to re-run
+    # until it is green.
+    #
+    # Measured what the tool actually signals: a broken imported file exits 1,
+    # a valid chain exits 0 — but a MISSING imported file also exits 0, so the
+    # code alone would not prove the import is honoured. Hence the second half:
+    # break a copy of the chain, and require a complaint. That is the proof
+    # that alacritty really reads our file, and it cannot flake.
+    if alacritty migrate --dry-run -c "$cfg/alacritty/alacritty.toml" >/dev/null 2>&1; then
+        pass "alacritty parses the generated theme"
     else
-        bad "alacritty does not read the imported theme"
+        bad "alacritty rejects the generated theme"
+        alacritty migrate --dry-run -c "$cfg/alacritty/alacritty.toml" 2>&1 | sed 's/^/        /'
+    fi
+    probe="$work/ala"; mkdir -p "$probe"
+    sed "s|$cfg/alacritty/buchhwin.toml|$probe/buchhwin.toml|" \
+        "$cfg/alacritty/alacritty.toml" > "$probe/alacritty.toml"
+    { cat "$cfg/alacritty/buchhwin.toml"; printf '[colors.primary\n'; } > "$probe/buchhwin.toml"
+    if alacritty migrate --dry-run -c "$probe/alacritty.toml" >/dev/null 2>&1; then
+        bad "alacritty ignores the imported file — breaking it changed nothing"
+    else
+        pass "alacritty really reads the import (a broken copy is refused)"
     fi
 else
     skip "alacritty is not installed — its config was not parsed"

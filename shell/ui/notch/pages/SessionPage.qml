@@ -36,13 +36,13 @@ ColumnLayout {
     Component.onCompleted: keys.forceActiveFocus()
 
     readonly property var actions: [
-        { id: "lock",     icon: "lock",           label: "Sperren",   ask: false,
+        { id: "lock",     icon: "lock",           label: "Lock",   ask: false,
           cmd: ["loginctl", "lock-session"] },
-        { id: "suspend",  icon: "bedtime",        label: "Ruhezustand", ask: false,
+        { id: "suspend",  icon: "bedtime",        label: "Suspend", ask: false,
           cmd: ["systemctl", "suspend"] },
-        { id: "logout",   icon: "exit_to_app",    label: "Abmelden",  ask: true,
+        { id: "logout",   icon: "exit_to_app",    label: "Log out",  ask: true,
           cmd: ["niri", "msg", "action", "quit", "--skip-confirmation"] },
-        { id: "reboot",   icon: "refresh",        label: "Neustart",  ask: true,
+        { id: "reboot",   icon: "refresh",        label: "Restart",  ask: true,
           cmd: ["systemctl", "reboot"] },
         { id: "poweroff", icon: "power_settings_new", label: "Ausschalten", ask: true,
           cmd: ["systemctl", "poweroff"] }
@@ -140,7 +140,7 @@ ColumnLayout {
         font.pixelSize: Theme.fontSizeSm
         color: root.pending.length ? Theme.warn : Theme.fgMuted
         text: root.pending.length
-              ? "Noch einmal bestätigen — Escape bricht ab"
-              : "Pfeiltasten wählen · Enter bestätigt"
+              ? "Press again to confirm — Escape cancels"
+              : "Arrow keys choose · Enter confirms"
     }
 }

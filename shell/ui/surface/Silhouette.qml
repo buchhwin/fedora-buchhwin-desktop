@@ -1,6 +1,6 @@
 // Bar and island are ONE drawn shape.
 //
-// Straight from the plan: "Bar-an und Bar-aus sind dieselbe gezeichnete
+// Straight from the plan: "Bar-an und Bar-aus sind dieselbe gezeichnete  english-ok: quoted brief
 // Silhouette mit barH = 34 bzw. barH = 0." Building them as two windows was a
 // mistake — with the bar on, the island simply disappeared behind it, and the
 // concave shoulder had nothing to blend into.
@@ -33,7 +33,7 @@
 // likewise — so a window wider than its shape brings back the coloured halo.
 // The shape has to fit the window, not the other way round.
 //
-// It also matches the brief, which says the shoulders run "zum Bildschirmrand
+// It also matches the brief, which says the shoulders run "zum Bildschirmrand  english-ok: quoted brief
 // hin": the material widens as it approaches the top edge.
 
 import QtQuick

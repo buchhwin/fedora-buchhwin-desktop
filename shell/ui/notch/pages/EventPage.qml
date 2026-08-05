@@ -82,7 +82,7 @@ ColumnLayout {
 
     function save() {
         if (!root.valid || root.busyNote.length) return
-        root.busyNote = "wird gespeichert …"
+        root.busyNote = "saving …"
         Services.Calendar.create({
             summary: title.text.trim(),
             location: "",
@@ -146,7 +146,7 @@ ColumnLayout {
     Field {
         id: title
         Layout.fillWidth: true
-        placeholder: "Titel"
+        placeholder: "Title"
         KeyNavigation.tab: dateField.input
     }
 
@@ -169,7 +169,7 @@ ColumnLayout {
             Layout.preferredWidth: Theme.space6 * 3
             visible: !allDay.on
             text: "09:00"
-            placeholder: "Von"
+            placeholder: "From"
             bad: text.length > 0 && root.parseTime(text) < 0
             KeyNavigation.tab: toField.input
         }
@@ -179,7 +179,7 @@ ColumnLayout {
             Layout.preferredWidth: Theme.space6 * 3
             visible: !allDay.on
             text: "10:00"
-            placeholder: "Bis"
+            placeholder: "To"
             // Also wrong when it is merely earlier than the start — an
             // appointment that ends before it begins is a typo, not a plan.
             bad: text.length > 0 &&
@@ -193,7 +193,7 @@ ColumnLayout {
             interactive: true
             active: on
             BarText {
-                text: "ganztägig"
+                text: "all day"
                 font.pixelSize: Theme.fontSizeSm
                 color: allDay.on ? Theme.accentFg : Theme.fg
             }
@@ -209,19 +209,19 @@ ColumnLayout {
         BarText {
             Layout.fillWidth: true
             font.pixelSize: Theme.fontSizeSm
-            color: root.busyNote.length && root.busyNote !== "wird gespeichert …"
+            color: root.busyNote.length && root.busyNote !== "saving …"
                    ? Theme.error : Theme.fgMuted
             wrapMode: Text.WordWrap
             text: root.busyNote.length ? root.busyNote
                 : !Services.Calendar.available ? Services.Calendar.status
-                : "Enter speichert · Escape bricht ab"
+                : "Enter saves · Escape cancels"
         }
 
         Pill {
             interactive: true
             active: root.valid && Services.Calendar.available
             BarText {
-                text: "Speichern"
+                text: "Save"
                 font.pixelSize: Theme.fontSizeSm
                 color: parent.active ? Theme.accentFg : Theme.fgDim
             }

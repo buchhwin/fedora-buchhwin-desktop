@@ -128,7 +128,7 @@ Item {
         Pill {
             visible: Services.Compositor.configFailed
             BarText {
-                text: "Konfig fehlerhaft"
+                text: "broken config"
                 color: Theme.error
             }
         }
@@ -137,7 +137,7 @@ Item {
         // empty strip that reads as broken.
         BarText {
             visible: !Services.Compositor.available
-            text: "kein Compositor"
+            text: "no compositor"
             color: Theme.error
         }
 

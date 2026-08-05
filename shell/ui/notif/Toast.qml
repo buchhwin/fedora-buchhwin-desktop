@@ -37,7 +37,7 @@ Item {
     //
     // Sized for the TALLEST arrangement — summary, one body line and a row of
     // action buttons. At the first attempt it was sized for the shortest, and
-    // the buttons were simply clipped away: the sender offered "Öffnen" and
+    // the buttons were simply clipped away: the sender offered "Öffnen" and  english-ok: a real button label
     // "Verwerfen", the card said nothing, and it looked like actions were
     // unsupported rather than cut off. Cards without actions spend the room on
     // a second line of body text instead, so it is never empty space.

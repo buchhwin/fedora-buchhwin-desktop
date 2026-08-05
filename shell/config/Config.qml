@@ -383,8 +383,8 @@ Singleton {
             // The clipboard history page. Counts belong here rather than in the
             // page: a token decides what a row LOOKS like, a setting decides
             // how many of them you want to see. Anything that is a matter of
-            // taste gets a key — see the plan's second promise, "alles
-            // einstellbar, und zwar aus demselben Satz".
+            // taste gets a key — see the plan's second promise, "alles  english-ok: quoted brief
+            // einstellbar, und zwar aus demselben Satz".  // english-ok: his own words, quoted
             property JsonObject clipboard: JsonObject {
                 // How tall the page opens, in rows. Six fits a laptop screen
                 // without the island covering half of it.
@@ -438,65 +438,65 @@ Singleton {
                     // --- programs -------------------------------------------
                     { key: "Mod+Return",       action: "spawn", arg: "@terminal",    desc: "Terminal" },
                     { key: "Mod+B",            action: "spawn", arg: "@browser",     desc: "Browser" },
-                    { key: "Mod+E",            action: "spawn", arg: "@fileManager", desc: "Dateimanager" },
+                    { key: "Mod+E",            action: "spawn", arg: "@fileManager", desc: "File manager" },
                     { key: "Mod+Shift+C",      action: "spawn", arg: "@editor",      desc: "Editor" },
 
                     // --- rescue: these must survive a dead shell -------------
                     { key: "Mod+Shift+Return", action: "spawn", arg: "@terminal",
-                      desc: "Rettung: Terminal", allowWhenLocked: false },
+                      desc: "Rescue: terminal", allowWhenLocked: false },
                     { key: "Mod+Ctrl+Shift+R", action: "spawn-sh",
                       arg: "systemctl --user restart buchhwin-shell",
-                      desc: "Rettung: Shell neu starten" },
+                      desc: "Rescue: restart the shell" },
 
                     // --- focus (niri convention: Mod moves focus) ------------
-                    { key: "Mod+Left",  action: "focus-column-left",  desc: "Fokus nach links" },
-                    { key: "Mod+Right", action: "focus-column-right", desc: "Fokus nach rechts" },
-                    { key: "Mod+Up",    action: "focus-window-up",    desc: "Fokus nach oben" },
-                    { key: "Mod+Down",  action: "focus-window-down",  desc: "Fokus nach unten" },
-                    { key: "Mod+H",     action: "focus-column-left",  desc: "Fokus nach links" },
-                    { key: "Mod+L",     action: "focus-column-right", desc: "Fokus nach rechts" },
-                    { key: "Mod+K",     action: "focus-window-up",    desc: "Fokus nach oben" },
-                    { key: "Mod+J",     action: "focus-window-down",  desc: "Fokus nach unten" },
+                    { key: "Mod+Left",  action: "focus-column-left",  desc: "Focus left" },
+                    { key: "Mod+Right", action: "focus-column-right", desc: "Focus right" },
+                    { key: "Mod+Up",    action: "focus-window-up",    desc: "Focus up" },
+                    { key: "Mod+Down",  action: "focus-window-down",  desc: "Focus down" },
+                    { key: "Mod+H",     action: "focus-column-left",  desc: "Focus left" },
+                    { key: "Mod+L",     action: "focus-column-right", desc: "Focus right" },
+                    { key: "Mod+K",     action: "focus-window-up",    desc: "Focus up" },
+                    { key: "Mod+J",     action: "focus-window-down",  desc: "Focus down" },
 
                     // --- move -----------------------------------------------
-                    { key: "Mod+Shift+Left",  action: "move-column-left",  desc: "Fenster nach links" },
-                    { key: "Mod+Shift+Right", action: "move-column-right", desc: "Fenster nach rechts" },
-                    { key: "Mod+Shift+Up",    action: "move-window-up",    desc: "Fenster nach oben" },
-                    { key: "Mod+Shift+Down",  action: "move-window-down",  desc: "Fenster nach unten" },
+                    { key: "Mod+Shift+Left",  action: "move-column-left",  desc: "Move window left" },
+                    { key: "Mod+Shift+Right", action: "move-column-right", desc: "Move window right" },
+                    { key: "Mod+Shift+Up",    action: "move-window-up",    desc: "Move window up" },
+                    { key: "Mod+Shift+Down",  action: "move-window-down",  desc: "Move window down" },
 
                     // --- the four Hyprland groups niri has no equivalent for.
                     // Remapped to the nearest real meaning rather than dropped;
                     // docs/NIRI.md says plainly that these changed.
                     { key: "Mod+Ctrl+Left",  action: "set-column-width", arg: "-10%",
-                      desc: "Spalte schmaler (war: Snap links)" },
+                      desc: "Narrower column (was: snap left)" },
                     { key: "Mod+Ctrl+Right", action: "set-column-width", arg: "+10%",
-                      desc: "Spalte breiter (war: Snap rechts)" },
+                      desc: "Wider column (was: snap right)" },
                     { key: "Mod+Ctrl+Up",    action: "maximize-column",
-                      desc: "Spalte maximieren (war: Snap maximieren)" },
+                      desc: "Maximise column (was: snap maximise)" },
                     { key: "Mod+Ctrl+Down",  action: "switch-preset-column-width",
-                      desc: "Breiten durchschalten (war: Snap wiederherstellen)" },
+                      desc: "Cycle preset widths (was: snap restore)" },
                     { key: "Mod+Shift+J",    action: "consume-or-expel-window-right",
-                      desc: "Fenster in die Spalte holen (war: Split-Richtung)" },
+                      desc: "Pull window into the column (was: split direction)" },
                     { key: "Mod+Shift+K",    action: "consume-or-expel-window-left",
-                      desc: "Fenster aus der Spalte schieben" },
+                      desc: "Push window out of the column" },
                     { key: "Mod+P",          action: "toggle-window-floating",
-                      desc: "Schwebend an/aus (war: Anpinnen)" },
+                      desc: "Floating on/off (was: pin)" },
                     { key: "Mod+odiaeresis", action: "focus-workspace", arg: "scratch",
-                      desc: "Ablage (war: Scratchpad)" },
+                      desc: "Scratch workspace" },
                     { key: "Mod+Shift+odiaeresis", action: "move-window-to-workspace", arg: "scratch",
-                      desc: "Fenster in die Ablage" },
+                      desc: "Move window to the scratch workspace" },
 
                     // --- windows --------------------------------------------
-                    { key: "Mod+Q",       action: "close-window", desc: "Fenster schliessen", repeat: false },
-                    { key: "Alt+F4",      action: "close-window", desc: "Fenster schliessen", repeat: false },
+                    { key: "Mod+Q",       action: "close-window", desc: "Close window", repeat: false },
+                    { key: "Alt+F4",      action: "close-window", desc: "Close window", repeat: false },
                     // Fullscreen is the one people reach for, so it gets the
                     // short key. `fullscreen-window` is already a toggle, so the
                     // same press brings the window back.
-                    { key: "Mod+F",       action: "fullscreen-window", desc: "Vollbild" },
-                    { key: "Mod+Shift+F", action: "maximize-column",   desc: "Maximieren" },
-                    { key: "Mod+W",       action: "toggle-column-tabbed-display", desc: "Spalte als Reiter" },
-                    { key: "Mod+O",       action: "toggle-overview",   desc: "Uebersicht" },
-                    { key: "Mod+Shift+Slash", action: "show-hotkey-overlay", desc: "Tastenuebersicht" },
+                    { key: "Mod+F",       action: "fullscreen-window", desc: "Fullscreen" },
+                    { key: "Mod+Shift+F", action: "maximize-column",   desc: "Maximise column" },
+                    { key: "Mod+W",       action: "toggle-column-tabbed-display", desc: "Column as tabs" },
+                    { key: "Mod+O",       action: "toggle-overview",   desc: "Overview" },
+                    { key: "Mod+Shift+Slash", action: "show-hotkey-overlay", desc: "Keyboard shortcuts" },
 
                     // --- the island ------------------------------------------
                     // Keys reach the shell through its ipc socket, which is
@@ -510,19 +510,19 @@ Singleton {
                     // clicking the bar would not be reachable at all.
                     { key: "Mod+M", action: "spawn-sh",
                       arg: "qs -c buchhwin ipc call notch media",
-                      desc: "Medien in der Insel" },
+                      desc: "Media in the island" },
                     { key: "Mod+N", action: "spawn-sh",
                       arg: "qs -c buchhwin ipc call notch notifications",
-                      desc: "Mitteilungen" },
+                      desc: "Notifications" },
                     { key: "Mod+comma", action: "spawn-sh",
                       arg: "qs -c buchhwin ipc call notch quick",
-                      desc: "Schnelleinstellungen" },
+                      desc: "Quick settings" },
                     { key: "Mod+C", action: "spawn-sh",
                       arg: "qs -c buchhwin ipc call notch calendar",
-                      desc: "Kalender" },
+                      desc: "Calendar" },
                     { key: "Mod+T", action: "spawn-sh",
                       arg: "qs -c buchhwin ipc call notch tray",
-                      desc: "Infobereich" },
+                      desc: "Tray" },
                     // ⚠️ Mod+V, NOT Ctrl+V. Copy and paste belong to the
                     // application you are in — Ctrl+C and Ctrl+V go straight to
                     // it through the Wayland clipboard, and binding either of
@@ -531,36 +531,36 @@ Singleton {
                     // on the clipboard and you paste it as you always would.
                     { key: "Mod+V", action: "spawn-sh",
                       arg: "qs -c buchhwin ipc call notch clipboard",
-                      desc: "Zwischenablage-Verlauf" },
+                      desc: "Clipboard history" },
                     { key: "Mod+Shift+N", action: "spawn-sh",
                       arg: "qs -c buchhwin ipc call notch event",
-                      desc: "Neuer Termin" },
+                      desc: "New event" },
                     { key: "Mod+Shift+W", action: "spawn-sh",
                       arg: "qs -c buchhwin ipc call notch wallpaper",
-                      desc: "Hintergrundbild waehlen" },
+                      desc: "Choose a wallpaper" },
                     { key: "Mod+Escape", action: "spawn-sh",
                       arg: "qs -c buchhwin ipc call notch collapse",
-                      desc: "Insel schliessen" },
+                      desc: "Close the island" },
 
                     // --- screenshots (niri does all three itself) ------------
-                    { key: "Print",       action: "screenshot",        desc: "Screenshot: Auswahl" },
-                    { key: "Mod+S",       action: "screenshot",        desc: "Screenshot: Auswahl" },
-                    { key: "Mod+Shift+S", action: "screenshot-screen", desc: "Screenshot: ganzer Schirm" },
-                    { key: "Mod+Ctrl+S",  action: "screenshot-window", desc: "Screenshot: Fenster" },
+                    { key: "Print",       action: "screenshot",        desc: "Screenshot: selection" },
+                    { key: "Mod+S",       action: "screenshot",        desc: "Screenshot: selection" },
+                    { key: "Mod+Shift+S", action: "screenshot-screen", desc: "Screenshot: whole screen" },
+                    { key: "Mod+Ctrl+S",  action: "screenshot-window", desc: "Screenshot: window" },
 
                     // --- hardware keys, must work on the lock screen ---------
                     { key: "XF86AudioRaiseVolume", action: "spawn-sh",
                       arg: "wpctl set-volume -l 1.5 @DEFAULT_AUDIO_SINK@ 5%+",
-                      desc: "Lauter", allowWhenLocked: true },
+                      desc: "Volume up", allowWhenLocked: true },
                     { key: "XF86AudioLowerVolume", action: "spawn-sh",
                       arg: "wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-",
-                      desc: "Leiser", allowWhenLocked: true },
+                      desc: "Volume down", allowWhenLocked: true },
                     { key: "XF86AudioMute", action: "spawn-sh",
                       arg: "wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle",
-                      desc: "Ton aus", allowWhenLocked: true },
+                      desc: "Mute", allowWhenLocked: true },
                     { key: "XF86AudioMicMute", action: "spawn-sh",
                       arg: "wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle",
-                      desc: "Mikrofon aus", allowWhenLocked: true },
+                      desc: "Mute the microphone", allowWhenLocked: true },
                     // ⚠️ brightnessctl FIRST, the shell second, joined with `;`
                     // rather than `&&`. The screen has to brighten even when the
                     // shell is dead — that is the one moment when not being able
@@ -568,10 +568,10 @@ Singleton {
                     // best-effort afterthought, never a precondition.
                     { key: "XF86MonBrightnessUp", action: "spawn-sh",
                       arg: "brightnessctl set 5%+ ; qs -c buchhwin ipc call notch brightness",
-                      desc: "Heller", allowWhenLocked: true },
+                      desc: "Brighter", allowWhenLocked: true },
                     { key: "XF86MonBrightnessDown", action: "spawn-sh",
                       arg: "brightnessctl set 5%- ; qs -c buchhwin ipc call notch brightness",
-                      desc: "Dunkler", allowWhenLocked: true },
+                      desc: "Dimmer", allowWhenLocked: true },
 
                     // --- session --------------------------------------------
                     // ⚠️ This was bound straight to niri's `quit`: one keystroke,
@@ -579,7 +579,7 @@ Singleton {
                     // page now, and THAT asks before anything irreversible.
                     { key: "Mod+Shift+E", action: "spawn-sh",
                       arg: "qs -c buchhwin ipc call notch session",
-                      desc: "Sitzung beenden" },
+                      desc: "Session menu" },
                     // ⚠️ NOT Mod+L, however conventional that is: Mod+L is
                     // already focus-column-right in the vim group. A second
                     // binding for the same key is the kind of leftover the
@@ -600,8 +600,8 @@ Singleton {
                     // starting it by path would put theme/ and config/ outside
                     // that root and the singletons would never register.
                     { key: "Mod+Ctrl+L", action: "spawn-sh",
-                      arg: "BUCHHWIN_MODE=lock qs -c buchhwin", desc: "Sperren" },
-                    { key: "Mod+Shift+P", action: "power-off-monitors", desc: "Bildschirme aus" }
+                      arg: "BUCHHWIN_MODE=lock qs -c buchhwin", desc: "Lock" },
+                    { key: "Mod+Shift+P", action: "power-off-monitors", desc: "Screens off" }
                 ]
             }
 

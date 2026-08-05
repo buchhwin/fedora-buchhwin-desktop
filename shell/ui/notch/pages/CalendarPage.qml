@@ -38,13 +38,26 @@ ColumnLayout {
     readonly property bool onToday: shownYear === clock.date.getFullYear()
                                     && shownMonth === clock.date.getMonth()
 
-    readonly property var monthNames: [
-        "Januar", "Februar", "März", "April", "Mai", "Juni",
-        "Juli", "August", "September", "Oktober", "November", "Dezember"]
+    // ⚠️ NOT A TYPED-OUT LIST OF MONTH NAMES.
+    //
+    // Twelve hand-written names are twelve translations to maintain, and they
+    // were German while the rest of the interface was becoming English. Qt
+    // already knows the names in whatever language the machine is set to, and
+    // the lock screen has done it this way from the start. One source, no list.
+    function monthName(m) {
+        return Qt.formatDate(new Date(root.shownYear, m, 1), "MMMM")
+    }
 
-    // Monday first: this is a German desktop, and a calendar that starts on
-    // Sunday is read wrong at a glance rather than read slowly.
-    readonly property var dayNames: ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"]
+    // Monday first. Qt.locale().firstDayOfWeek would follow the machine, and
+    // that is the right answer for a calendar somebody reads at a glance — but
+    // the grid below is built on a fixed Monday offset, so changing it here
+    // without changing that is how a calendar quietly shows the wrong weekday.
+    // The names come from Qt; the order does not.
+    readonly property var dayNames: [
+        Qt.locale().dayName(1, Locale.ShortFormat), Qt.locale().dayName(2, Locale.ShortFormat),
+        Qt.locale().dayName(3, Locale.ShortFormat), Qt.locale().dayName(4, Locale.ShortFormat),
+        Qt.locale().dayName(5, Locale.ShortFormat), Qt.locale().dayName(6, Locale.ShortFormat),
+        Qt.locale().dayName(0, Locale.ShortFormat)]
 
     // Which day's appointments are listed below the grid. -1 = today's, so the
     // page opens on the question you actually had.
@@ -86,7 +99,7 @@ ColumnLayout {
 
     function timeLabel(e) {
         if (e.allDay)
-            return "ganztägig"
+            return "all day"
         function p(n) { return n < 10 ? "0" + n : "" + n }
         return p(e.start.getHours()) + ":" + p(e.start.getMinutes())
     }
@@ -115,7 +128,7 @@ ColumnLayout {
             Layout.fillWidth: true
             horizontalAlignment: Text.AlignHCenter
             font.weight: Theme.weightSemibold
-            text: root.monthNames[root.shownMonth] + " " + root.shownYear
+            text: root.monthName(root.shownMonth) + " " + root.shownYear
         }
 
         // Only offered when it would do something. A button that is already
@@ -123,7 +136,7 @@ ColumnLayout {
         Pill {
             interactive: true
             visible: !root.onToday
-            BarText { text: "heute"; font.pixelSize: Theme.fontSizeSm }
+            BarText { text: "today"; font.pixelSize: Theme.fontSizeSm }
             TapHandler {
                 onTapped: {
                     root.shownYear = clock.date.getFullYear()
@@ -280,7 +293,7 @@ ColumnLayout {
 
                 BarText {
                     Layout.fillWidth: true
-                    text: line.ev.summary.length ? line.ev.summary : "(ohne Titel)"
+                    text: line.ev.summary.length ? line.ev.summary : "(no title)"
                     font.pixelSize: Theme.fontSizeSm
                     elide: Text.ElideRight
                 }
@@ -290,7 +303,7 @@ ColumnLayout {
         BarText {
             Layout.fillWidth: true
             visible: root.dayEvents.length > 4
-            text: "und " + (root.dayEvents.length - 4) + " weitere"
+            text: "and " + (root.dayEvents.length - 4) + " weitere"
             color: Theme.fgMuted
             font.pixelSize: Theme.fontSizeSm
         }
@@ -301,5 +314,5 @@ ColumnLayout {
     // nothing, not "0 Termine".
     readonly property string calendarNote:
         Services.Calendar.status.length > 0 ? Services.Calendar.status
-      : (Services.Calendar.busy ? "Termine werden geladen …" : "")
+      : (Services.Calendar.busy ? "Loading events …" : "")
 }

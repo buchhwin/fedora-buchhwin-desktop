@@ -39,7 +39,7 @@ that still falls back, so the claim stays measurable instead of aspirational.
     packages/       package lists
     tests/          all-palettes.sh, niri-config.sh, no-literals.sh
     docs/           NIRI.md (what is generated), CONFIG.md (the settings),
-                    PRUEFLISTE.md (what only a person can check)
+                    CHECKLIST.md   (what only a person can check)
 
 `shell.json` is the only file you edit. `config.kdl`, `colors.kdl`, the GTK and
 Qt themes and `environment.d` are all generated from it — see `docs/NIRI.md`.

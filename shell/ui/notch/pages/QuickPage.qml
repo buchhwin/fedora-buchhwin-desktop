@@ -41,7 +41,7 @@ ColumnLayout {
         spacing: Theme.space2
 
         Repeater {
-            model: ["Übersicht", "Medien"]
+            model: ["Overview", "Media"]
 
             Pill {
                 id: tabPill
@@ -178,7 +178,7 @@ ColumnLayout {
         BarText {
             Layout.fillWidth: true
             visible: !Services.Audio.available && !Services.Brightness.available
-            text: "Keine Regler auf diesem Gerät"
+            text: "No controls on this machine"
             color: Theme.fgMuted
             font.pixelSize: Theme.fontSizeSm
         }

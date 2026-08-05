@@ -73,25 +73,25 @@ Scope {
 
             // ------------------------------------------------------ unfolding
             var folded = "BEGIN:VCALENDAR\r\nBEGIN:VEVENT\r\nUID:a\r\n" +
-                         "SUMMARY:Besprechung zum Quartals\r\n abschluss\r\n" +
+                         "SUMMARY:Quarterly review meet\r\n ing\r\n" +
                          "DTSTART:20260805T120000Z\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n"
             var f = Services.Ical.parse(folded)
-            root.eq("gefaltete Zeilen werden zusammengesetzt",
-                    f.events[0].summary, "Besprechung zum Quartalsabschluss")
+            root.eq("folded lines are joined back together",
+                    f.events[0].summary, "Quarterly review meeting")
 
             // --------------------------------------------------------- escapes
             var esc = Services.Ical.parse(
                 "BEGIN:VCALENDAR\r\nBEGIN:VEVENT\r\nUID:b\r\n" +
-                "SUMMARY:Kaffee\\, Kuchen\\; und mehr\r\n" +
+                "SUMMARY:Coffee\\, cake\\; and more\r\n" +
                 "DTSTART:20260805T120000Z\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n")
-            root.eq("Kommas und Semikolons werden entschluesselt",
-                    esc.events[0].summary, "Kaffee, Kuchen; und mehr")
+            root.eq("commas and semicolons are unescaped",
+                    esc.events[0].summary, "Coffee, cake; and more")
 
             // ------------------------------------------------------------ UTC
             var utc = Services.Ical.parse(wrap(
                 "BEGIN:VEVENT\r\nUID:c\r\nDTSTART:20260805T120000Z\r\n" +
                 "DTEND:20260805T130000Z\r\nSUMMARY:UTC\r\nEND:VEVENT\r\n"))
-            root.eq("Z-Zeiten sind echte Zeitpunkte",
+            root.eq("Z times are real instants",
                     utc.events[0].start.getTime(),
                     Date.UTC(2026, 7, 5, 12, 0, 0))
 
@@ -115,9 +115,9 @@ Scope {
             var all = Services.Ical.parse(wrap(
                 "BEGIN:VEVENT\r\nUID:f\r\nDTSTART;VALUE=DATE:20260805\r\n" +
                 "DTEND;VALUE=DATE:20260806\r\nSUMMARY:Geburtstag\r\nEND:VEVENT\r\n"))
-            root.eq("ganztaegig bleibt auf seinem Tag",
+            root.eq("an all-day event stays on its day",
                     stamp(all.events[0].start), "2026-08-05 00:00")
-            root.eq("ganztaegig ist als solches erkannt", all.events[0].allDay, true)
+            root.eq("an all-day event is recognised as one", all.events[0].allDay, true)
 
             // ------------------------------------------------------- weekly
             // Every Wednesday from 5 August, five times.
@@ -126,7 +126,7 @@ Scope {
                 "DTEND;TZID=Europe/Berlin:20260805T110000\r\n" +
                 "RRULE:FREQ=WEEKLY;COUNT=5;BYDAY=WE\r\nSUMMARY:Jour fixe\r\nEND:VEVENT\r\n"))
             var wkx = Services.Ical.expand(wk, new Date(2026, 7, 1), new Date(2026, 8, 1))
-            root.eq("woechentlich erscheint an JEDEM Termin, nicht einmal",
+            root.eq("a weekly rule appears on EVERY occurrence, not once",
                     stamps(wkx),
                     "2026-08-05 10:00 2026-08-12 10:00 2026-08-19 10:00 2026-08-26 10:00")
 
@@ -136,9 +136,9 @@ Scope {
                 "DTEND;TZID=Europe/Berlin:20260805T110000\r\n" +
                 "RRULE:FREQ=WEEKLY;BYDAY=WE\r\n" +
                 "EXDATE;TZID=Europe/Berlin:20260812T100000\r\n" +
-                "SUMMARY:Mit Ausfall\r\nEND:VEVENT\r\n"))
+                "SUMMARY:With an exception\r\nEND:VEVENT\r\n"))
             var exx = Services.Ical.expand(ex, new Date(2026, 7, 1), new Date(2026, 7, 21))
-            root.eq("ein ausgeschlossener Termin faellt weg",
+            root.eq("an excluded occurrence drops out",
                     stamps(exx), "2026-08-05 10:00 2026-08-19 10:00")
 
             // ------------------------------------------------- moved instance
@@ -152,9 +152,9 @@ Scope {
                 "DTEND;TZID=Europe/Berlin:20260812T170000\r\n" +
                 "SUMMARY:Serie verschoben\r\nEND:VEVENT\r\n"))
             var mvx = Services.Ical.expand(mv, new Date(2026, 7, 1), new Date(2026, 7, 21))
-            root.eq("eine verschobene Einzelinstanz gewinnt",
+            root.eq("a moved single instance wins",
                     stamps(mvx), "2026-08-05 10:00 2026-08-12 16:00 2026-08-19 10:00")
-            root.eq("und traegt ihren eigenen Titel",
+            root.eq("and carries its own title",
                     mvx.length > 1 ? mvx[1].summary : "-", "Serie verschoben")
 
             // ------------------------------------------- monthly, last Friday
@@ -173,18 +173,18 @@ Scope {
                 allDay: false, stamp: new Date(Date.UTC(2026, 7, 5, 6, 0))
             }
             var back = Services.Ical.parse(Services.Ical.build(made))
-            root.eq("was geschrieben wird, liest sich unveraendert zurueck (Titel)",
+            root.eq("what is written reads back unchanged (title)",
                     back.events[0].summary, "Zahnarzt, 2. Stock")
-            root.eq("… und mit derselben Zeit",
+            root.eq("… and with the same time",
                     back.events[0].start.getTime(), made.start.getTime())
 
             var madeAll = { uid: "test-2@buchhwin", summary: "Urlaub",
                             start: new Date(2026, 8, 3), allDay: true,
                             stamp: new Date(Date.UTC(2026, 7, 5, 6, 0)) }
             var text = Services.Ical.build(madeAll)
-            root.eq("ganztaegig wird als DATE geschrieben",
+            root.eq("all-day is written as a DATE",
                     text.indexOf("DTSTART;VALUE=DATE:20260903") >= 0, true)
-            root.eq("… mit dem Folgetag als Ende (DTEND ist exklusiv)",
+            root.eq("… with the next day as the end (DTEND is exclusive)",
                     text.indexOf("DTEND;VALUE=DATE:20260904") >= 0, true)
 
             // ------------------------------------------------ month arithmetic
@@ -193,15 +193,15 @@ Scope {
             function leading(y, m) { return (new Date(y, m, 1).getDay() + 6) % 7 }
             function days(y, m) { return new Date(y, m + 1, 0).getDate() }
 
-            root.eq("August 2026 beginnt an einem Samstag", leading(2026, 7), 5)
+            root.eq("August 2026 starts on a Saturday", leading(2026, 7), 5)
             root.eq("August 2026 hat 31 Tage", days(2026, 7), 31)
             root.eq("Februar 2028 hat 29 Tage (Schaltjahr)", days(2028, 1), 29)
             root.eq("Februar 2027 hat 28 Tage", days(2027, 1), 28)
-            root.eq("Februar 2100 hat 28 Tage (Jahrhundert ohne Schaltjahr)", days(2100, 1), 28)
+            root.eq("February 2100 has 28 days (a century without a leap day)", days(2100, 1), 28)
             root.eq("Februar 2400 hat 29 Tage (400er-Regel)", days(2400, 1), 29)
-            root.eq("Februar 2032 beginnt an einem Sonntag", leading(2032, 1), 6)
+            root.eq("February 2032 starts on a Sunday", leading(2032, 1), 6)
 
-            note(root.failures === 0 ? "alles gruen"
+            note(root.failures === 0 ? "all good"
                                      : root.failures + " Pruefung(en) fehlgeschlagen")
             Qt.callLater(Qt.quit)
         }

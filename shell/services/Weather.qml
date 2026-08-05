@@ -50,18 +50,18 @@ Singleton {
             if (x.readyState !== XMLHttpRequest.DONE) return
             root.busy = false
             if (x.status < 200 || x.status >= 300) {
-                root.status = "Wetter nicht abrufbar"
+                root.status = "Weather could not be fetched"
                 return
             }
             try {
                 var j = JSON.parse(x.responseText)
                 var c = j.current
-                if (!c) { root.status = "Antwort ohne Wetter"; return }
+                if (!c) { root.status = "The answer contained no weather"; return }
                 root.temperature = c.temperature_2m
                 root.code = c.weather_code !== undefined ? c.weather_code : -1
                 root.status = ""
             } catch (e) {
-                root.status = "Wetter lieferte Unsinn"
+                root.status = "The weather service returned nonsense"
             }
         }
         x.open("GET", "https://api.open-meteo.com/v1/forecast"
@@ -132,7 +132,7 @@ Singleton {
     // something anybody needs from a panel they glance at.
     function describe(c) {
         if (c === 0) return "klar"
-        if (c <= 2) return "leicht bewölkt"
+        if (c <= 2) return "mainly clear"
         if (c === 3) return "bedeckt"
         if (c <= 48) return "Nebel"
         if (c <= 57) return "Niesel"
