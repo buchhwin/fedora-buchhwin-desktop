@@ -170,17 +170,33 @@ wallpaper)
         url="file://$(readlink -f "$img")"
         tmp="$(mktemp)"
         jq --arg u "$url" '.wallpaper.current=$u' "$f" > "$tmp" && mv "$tmp" "$f"
-        # The running shell notices by itself (shell.json is watched) and
-        # re-derives. This is for when there is no shell: it rebuilds the
-        # derived palette and rewrites GTK, Qt, kitty and niri from it.
-        run_tool wallpaper-palette && render
         echo "wallpaper: $url"
-        # A refusal is not a failure — the image is set, it just cannot make a
-        # readable scheme, so the previous one stays. Say so instead of letting
-        # the colours quietly not change.
-        if grep -q REFUSED /tmp/buchhwin-wallpaper-palette.log 2>/dev/null; then
-            grep REFUSED /tmp/buchhwin-wallpaper-palette.log >&2
-            echo "  the colour scheme was left as it was" >&2
+        # ⚠️ ONLY WHEN THERE IS NO SHELL, and that was the whole of the "two
+        # render runs per wallpaper change" report.
+        #
+        # A running shell watches shell.json, re-derives the palette and its
+        # theming service renders — measured, four changes out of four, one run
+        # each. Doing it here as well meant THREE offscreen quickshell
+        # processes for one picture: wallpaper-palette, our render, and the
+        # shell's. No debounce can merge those; they are in different
+        # processes, and the second is not a rebound but a duplicate.
+        #
+        # The unit is the question, not `pgrep qs`: the renderer itself is a
+        # `qs`, so a process check would answer yes to its own reflection.
+        if systemctl --user is-active --quiet buchhwin-shell; then
+            echo "  the running shell re-derives and re-renders by itself"
+            echo "  (bhctl theme apply forces one, if you want it now)"
+        else
+            # No shell: rebuild the derived palette and rewrite GTK, Qt, kitty
+            # and niri from it, or nothing would happen at all.
+            run_tool wallpaper-palette && render
+            # A refusal is not a failure — the image is set, it just cannot make
+            # a readable scheme, so the previous one stays. Say so instead of
+            # letting the colours quietly not change.
+            if grep -q REFUSED /tmp/buchhwin-wallpaper-palette.log 2>/dev/null; then
+                grep REFUSED /tmp/buchhwin-wallpaper-palette.log >&2
+                echo "  the colour scheme was left as it was" >&2
+            fi
         fi
         ;;
     esac
