@@ -81,7 +81,17 @@ set_wallpaper() {
 }
 
 derive() {
-    rm -f /tmp/buchhwin-wallpaper-palette.log
+    rm -f /tmp/buchhwin-wallpaper-palette.log 2>/dev/null
+    # ⚠️ The report lives at a fixed path, so a copy left behind by another
+    # user — one `sudo bash tests/wallpaper.sh` is enough — cannot be replaced,
+    # and `rm -f` says nothing about it. Every check below then reads a report
+    # from a different run and fails for a reason that is not in the code. Ask
+    # once, out loud, rather than let it look like a bug in the shell.
+    if [[ -e /tmp/buchhwin-wallpaper-palette.log ]]; then
+        echo "  /tmp/buchhwin-wallpaper-palette.log belongs to someone else." >&2
+        echo "  Every check below would read a stale report. Remove it and re-run." >&2
+        exit 2
+    fi
     XDG_CONFIG_HOME="$cfgdir" XDG_STATE_HOME="$statedir" \
         BUCHHWIN_TOOL=wallpaper-palette \
         QT_QPA_PLATFORM=offscreen timeout 40 qs -p "$work/shell" >/dev/null 2>&1

@@ -184,9 +184,26 @@ Singleton {
         }
 
         root.failure = ""
-        // Written through the SAME view that reads it. The write triggers
-        // onFileChanged → reload → onLoaded, which parses it back in and finds
-        // `source` matching, so this settles after exactly one pass.
+
+        // ⚠️ THE PALETTE IS ADOPTED HERE, NOT WHEN THE FILE COMES BACK.
+        //
+        // This used to write the file and wait: the write triggers
+        // onFileChanged → reload → onLoaded, which parses it back and sets
+        // `_data`. That is one round trip through the filesystem's change
+        // notification for a value we are holding in our hand, and it is not
+        // guaranteed to arrive. In the CI container it did not: every headless
+        // wallpaper run ended in "ABORT: the palette was not derived in time"
+        // after the full twelve seconds, with the palette sitting correctly on
+        // disk the whole time. Red for weeks, green on every machine it was run
+        // on by hand — the write worked, the notification about our own write
+        // did not.
+        //
+        // So the object is adopted directly and the file is what it always
+        // should have been: how the next start finds it, not how this one does.
+        // A reload that arrives afterwards parses the same bytes and changes
+        // nothing.
+        root._data = pal
+        root._loadedName = root.name
         file.setText(JSON.stringify(pal, null, 2) + "\n")
     }
 
