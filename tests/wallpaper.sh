@@ -123,6 +123,16 @@ if [[ "${listed:-0}" -ge 1 && -n "$first" ]]; then
     pass "the folder lists its images with real paths ($listed found)"
 else
     bad "the folder listed '${listed:-none}' images, first path '${first:-empty}'"
+    # ⚠️ The report, and the folder as the SHELL sees it. This check has been
+    # the only red job in CI for weeks while passing everywhere it was run by
+    # hand, which is precisely the situation where the number alone is useless:
+    # "none" means the line is missing, and the line is missing for a different
+    # reason than a zero would be.
+    printf '        ---- wallpaper-palette log ----\n'
+    sed 's/^/        /' /tmp/buchhwin-wallpaper-palette.log 2>/dev/null \
+        || printf '        (no log at all)\n'
+    printf '        ---- the fixture folder ----\n'
+    ls -la "$pics" | sed 's/^/        /'
 fi
 
 # ------------------------------------------------- 2. the cache is not rebuilt
