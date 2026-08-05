@@ -178,8 +178,13 @@ Singleton {
             property JsonObject look: JsonObject {
                 property int rounding: 12          // every radius derives from this
                 property int borderWidth: 0        // 0: no window borders anywhere
-                property int gapsIn: 6
-                property int gapsOut: 10
+                property int gapsIn: 8
+                // Windows should read as separate objects lying on the
+                // wallpaper, not as panes butted against the screen edge —
+                // "bubbles", in the words of the brief. That is this number
+                // plus `rounding` plus `shadows`, and it is the one of the
+                // three you actually feel.
+                property int gapsOut: 16
                 property real opacityActive: 1.0
                 property real opacityInactive: 0.96
                 property real opacityPanel: 0.88   // translucency the blur sits behind

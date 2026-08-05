@@ -30,12 +30,33 @@ Item {
     // on BOTH axes. The page must never read the island's current size back, or
     // the two would chase each other; pages that need a reference size use the
     // configured number instead (see pages/WallpaperPage.qml).
+    //
+    // ⚠️ A page may call itself COMPACT, and then the reference geometry from
+    // the settings screenshot (619 × 135) does not apply to it. That geometry
+    // describes a page you read; the volume readout is a page you glance at,
+    // and forcing it to 619 × 135 turned a discreet pill into a slab that
+    // covered a sixth of the screen. Two floors, chosen by the page:
+    //
+    //   normal   minExpandedWidth × expandedHeight   calendar, wallpaper, tray
+    //   compact  collapsedWidth   × bar.height       volume, and anything else
+    //                                                that is a readout
+    readonly property bool pageIsCompact:
+        loader.item && loader.item.compact === true
+
+    readonly property real floorWidth:
+        pageIsCompact ? Config.notch.collapsedWidth : Config.notch.minExpandedWidth
+    readonly property real floorHeight:
+        pageIsCompact ? Config.bar.height : Config.notch.expandedHeight
+
+    readonly property real pagePadding:
+        pageIsCompact ? Theme.space3 : Theme.space5
+
     implicitWidth: expanded && loader.item
-        ? Math.max(Config.notch.minExpandedWidth, loader.item.implicitWidth)
+        ? Math.max(floorWidth, loader.item.implicitWidth + pagePadding * 2)
         : Config.notch.collapsedWidth
 
     implicitHeight: expanded && loader.item
-        ? loader.item.implicitHeight + Theme.space5 * 2
+        ? Math.max(floorHeight, loader.item.implicitHeight + pagePadding * 2)
         : Config.bar.height
 
     // Collapsed: the clock — but only when the bar is not already showing one.
@@ -58,7 +79,7 @@ Item {
     Loader {
         id: loader
         anchors.centerIn: parent
-        width: parent.width - Theme.space5 * 2
+        width: parent.width - root.pagePadding * 2
         active: root.expanded
         asynchronous: true
         sourceComponent: root.page === "volume" ? volumePage
@@ -73,10 +94,32 @@ Item {
 
         // The shape leads, the contents follow — that is what makes the change
         // read as one movement rather than two things happening at once.
+        //
+        // Fading alone read as a slideshow: the shape moved, then a picture
+        // appeared inside it. The content now settles INTO the shape — it comes
+        // up from very slightly small and very slightly low, so the growing
+        // island appears to carry it. Both numbers are deliberately tiny; the
+        // brief rules out anything that draws attention to itself, and there is
+        // no overshoot anywhere, which is the difference between "fluid" and
+        // "springy".
         opacity: root.expanded ? 1 : 0
+        scale: root.expanded ? 1 : 0.94
+        transformOrigin: Item.Center
+        y: root.expanded ? 0 : Theme.space2
+
         Behavior on opacity {
             enabled: Theme.animate
             NumberAnimation { duration: Theme.durFast; easing.type: Theme.easing }
+        }
+        // Slower than the fade, so the content is fully visible while it is
+        // still settling rather than arriving already at rest.
+        Behavior on scale {
+            enabled: Theme.animate
+            NumberAnimation { duration: Theme.durBase; easing.type: Theme.easing }
+        }
+        Behavior on y {
+            enabled: Theme.animate
+            NumberAnimation { duration: Theme.durBase; easing.type: Theme.easing }
         }
     }
 

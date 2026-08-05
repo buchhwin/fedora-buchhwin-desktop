@@ -33,19 +33,32 @@ PanelWindow {
     WlrLayershell.namespace: "buchhwin-notch"
     WlrLayershell.layer: WlrLayer.Top
 
-    anchors { top: true; left: true; right: true }
-
-    // The window is the ceiling for everything drawn in it, so it has to be at
-    // least as tall as the island ever gets. It used to be the constant
-    // `expandedHeight + flare`, which was invisible while every page fitted
-    // inside 135 px and became a hard crop the moment one did not — the
-    // calendar lost three of its six rows with no error anywhere.
+    // ⚠️ THE WINDOW IS EXACTLY AS BIG AS WHAT IS DRAWN IN IT. Nothing here is
+    // cosmetic — niri's blur rule applies to the whole LAYER SURFACE, not to
+    // the shape painted on it.
     //
-    // `islandH` is in the maximum on purpose: it is animated, and dropping the
-    // window to the collapsed size at the START of a close would cut the
-    // closing animation off halfway. The window shrinks when the shape has.
-    implicitHeight: Math.max(root.islandH, root.targetIslandHeight,
-                             Config.notch.expandedHeight) + Config.notch.flare
+    // This was full width and a constant `expandedHeight + flare` = 149 px, so
+    // the top fifth of the screen was permanently blurred while the island
+    // itself was 150×34, and every window's upper edge sat behind that band.
+    // Reported as "the blur is a fifth of the screen but the notch is not" —
+    // which is exactly what it was.
+    //
+    // It is also the cheapest thing in the shell to get right: blurring
+    // 1280×149 instead of 174×48 is roughly twenty-five times the full-screen
+    // GPU reads, every frame, on a laptop.
+    //
+    // With the bar on, full width is correct — the bar really does span the
+    // screen. With it off, the surface is the island plus its shoulders.
+    anchors { top: true; left: root.barEnabled; right: root.barEnabled }
+
+    implicitWidth: root.barEnabled ? 0
+                 : Math.min(root.screen ? root.screen.width : root.islandW,
+                            root.islandW + Config.notch.flare * 2)
+
+    // `islandH` is animated, so the window follows the shape down rather than
+    // snapping to the collapsed size at the START of a close, which would cut
+    // the closing animation off halfway.
+    implicitHeight: Math.max(root.islandH, root.targetIslandHeight) + Config.notch.flare
 
     exclusionMode: ExclusionMode.Ignore
     color: "transparent"            // literal-ok: absence of colour, not a colour
@@ -66,17 +79,13 @@ PanelWindow {
 
     readonly property real barH: root.barEnabled ? Config.bar.height : 0
 
+    // The content decides both sizes, including which floor applies — a volume
+    // readout and a calendar want very different minimums, and hard-coding the
+    // calendar's here is what made the volume slider enormous.
     readonly property real targetIslandWidth:
-        root.expanded ? Math.max(Config.notch.minExpandedWidth, notch.implicitWidth)
-                      : Config.notch.collapsedWidth
-    // Height works the way width already did: the configured number is a FLOOR,
-    // not a ceiling. `minExpandedWidth` was always documented as a lower bound
-    // and `expandedHeight` was not, which made the two axes behave differently
-    // for no reason — and a calendar, which genuinely needs six rows, was
-    // silently cropped top and bottom. The reference geometry is unchanged for
-    // every page that fits inside it; only pages that need more get more.
+        root.expanded ? notch.implicitWidth : Config.notch.collapsedWidth
     readonly property real targetIslandHeight:
-        root.expanded ? Math.max(Config.notch.expandedHeight, notch.implicitHeight)
+        root.expanded ? notch.implicitHeight
                       : Math.max(Config.bar.height, root.barH)
 
     // One pair of animated numbers drives the shape, the hit area and the
