@@ -28,8 +28,13 @@ Singleton {
 
     readonly property int count: dir.count
 
+    // ⚠️ The role is `fileUrl`, NOT `fileURL`. Qt 6 renamed it, and asking for
+    // the old name does not fail — it returns `undefined`, which becomes the
+    // empty string here. Measured: every image in a folder of twelve came back
+    // as "", so choosing a wallpaper would have stored nothing at all and the
+    // picker would have looked merely unresponsive.
     function pathAt(i) {
-        var u = dir.get(i, "fileURL")
+        var u = dir.get(i, "fileUrl")
         return u ? String(u) : ""
     }
 
@@ -38,6 +43,21 @@ Singleton {
         return n ? String(n) : ""
     }
 
+    // Where a given image sits in the listing, or 0 when it is not in the
+    // folder at all — a wallpaper set by hand to a file somewhere else is
+    // perfectly legal, and the picker should still open somewhere sensible
+    // rather than refuse to place its cursor.
+    function indexOf(url) {
+        var want = String(url)
+        for (var i = 0; i < dir.count; i++)
+            if (root.pathAt(i) === want)
+                return i
+        return 0
+    }
+
+    // Choosing writes ONE key, and that is the whole persistence story: the
+    // image on screen, the derived palette and every foreign application's
+    // colours are all downstream of it, on this start and on the next one.
     function choose(url) {
         Config.wallpaper.current = String(url)
         Config.save()

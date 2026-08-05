@@ -10,6 +10,24 @@ pragma Singleton
 // Loading is asynchronous. Anything that reads `colors` before `ready` turns
 // true gets the fallback below, never an error and never a blank screen — a
 // desktop that cannot draw because a file was slow is not a desktop.
+//
+// ONE palette is not hand-written: "wallpaper" is derived from the image that
+// is currently set. It is still an ordinary palette file in the ordinary
+// folder, so nothing downstream knows the difference — and that is deliberate,
+// because the alternative (a second search path for user palettes) was tried
+// and broke loading for all eleven shipped palettes, twice.
+//
+// The derived palette is therefore both READ and WRITTEN through the single
+// FileView below. Not two views on one path: that is the trap this project has
+// now paid for three times. One object owns the file, so a read cannot race a
+// write, and `watchChanges` carries the new colours through the whole shell in
+// the same process.
+//
+// The cache is what makes a wallpaper survive a restart. On start the file is
+// loaded like any other palette — colours are up instantly, with no flash of
+// the fallback — and only if its `source` no longer names the wallpaper that
+// is actually set does the image get re-read. Choosing a wallpaper writes one
+// key in shell.json; everything else follows from that on the next start.
 
 import QtQuick
 import Quickshell
@@ -55,6 +73,110 @@ Singleton {
 
     property var _data: ({})
 
+    // ------------------------------------------------------ derived palette
+    // True while the active palette is the one built from the wallpaper.
+    readonly property bool derived: root.name === "wallpaper"
+
+    // The image the derived palette SHOULD be built from, and the one the
+    // loaded file was actually built from. Both are bindings on purpose: a
+    // function that read Config here would run before JsonAdapter had pushed
+    // the parsed values in, and would compare against an empty string.
+    readonly property string wantedSource:
+        root.derived ? String(Config.wallpaper.current) : ""
+    readonly property string loadedSource: _data.source ? String(_data.source) : ""
+
+    // Two guards, each against a loop that would otherwise be silent:
+    //   _deriving — a derivation is in flight for this image
+    //   _refused  — this image cannot make a readable scheme, so trying again
+    //               on every property change would spin forever
+    property string _deriving: ""
+    property string _refused: ""
+
+    // Light or dark is the USER's decision, never the image's: a bright photo
+    // must not turn a dark desktop light. There is no light/dark switch yet —
+    // that is an M8 setting — so the direction comes from the cached palette,
+    // and from the project default the very first time.
+    readonly property bool _deriveDark: _data.dark !== undefined ? _data.dark : true
+
+    function _maybeDerive() {
+        if (!root.derived)
+            return
+        // Before the config has settled there is nothing to decide: an empty
+        // wallpaper.current at this point means "not read yet", not "unset",
+        // and reporting it as a fault would make every tool start by
+        // announcing a problem it is about to not have.
+        if (!Config.settled)
+            return
+
+        var src = root.wantedSource
+        if (!src.length) {
+            // Only a fault when there is nothing to fall back on. A cached
+            // derived palette with no wallpaper currently set is what a
+            // headless tool run sees, and it is perfectly usable.
+            if (!root._data.colors)
+                root.failure = "theme.palette is \"wallpaper\" but no wallpaper is set"
+            return
+        }
+        // The cache already describes this image, or we are already busy with
+        // it, or it has been tried and refused.
+        if (src === root.loadedSource || src === root._deriving || src === root._refused)
+            return
+
+        // A new attempt clears the last complaint, so a stale message cannot be
+        // read as the outcome of the work that is only just starting.
+        root.failure = ""
+        root._deriving = src
+        quant.source = src
+        settle.restart()
+    }
+
+    onWantedSourceChanged: _maybeDerive()
+    onDerivedChanged: _maybeDerive()
+
+    ColorQuantizer {
+        id: quant
+        // 64 is plenty: the seed is a hue, and a hue does not get truer with
+        // more pixels. Measured at ~40 ms for a 6000x3750 image.
+        rescaleSize: 64
+        depth: 4
+    }
+
+    Timer {
+        id: settle
+        // ⚠️ Read after a wait, never on `colorsChanged`. The quantiser emits
+        // once with the PREVIOUS image's colours when a new source is set —
+        // measured, and it looked like twelve wallpapers producing six schemes.
+        interval: 1800
+        onTriggered: {
+            var src = root._deriving
+            root._deriving = ""
+            if (!src.length || src !== root.wantedSource)
+                return          // the user moved on while we were working
+
+            if (!quant.colors || quant.colors.length === 0) {
+                root._refused = src
+                root.failure = "no colours came back from " + src +
+                               " — is the format supported? (this Qt has no WebP and no TIFF plugin)"
+                return
+            }
+
+            var pal = FromImage.build(quant.colors, root._deriveDark, "wallpaper", src)
+            var why = FromImage.usable(pal)
+            if (why.length) {
+                // Leaving the previous scheme in place is the right answer.
+                root._refused = src
+                root.failure = "wallpaper refused: " + why
+                return
+            }
+
+            root.failure = ""
+            // Written through the SAME view that reads it. The write triggers
+            // onFileChanged → reload → onLoaded, which parses it back in and
+            // finds `source` matching, so this settles after exactly one pass.
+            file.setText(JSON.stringify(pal, null, 2) + "\n")
+        }
+    }
+
     // Everforest Dark, inlined. Not a second source of truth — a raft. If the
     // palette file is missing or malformed the shell still has readable
     // colours, and `ready` stays false so the settings UI can say so.
@@ -92,13 +214,20 @@ Singleton {
         watchChanges: true
         // Loud on purpose. This failing silently is exactly how the whole
         // desktop ran on fallback colours without anyone noticing.
-        printErrors: true
+        //
+        // The one exception is the derived palette: it is GENERATED, not
+        // shipped, so on a machine that has never had a wallpaper set the file
+        // is legitimately absent. Shouting about that would train everyone to
+        // ignore the message that matters.
+        printErrors: !root.derived
         onFileChanged: reload()
         onLoaded: {
             try {
                 root._data = JSON.parse(text())
                 root._loadedName = root.name
                 root.failure = ""
+                // The cache may describe a wallpaper that is no longer set.
+                root._maybeDerive()
             } catch (e) {
                 // A palette that is present but malformed is a different fault
                 // from one that is missing, and the difference is what someone
@@ -111,7 +240,12 @@ Singleton {
         onLoadFailed: {
             root._data = ({})
             root._loadedName = ""
-            root.failure = "palette '" + root.name + "' could not be read from " + path
+            if (root.derived) {
+                // Not a fault: it has simply never been built. Build it.
+                root._maybeDerive()
+            } else {
+                root.failure = "palette '" + root.name + "' could not be read from " + path
+            }
         }
     }
 

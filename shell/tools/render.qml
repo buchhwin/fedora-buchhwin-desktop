@@ -244,6 +244,12 @@ Scope {
     WaitFor {
         condition: Config.settled && Scheme.ready
 
+        // The derived palette may have to read the wallpaper first, which is
+        // a deliberate ~1.8 s wait (the quantiser lies on its first signal —
+        // see Scheme.qml). Five seconds is right for reading a file and wrong
+        // for reading an image, and this runs on the installer's critical path.
+        timeoutMs: Scheme.derived ? 12000 : 5000
+
         onTimedOut: {
             note("buchhwin render — ABORT")
             note("  the palette did not load; refusing to write fallback colours")

@@ -21,10 +21,11 @@ pragma Singleton
 //    pulled a little towards the image so they belong, never replaced by it.
 //    A forest wallpaper must not make the error colour green.
 //
-// Whether the result is READABLE is not decided here. The caller runs the same
+// Whether the result is READABLE is decided by `usable()` below — the same
 // SANITY checks a hand-written palette faces (bg == fg, contrast, missing
-// accent) and refuses the wallpaper if it fails, rather than applying an
-// unreadable desktop.
+// accent). It lives here rather than in the caller because there are now two
+// callers, the shell and the headless tool, and a readability rule that exists
+// twice is a readability rule that will disagree with itself.
 
 import QtQuick
 import Quickshell
@@ -89,19 +90,62 @@ Singleton {
         return best ? best : { h: 0, s: 0, l: 0.5 }
     }
 
+    // ----------------------------------------------------------- readability
+    // Relative luminance, the one number that decides whether text on a
+    // surface can be read at all.
+    function luminance(hex) {
+        function ch(v) {
+            v = v / 255
+            return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4)
+        }
+        var r = ch(parseInt(hex.substring(0, 2), 16))
+        var g = ch(parseInt(hex.substring(2, 4), 16))
+        var b = ch(parseInt(hex.substring(4, 6), 16))
+        return 0.2126 * r + 0.7152 * g + 0.0722 * b
+    }
+
+    // "" when the palette is fit to use, otherwise the reason it is not.
+    //
+    // A wallpaper that cannot produce a readable scheme must leave the current
+    // one alone. An unreadable desktop is worse than one that did not change,
+    // and it is worse still when it comes back that way after a restart.
+    function usable(pal) {
+        if (!pal || !pal.colors)
+            return "no palette was built"
+        var c = pal.colors
+        if (c.base === c.text)
+            return "background and text are the same colour"
+        if (Math.abs(luminance(c.base) - luminance(c.text)) < 0.25)
+            return "background and text do not contrast enough"
+        if (!c.blue || !c.red || !c.green)
+            return "the palette is missing a colour"
+        return ""
+    }
+
     // ---------------------------------------------------------------- build
     // `dark` decides the direction of the ramp. It is the USER's setting, not
     // the image's: a bright photo must not turn a dark desktop light.
-    function build(colors, dark, name) {
+    function build(colors, dark, name, source) {
         if (!colors || colors.length === 0)
             return null
 
         var seed = seedOf(colors)
         var h = seed.h
+
+        // ⚠️ An image with no colour in it must not be handed one.
+        //
+        // seedOf falls back to hue 0 when every candidate is grey, and its
+        // comment calls that "a neutral hue" — but hue 0 with a saturation
+        // FLOOR of 0.45 is not neutral, it is red. Measured on a flat grey
+        // image: the accent came out #ca7272, a pink invented from a picture
+        // that contained nothing but grey. The floor is right for a photograph
+        // whose colours are washed out; it is wrong when there are none.
+        var achromatic = seed.s < 0.08
+
         // Surfaces keep a trace of the hue and almost none of the chroma.
         var sSurface = Math.min(seed.s, 0.18)
         var sMuted = Math.min(seed.s, 0.30)
-        var sAccent = Math.max(seed.s, 0.45)
+        var sAccent = achromatic ? seed.s : Math.max(seed.s, 0.45)
 
         var out = {}
         function put(key, c) { out[key] = _hex(c) }
@@ -174,6 +218,10 @@ Singleton {
         return {
             name: name,
             family: "Wallpaper",
+            // Which image this came from. It is what lets a cached derived
+            // palette be trusted across a restart: the file on disk is only
+            // still valid while it names the wallpaper that is actually set.
+            source: source || "",
             display_name: "Aus dem Hintergrundbild",
             dark: dark,
             // The accent the shell picks by default. `blue` is the seed itself
