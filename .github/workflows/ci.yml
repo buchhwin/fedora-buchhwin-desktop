@@ -53,9 +53,15 @@ jobs:
         # name in Fedora is "Material Icons Round", NOT the Symbols name the
         # docs suggest, and that mismatch rendered every icon as tofu once.
         run: |
+          # ⚠️ The themed toolbox is installed HERE TOO, and not for show:
+          # tests/reachable.sh asks bat, tmux, alacritty and git whether the
+          # colours arrived, and skips those checks where the program is
+          # missing. Without them the suite is green having asked half the
+          # question — which is the exact failure mode qt6ct sat in for months.
           dnf install -y --setopt=install_weak_deps=False \
             quickshell qt6-qtdeclarative qt6-qtdeclarative-devel git-core niri jq \
-            material-icons-fonts fontconfig
+            material-icons-fonts fontconfig \
+            btop bat fastfetch git-delta tmux alacritty
           for unwanted in waybar fuzzel swaylock; do
             if rpm -q "$unwanted" >/dev/null 2>&1; then
               echo "::error::$unwanted was pulled in despite install_weak_deps=False"

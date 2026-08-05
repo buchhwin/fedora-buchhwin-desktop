@@ -743,9 +743,21 @@ Scope {
     property bool batPending: false
     Process {
         id: batCache
-        command: ["bat", "cache", "--build"]
+        // ⚠️ THROUGH `sh`, AND THAT IS NOT A STYLE CHOICE.
+        //
+        // A Process whose binary does not exist never emits onExited, so the
+        // renderer sat on the guard timer for the full ten seconds on every
+        // single run on a machine without bat — measured at 11 s, and the CI
+        // container has no bat, which would have been six of those inside one
+        // suite. `sh` always exists, so the signal always comes: immediately
+        // when bat is absent, after the real build when it is there.
+        command: ["sh", "-c", "command -v bat >/dev/null || exit 3; exec bat cache --build"]
         onExited: function (code) {
+            // 3 is our own signal for "bat is not installed", which is not a
+            // fault: the theme file is written and will be compiled the day it
+            // is. Anything else is bat itself failing, and that is worth a line.
             root.note(code === 0 ? "  built  bat cache"
+                    : code === 3 ? "  skip   bat is not installed; the theme is written anyway"
                                  : "  ERROR  bat cache --build exited " + code)
             root.finish()
         }
