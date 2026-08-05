@@ -40,6 +40,7 @@ Singleton {
     readonly property alias autostart: adapter.autostart
     readonly property alias workspaces: adapter.workspaces
     readonly property alias wallpaper: adapter.wallpaper
+    readonly property alias weather: adapter.weather
 
     readonly property alias version: adapter.version
 
@@ -510,6 +511,16 @@ Singleton {
             // "wallpaper" IS the switch, and a second key that means the same
             // thing is how a settings file starts to contradict itself. It
             // existed until version 1 and is removed by a migration.
+            // Where the weather is. COORDINATES, not a search term — a name is
+            // ambiguous, would need resolving on every start, and resolving
+            // needs the network, so a laptop opened in a tunnel would show no
+            // weather for a place it has known for months.
+            property JsonObject weather: JsonObject {
+                property string name: ""      // for display only
+                property real lat: NaN
+                property real lon: NaN
+            }
+
             property JsonObject wallpaper: JsonObject {
                 // Where the picker looks. Set by the installer; empty means
                 // there is no wallpaper on this machine, not "the home folder".

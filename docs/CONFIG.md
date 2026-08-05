@@ -25,6 +25,7 @@ desktop — which is what makes it safe to add settings without a migration.
 | `autostart` | extra programs — **not** the shell or the clipboard watcher |
 | `workspaces` | named workspaces |
 | `wallpaper` | `folder`, `current` image, `monitors` |
+| `weather` | `name` (display only), `lat`, `lon` — set from the quick panel |
 
 ## The wallpaper, and what survives a restart
 
@@ -148,3 +149,54 @@ difference is 32 packages and a build system.
 - No invitations, no attendees, no reminders, no attachments.
 - **No offline queue.** With no network the page says so. Collecting changes to
   send later is the worse promise.
+
+
+## The notch has three states
+
+It used to BECOME each page. It does not any more — a calendar is not a notch
+that got bigger. The pages float below it (`buchhwin-overlay`) and the notch
+gets out of the way:
+
+| State | When | What you see |
+|---|---|---|
+| full | resting | the pill with the clock |
+| hidden | a page is open at the notch | nothing — the page has the stage |
+| strip | the focused window is fullscreen | a hairline at the top; **hover it for the full notch** |
+
+Two things had to be measured for this, and both are worth knowing:
+
+- **niri does not report `is_fullscreen`.** The only signal is the size, and it
+  arrives in the `WindowLayoutsChanged` event: a fullscreen window's
+  `window_size` is exactly the output's logical size. The honest limit is that
+  with `gaps 0` and no reserved strip an ordinary tiled window would measure the
+  same — with the shipped defaults it cannot.
+- **A fullscreen window is drawn above the `top` layer.** The strip was not
+  mis-sized, it was simply not on screen. The notch moves to `overlay` while
+  fullscreen and back afterwards, which is also why the strip is a hairline: it
+  is the one thing allowed over a fullscreen video.
+
+## Shadows, blur, and one rule that explains both
+
+From niri's own layer-rule documentation:
+
+> niri has no way of knowing about invisible margins, and will draw the shadow
+> behind the **entire surface**.
+
+Blur behaves the same. So **every surface this shell creates is exactly the size
+of what it draws** — the notch used to carry a transparent border for its
+shoulders, and that border came back as a blurred, colour-fringed halo around
+the pill.
+
+- `look.shadowSoftness` / `shadowSpread` / `shadowOffsetY` are CSS box-shadow
+  semantics and apply to **windows and to our own surfaces alike**, so nothing
+  floats at a different height from anything else.
+- Layer surfaces need their shadow enabled **per rule** — the `layout` section
+  does not reach them.
+- `windows.blurred` lists the applications that get the wallpaper blurred behind
+  them. ⚠️ Blur is only visible where a window is **translucent**; an opaque one
+  covers it completely and the GPU work is wasted. niri turns on *xray*
+  alongside blur, which blurs the wallpaper once and reuses it rather than
+  recomputing per window per frame — that is what makes this affordable on a
+  battery.
+- **No blur behind the notch.** It is near-black and opaque: there was never
+  anything to see through it.

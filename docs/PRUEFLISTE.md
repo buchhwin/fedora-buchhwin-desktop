@@ -305,3 +305,35 @@ oben.
 - [ ] **Wie fühlen sich die Übergänge an?** Der Inhalt soll sich in die Form
       *hineinsetzen*, nicht darüber einblenden — und nirgends nachfedern.
 - [ ] **Sind die Abstände der Fenster recht so?** `look.gapsOut` steht auf 16.
+
+
+---
+
+# Prüfliste — Notch-Verhalten, Fenster, Wetter
+
+## Am Bildschirm belegt (VM, echte Screenshots)
+
+| | |
+|---|---|
+| Der farbige Saum um die Notch | **weg** — die Fläche ist jetzt genau so groß wie das Gezeichnete |
+| Notch verschwindet | sobald eine Fläche bei ihr aufgeht, und kommt danach zurück |
+| Vollbild | Notch wird zum dezenten Streifen und wechselt auf die `overlay`-Ebene |
+| Quick-Panel | Kalender · Wetter · Regler · Zahnrad, als eigene schwebende Fläche |
+| Wetter | Frankfurt: 27°, klar — Ortssuche und Abruf laufen |
+| Schatten | Notch, Fläche und Fenster teilen sich dieselben drei Zahlen |
+| Terminal | durchscheinend mit den Palettenfarben, Blur dahinter |
+
+## Was nur du prüfen kannst
+
+- [ ] **Hovern über den Streifen** im Vollbild: kommt die volle Notch, und geht sie
+      wieder, wenn du wegfährst?
+- [ ] **`Super+F`** schaltet Vollbild an **und wieder aus**. (`Super+Shift+F` ist jetzt
+      „Spalte maximieren" — die beiden haben getauscht.)
+- [ ] **Mausrad** über dem Lautstärkeregler.
+- [ ] **Ort im Wetterfeld tippen** (ab 3 Buchstaben) und einen Treffer anklicken —
+      danach Neustart: der Ort muss noch da sein.
+- [ ] **Sehen die Schatten richtig aus?** `look.shadowSoftness/Spread/OffsetY` sind die
+      drei Regler; sag, wenn es zu viel oder zu wenig ist.
+- [ ] **Reicht dir der Blur hinter dem Terminal?** `look.opacityTerminal` entscheidet,
+      wie viel davon überhaupt zu sehen ist — mehr Transparenz zeigt mehr Blur.
+- [ ] ⚠️ **Das Zahnrad öffnet noch nichts** — es sagt das auch. Einstellungsfenster ist M8.

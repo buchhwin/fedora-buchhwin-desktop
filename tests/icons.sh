@@ -38,8 +38,19 @@ awk '
           rest = substr(rest, RSTART + RLENGTH)
       }
   }
+  # `icon:` and any `iconNames: [...]` list. The list form exists because a
+  # service that RETURNS icon names keeps them inside a function, where no
+  # scan can see them — the weather icons were invisible here at first, and a
+  # tripwire that misses half the names reads as full coverage.
   /(^|[^a-zA-Z])icon:/ {
       emit(substr($0, index($0, "icon:") + 5))
+  }
+  /(^|[^a-zA-Z])iconNames:/ {
+      line = substr($0, index($0, "iconNames:") + 10)
+      while (match(line, /"[A-Za-z0-9_]+"/)) {
+          print substr(line, RSTART + 1, RLENGTH - 2)
+          line = substr(line, RSTART + RLENGTH)
+      }
   }
   # Inside an Icon { } block, a text: is an icon name.
   #
@@ -64,7 +75,7 @@ awk '
           if (depth <= 0) inicon = 0
       }
   }
-' $(find shell/ui -name '*.qml') | sort -u > "$names"
+' $(find shell/ui shell/services -name '*.qml') | sort -u > "$names"
 
 if [[ ! -s "$names" ]]; then
     echo "  found no icon names to check — has the markup changed?"
