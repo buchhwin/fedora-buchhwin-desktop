@@ -21,6 +21,11 @@ command -v qs >/dev/null || { echo "quickshell (qs) not installed"; exit 2; }
 fail=0
 pass() { printf '  \033[38;5;114mok\033[0m    %s\n' "$1"; }
 bad()  { printf '  \033[38;5;203mFAIL\033[0m  %s\n' "$1"; fail=1; }
+# ⚠️ A skip is not a pass and must not read like one. Six of the themed
+# programs are not installed in the CI container, and the checks that ask THEM
+# rather than the filesystem can only run where they exist. Saying which ones
+# were not asked is the difference between "green" and "green here".
+skip() { printf '  \033[38;5;179mskip\033[0m  %s\n' "$1"; }
 
 work="$(mktemp -d)"
 trap 'rm -rf "$work"' EXIT
@@ -41,7 +46,8 @@ mkdir -p "$cfg"
 # script installs twice, and the second run would otherwise overwrite the
 # evidence from the first.
 rm -f /tmp/buchhwin-render.log
-XDG_CONFIG_HOME="$cfg" timeout 120 bash install.sh --only shell >"$work/install.log" 2>&1
+XDG_CONFIG_HOME="$cfg" XDG_CACHE_HOME="$work/cache" \
+    timeout 120 bash install.sh --only shell >"$work/install.log" 2>&1
 cp -f /tmp/buchhwin-render.log "$work/render.log" 2>/dev/null || true
 
 why() {
@@ -114,9 +120,124 @@ for group in active inactive disabled; do
     fi
 done
 
+# --------------------------------------------------------------------------
+# The six programs that came with their own pointer syntax.
+#
+# Same rule as kitty and qt6ct: written is half of it. Each of these is asked
+# twice — is our file there, and is there something naming it — and where the
+# program itself is installed, it is asked a third time: does the colour
+# actually arrive. That third question is the one that catches a theme written
+# into a void, and it is the only one that would have caught qt6ct.
+for pair in \
+    "btop theme|$cfg/btop/themes/buchhwin.theme" \
+    "alacritty|$cfg/alacritty/buchhwin.toml" \
+    "tmux|$cfg/tmux/buchhwin.conf" \
+    "git-delta|$cfg/git/buchhwin-delta.gitconfig" \
+    "lazygit|$cfg/lazygit/buchhwin.yml" \
+    "bat theme|$cfg/bat/themes/buchhwin.tmTheme"
+do
+    label="${pair%%|*}"; path="${pair##*|}"
+    if [[ -s "$path" ]]; then pass "written: $label"
+    else bad "not written: $label ($path)"; why; fi
+done
+
+for pair in \
+    "btop|$cfg/btop/btop.conf|^color_theme *= *\"buchhwin\"" \
+    "alacritty|$cfg/alacritty/alacritty.toml|buchhwin\.toml" \
+    "tmux|$cfg/tmux/tmux.conf|buchhwin\.conf" \
+    "bat|$cfg/bat/config|buchhwin" \
+    "git-delta|$cfg/git/config|buchhwin-delta\.gitconfig"
+do
+    IFS='|' read -r label path marker <<<"$pair"
+    if grep -qE "$marker" "$path" 2>/dev/null; then
+        pass "$label points at the generated theme"
+    else
+        bad "$label has no pointer — its colours never arrive"
+    fi
+done
+
+# btop's theme is a fixed set of 37 keys; a short one is a theme with holes,
+# which btop renders as black rather than as an error.
+n=$(grep -c '^theme\[' "$cfg/btop/themes/buchhwin.theme" 2>/dev/null || echo 0)
+[[ "$n" == 37 ]] && pass "btop theme has all 37 keys" \
+                 || bad "btop theme has $n of 37 keys"
+
+# ⚠️ THE POINT OF THE WHOLE bat TARGET. A .tmTheme in the right folder is
+# invisible until `bat cache --build` compiles it, which the renderer runs
+# itself. Asked of bat, not of the filesystem.
+#
+# XDG_CACHE_HOME is redirected so this cannot touch the cache of whoever is
+# running the test — the renderer inherits it, so its cache build lands in the
+# throwaway directory too.
+if command -v bat >/dev/null; then
+    if XDG_CONFIG_HOME="$cfg" XDG_CACHE_HOME="$work/cache" \
+       bat --list-themes --color=never 2>/dev/null | grep -q buchhwin; then
+        pass "bat knows the theme (the cache was built)"
+    else
+        bad "bat does not list the theme — the .tmTheme was never compiled"
+    fi
+    # ⚠️ ASKED FOR OUR EXACT COLOUR, not merely for "some colour". bat falls
+    # back to a built-in theme when it cannot find ours, and that fallback also
+    # emits truecolor — so a looser check passes while the theme is ignored.
+    # `int` is a keyword, which the generated tmTheme paints in the palette's
+    # red; kitty's color1 is the same colour, so it is the expected value
+    # without a second source for it.
+    printf 'int x = 42;\n' > "$work/probe.c"
+    want=$(grep -m1 '^color1 ' "$cfg/kitty/theme.conf" | awk '{print $2}' | tr -d '#')
+    if [[ -n "$want" ]]; then
+        rgb="38;2;$((16#${want:0:2}));$((16#${want:2:2}));$((16#${want:4:2}))"
+        if COLORTERM=truecolor XDG_CONFIG_HOME="$cfg" XDG_CACHE_HOME="$work/cache" \
+           bat --color=always --style=plain "$work/probe.c" 2>/dev/null | grep -q "$rgb"; then
+            pass "bat paints keywords in the palette's own red (#$want)"
+        else
+            bad "bat did not use the generated theme (expected $rgb)"
+        fi
+    fi
+else
+    skip "bat is not installed — its colours were not checked"
+fi
+
+if command -v git >/dev/null; then
+    got=$(XDG_CONFIG_HOME="$cfg" git config --get delta.file-style 2>/dev/null)
+    if [[ "$got" == *"#"* ]]; then
+        pass "git resolves the delta colours through the include ($got)"
+    else
+        bad "git does not see the delta colours — the include did not take"
+    fi
+    # The half that matters more than the colours: nothing of the user's moved.
+    if [[ ! -f "$HOME/.gitconfig" ]] || ! grep -q buchhwin "$HOME/.gitconfig" 2>/dev/null; then
+        pass "the global gitconfig in \$HOME was not touched"
+    else
+        bad "something wrote into ~/.gitconfig, which belongs to the user"
+    fi
+fi
+
+if command -v tmux >/dev/null; then
+    tmux -f /dev/null -L reachable-probe new-session -d 2>/dev/null
+    tmux -L reachable-probe source-file "$cfg/tmux/buchhwin.conf" 2>/dev/null
+    got=$(tmux -L reachable-probe show -g status-style 2>/dev/null)
+    tmux -L reachable-probe kill-server 2>/dev/null
+    [[ "$got" == *"#"* ]] && pass "tmux takes the generated colours (${got#status-style })" \
+                          || bad "tmux did not take the generated colours"
+else
+    skip "tmux is not installed — its colours were not checked"
+fi
+
+if command -v alacritty >/dev/null; then
+    if alacritty migrate --dry-run -c "$cfg/alacritty/alacritty.toml" 2>&1 \
+       | grep -q 'buchhwin\.toml'; then
+        pass "alacritty parses the import chain"
+    else
+        bad "alacritty does not read the imported theme"
+    fi
+else
+    skip "alacritty is not installed — its config was not parsed"
+fi
+
 # A second run must not fight the user's own file.
 printf '# mine\ninclude theme.conf\nfont_size 14\n' > "$cfg/kitty/kitty.conf"
-XDG_CONFIG_HOME="$cfg" timeout 120 bash install.sh --only shell >/dev/null 2>&1
+XDG_CONFIG_HOME="$cfg" XDG_CACHE_HOME="$work/cache" \
+    timeout 120 bash install.sh --only shell >/dev/null 2>&1
 if grep -q '^font_size 14' "$cfg/kitty/kitty.conf"; then
     pass "an existing kitty.conf is left alone"
 else
@@ -147,10 +268,25 @@ set_states() {   # mode gtk qt kitty niri  [enabled]
        "$cfg/buchhwin/shell.json" > "$work/s.json" \
         && mv "$work/s.json" "$cfg/buchhwin/shell.json"
 }
+set_one() {      # target state
+    jq --arg t "$1" --arg s "$2" '.theming[$t] = $s' \
+       "$cfg/buchhwin/shell.json" > "$work/s.json" \
+        && mv "$work/s.json" "$cfg/buchhwin/shell.json"
+}
+
+# Every file the renderer owns, in one place, so "off takes everything back"
+# and "enabled=false takes everything back" cannot drift apart from the list.
+generated=(gtk-3.0/gtk.css gtk-3.0/settings.ini gtk-4.0/gtk.css gtk-4.0/settings.ini
+           kitty/theme.conf niri/colors.kdl qt6ct/colors/buchhwin.conf
+           btop/themes/buchhwin.theme alacritty/buchhwin.toml tmux/buchhwin.conf
+           git/buchhwin-delta.gitconfig lazygit/buchhwin.yml)
 
 render_now() {
     rm -f /tmp/buchhwin-render.log
-    XDG_CONFIG_HOME="$cfg" BUCHHWIN_TOOL=render QT_QPA_PLATFORM=offscreen \
+    # ⚠️ XDG_CACHE_HOME too: the renderer runs `bat cache --build`, and without
+    # this it would rebuild the cache of whoever is running the test.
+    XDG_CONFIG_HOME="$cfg" XDG_CACHE_HOME="$work/cache" \
+        BUCHHWIN_TOOL=render QT_QPA_PLATFORM=offscreen \
         timeout 60 qs -p shell >/dev/null 2>"$work/render.err"
     local code=$?
     cp -f /tmp/buchhwin-render.log "$work/render.log" 2>/dev/null || true
@@ -258,13 +394,28 @@ fi
 
 # --- D: the master switch beats everything, in one line.
 if set_states colour colour colour colour colour false && render_now; then
-    stubs=0
-    for f in gtk-3.0/gtk.css gtk-3.0/settings.ini gtk-4.0/gtk.css gtk-4.0/settings.ini \
-             kitty/theme.conf niri/colors.kdl qt6ct/colors/buchhwin.conf; do
-        grep -q 'theming is OFF' "$cfg/$f" || stubs=1
+    left=""
+    for f in "${generated[@]}"; do
+        grep -q 'theming is OFF' "$cfg/$f" || left+=" $f"
     done
-    (( stubs )) && bad "theming.enabled=false left files behind" \
-                || pass "theming.enabled=false takes all seven files back"
+    # bat's stub is XML, so it says it differently — asked separately rather
+    # than loosening the phrase everything else is checked against.
+    grep -q 'OFF for bat' "$cfg/bat/themes/buchhwin.tmTheme" || left+=" bat"
+    [[ -n "$left" ]] && bad "theming.enabled=false left files behind:$left" \
+                     || pass "theming.enabled=false takes all ${#generated[@]}+1 files back"
+fi
+
+# --- E: a target with its own pointer, switched off on its own.
+if set_states colour inherit inherit inherit inherit && set_one btop off && render_now; then
+    if grep -q 'theming is OFF' "$cfg/btop/themes/buchhwin.theme" &&
+       grep -qE '^color_theme *= *"buchhwin"' "$cfg/btop/btop.conf"; then
+        pass "off: btop's theme is a stub and its btop.conf is untouched"
+    else
+        bad "off: btop was not taken back cleanly"
+    fi
+    if grep -q '^theme\[main_fg\]' "$cfg/btop/themes/buchhwin.theme"; then
+        bad "off: the btop theme still carries colours"
+    fi
 fi
 
 exit $fail

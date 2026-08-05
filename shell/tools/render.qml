@@ -495,6 +495,223 @@ Scope {
             "disabled_colors=" + dis.join(", ") + "\n"
     }
 
+    // ------------------------------------------------------------------ btop
+    //
+    // 37 keys, counted in a shipped theme rather than remembered
+    // (/usr/share/btop/themes/*.theme). The format is theme[key]="#rrggbb", and
+    // btop finds a user theme in ~/.config/btop/themes — both stated by btop's
+    // own default config, which also names the pointer: color_theme.
+    //
+    // ⚠️ main_bg IS DELIBERATELY EMPTY. btop's own comment: "empty for terminal
+    // default, need to be empty if you want transparent background". Writing
+    // our base colour here would paint an opaque rectangle over a terminal we
+    // went to some trouble to make translucent.
+    function btopTheme(m) {
+        function k(key, colour) { return "theme[" + key + "]=\"" + colour + "\"\n" }
+        // Three-stop gradients. Meaning first: rising load goes green → yellow
+        // → red, and that direction survives the neutral state because those
+        // three are anchored.
+        function ramp(prefix, a, b, c) {
+            return k(prefix + "_start", col(m, a)) +
+                   k(prefix + "_mid", col(m, b)) +
+                   k(prefix + "_end", col(m, c))
+        }
+        return head(true, m) +
+            "theme[main_bg]=\"\"\n" +
+            k("main_fg", col(m, "text")) +
+            k("title", col(m, "text")) +
+            k("hi_fg", accentOf(m)) +
+            k("selected_bg", col(m, "surface1")) +
+            k("selected_fg", col(m, "text")) +
+            k("inactive_fg", col(m, "overlay1")) +
+            k("proc_misc", col(m, "teal")) +
+            k("cpu_box", col(m, "overlay0")) +
+            k("mem_box", col(m, "overlay0")) +
+            k("net_box", col(m, "overlay0")) +
+            k("proc_box", col(m, "overlay0")) +
+            k("div_line", col(m, "overlay0")) +
+            ramp("temp", "green", "yellow", "red") +
+            ramp("cpu", "green", "yellow", "red") +
+            ramp("free", "green", "teal", "sapphire") +
+            ramp("cached", "sapphire", "blue", "mauve") +
+            ramp("available", "teal", "sapphire", "blue") +
+            ramp("used", "yellow", "peach", "red") +
+            ramp("download", "green", "teal", "sapphire") +
+            ramp("upload", "yellow", "peach", "red")
+    }
+
+    // ------------------------------------------------------------- alacritty
+    //
+    // The alternative terminal, themed from the same tokens as kitty so the two
+    // are not two looks. ⚠️ `import` lives under [general] as of 0.14 — read in
+    // alacritty(5), where it sits in the GENERAL section — and the importing
+    // file is loaded LAST, so our values are the ones a user can override.
+    function alacrittyToml(m) {
+        function q(s) { return "\"" + s + "\"" }
+        return head(true, m) +
+            "[window]\n" +
+            // The same argument as kitty's background_opacity: the terminal's
+            // own transparency, not the compositor's, so the type stays crisp.
+            "opacity = " + Theme.terminalOpacity + "\n\n" +
+            "[font]\nnormal = { family = " + q(Theme.fontMono) + " }\n" +
+            "size = " + Theme.fontSizePt + "\n\n" +
+            "[colors.primary]\n" +
+            "background = " + q(col(m, "base")) + "\n" +
+            "foreground = " + q(col(m, "text")) + "\n\n" +
+            "[colors.cursor]\n" +
+            "text = " + q(accentFgOf(m)) + "\n" +
+            "cursor = " + q(accentOf(m)) + "\n\n" +
+            "[colors.selection]\n" +
+            "text = " + q(accentFgOf(m)) + "\n" +
+            "background = " + q(accentOf(m)) + "\n\n" +
+            "[colors.normal]\n" +
+            "black = " + q(col(m, "crust")) + "\n" +
+            "red = " + q(col(m, "red")) + "\n" +
+            "green = " + q(col(m, "green")) + "\n" +
+            "yellow = " + q(col(m, "yellow")) + "\n" +
+            "blue = " + q(col(m, "sapphire")) + "\n" +
+            "magenta = " + q(col(m, "mauve")) + "\n" +
+            "cyan = " + q(col(m, "teal")) + "\n" +
+            "white = " + q(col(m, "subtext1")) + "\n\n" +
+            "[colors.bright]\n" +
+            "black = " + q(col(m, "overlay0")) + "\n" +
+            "red = " + q(col(m, "red")) + "\n" +
+            "green = " + q(col(m, "green")) + "\n" +
+            "yellow = " + q(col(m, "yellow")) + "\n" +
+            "blue = " + q(col(m, "sapphire")) + "\n" +
+            "magenta = " + q(col(m, "mauve")) + "\n" +
+            "cyan = " + q(col(m, "teal")) + "\n" +
+            "white = " + q(col(m, "text")) + "\n"
+    }
+
+    // ------------------------------------------------------------------ tmux
+    //
+    // Sourced from tmux.conf. tmux reads ~/.tmux.conf or
+    // $XDG_CONFIG_HOME/tmux/tmux.conf (tmux(1)), and `source-file` is the
+    // pointer.
+    function tmuxConf(m) {
+        return head(true, m) +
+            "set -g status-style \"bg=" + col(m, "mantle") + ",fg=" + col(m, "text") + "\"\n" +
+            "set -g status-left-style \"bg=" + accentOf(m) + ",fg=" + accentFgOf(m) + ",bold\"\n" +
+            "set -g status-right-style \"bg=" + col(m, "surface0") + ",fg=" + col(m, "subtext1") + "\"\n" +
+            "setw -g window-status-current-style \"bg=" + accentOf(m) +
+            ",fg=" + accentFgOf(m) + ",bold\"\n" +
+            "setw -g window-status-style \"bg=" + col(m, "mantle") + ",fg=" + col(m, "subtext0") + "\"\n" +
+            "setw -g window-status-activity-style \"fg=" + col(m, "yellow") + "\"\n" +
+            "set -g pane-border-style \"fg=" + col(m, "overlay1") + "\"\n" +
+            "set -g pane-active-border-style \"fg=" + accentOf(m) + "\"\n" +
+            "set -g message-style \"bg=" + col(m, "surface0") + ",fg=" + col(m, "text") + "\"\n" +
+            "set -g mode-style \"bg=" + accentOf(m) + ",fg=" + accentFgOf(m) + "\"\n" +
+            "set -g display-panes-active-colour \"" + accentOf(m) + "\"\n" +
+            "set -g display-panes-colour \"" + col(m, "overlay1") + "\"\n" +
+            "set -g clock-mode-colour \"" + accentOf(m) + "\"\n"
+    }
+
+    // -------------------------------------------------------------- git-delta
+    //
+    // ⚠️ INCLUDED FROM ~/.config/git/config, NEVER WRITTEN INTO ~/.gitconfig.
+    // Proven rather than hoped: git reads BOTH global files, so an [include] in
+    // the XDG one takes effect while a hand-written ~/.gitconfig is left
+    // completely alone — measured with two HOMEs and `git config --get`.
+    //
+    // `syntax-theme` is bat's theme registry, not delta's own: delta renders
+    // through bat. It is only named here when bat is themed as well, because
+    // pointing at a theme that was never built is the same mistake as writing
+    // a file nobody reads.
+    function deltaGitconfig(m, batThemed) {
+        return head(true, m) +
+            "[delta]\n" +
+            (batThemed ? "\tsyntax-theme = buchhwin\n" : "") +
+            "\tminus-style = normal \"" + col(m, "mantle") + "\"\n" +
+            "\tminus-emph-style = normal \"" + col(m, "red") + "\"\n" +
+            "\tplus-style = normal \"" + col(m, "surface0") + "\"\n" +
+            "\tplus-emph-style = normal \"" + col(m, "green") + "\"\n" +
+            "\tline-numbers-minus-style = \"" + col(m, "red") + "\"\n" +
+            "\tline-numbers-plus-style = \"" + col(m, "green") + "\"\n" +
+            "\tline-numbers-zero-style = \"" + col(m, "overlay1") + "\"\n" +
+            "\tline-numbers-left-style = \"" + col(m, "overlay0") + "\"\n" +
+            "\tline-numbers-right-style = \"" + col(m, "overlay0") + "\"\n" +
+            "\tfile-style = bold \"" + accentOf(m) + "\"\n" +
+            "\tfile-decoration-style = \"" + col(m, "overlay0") + "\" ul\n" +
+            "\thunk-header-style = \"" + col(m, "subtext0") + "\"\n" +
+            "\thunk-header-decoration-style = \"" + col(m, "overlay0") + "\" box\n" +
+            "\tblame-palette = \"" + col(m, "base") + "\" \"" + col(m, "mantle") +
+            "\" \"" + col(m, "surface0") + "\" \"" + col(m, "surface1") + "\"\n"
+    }
+
+    // ------------------------------------------------------------------- bat
+    //
+    // A .tmTheme — the Sublime format bat's syntax highlighter reads — and the
+    // one target with a second step: bat only sees a theme after
+    // `bat cache --build`, so the file alone is exactly the kitty mistake with
+    // a different name. The renderer runs it, and waits for it.
+    function batTheme(m) {
+        function scope(name, colour, style) {
+            return "\t\t<dict>\n\t\t\t<key>scope</key><string>" + name + "</string>\n" +
+                   "\t\t\t<key>settings</key><dict>\n" +
+                   "\t\t\t\t<key>foreground</key><string>" + colour + "</string>\n" +
+                   (style ? "\t\t\t\t<key>fontStyle</key><string>" + style + "</string>\n" : "") +
+                   "\t\t\t</dict>\n\t\t</dict>\n"
+        }
+        return "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" +
+            "<!-- Generated by buchhwin from palette '" + Scheme.name + "'" +
+            (m === "neutral" ? ", neutral" : "") + ". Do not edit. -->\n" +
+            "<plist version=\"1.0\">\n<dict>\n" +
+            "\t<key>name</key><string>buchhwin</string>\n" +
+            "\t<key>settings</key>\n\t<array>\n" +
+            "\t\t<dict>\n\t\t\t<key>settings</key><dict>\n" +
+            "\t\t\t\t<key>background</key><string>" + col(m, "base") + "</string>\n" +
+            "\t\t\t\t<key>foreground</key><string>" + col(m, "text") + "</string>\n" +
+            "\t\t\t\t<key>caret</key><string>" + accentOf(m) + "</string>\n" +
+            "\t\t\t\t<key>lineHighlight</key><string>" + col(m, "surface0") + "</string>\n" +
+            "\t\t\t\t<key>selection</key><string>" + col(m, "surface1") + "</string>\n" +
+            "\t\t\t</dict>\n\t\t</dict>\n" +
+            scope("comment", col(m, "overlay1"), "italic") +
+            scope("string", col(m, "green"), "") +
+            scope("constant.numeric", col(m, "peach"), "") +
+            scope("constant.language", col(m, "peach"), "") +
+            scope("constant.character, constant.other", col(m, "peach"), "") +
+            scope("keyword, storage.type, storage.modifier", col(m, "red"), "") +
+            scope("entity.name.function, support.function", accentOf(m), "") +
+            scope("entity.name.type, entity.name.class, support.type, support.class",
+                  col(m, "yellow"), "") +
+            scope("variable, variable.parameter", col(m, "text"), "") +
+            scope("entity.name.tag", col(m, "mauve"), "") +
+            scope("entity.other.attribute-name", col(m, "teal"), "") +
+            scope("punctuation, meta.brace", col(m, "subtext0"), "") +
+            scope("invalid", col(m, "red"), "") +
+            "\t</array>\n</dict>\n</plist>\n"
+    }
+
+    // --------------------------------------------------------------- lazygit
+    //
+    // ⚠️ THE ONLY TARGET WHOSE POINTER IS AN ENVIRONMENT VARIABLE.
+    // lazygit reads one config file, and the only way to add a second is
+    // LG_CONFIG_FILE with a comma-separated list — stated by lazygit's own
+    // --help ("Comma separated list to custom config file(s)"). We already own
+    // environment.d, so that is a pointer we can set without editing anything
+    // of the user's. Ours is listed LAST so their own config still wins.
+    function lazygitYml(m) {
+        function style(key, colour, extra) {
+            return "    " + key + ":\n      - \"" + colour + "\"\n" +
+                   (extra ? "      - " + extra + "\n" : "")
+        }
+        return head(true, m) +
+            "gui:\n  theme:\n" +
+            style("activeBorderColor", accentOf(m), "bold") +
+            style("inactiveBorderColor", col(m, "overlay1"), "") +
+            style("searchingActiveBorderColor", col(m, "yellow"), "bold") +
+            style("optionsTextColor", col(m, "subtext0"), "") +
+            style("selectedLineBgColor", col(m, "surface1"), "") +
+            style("inactiveViewSelectedLineBgColor", col(m, "surface0"), "") +
+            style("cherryPickedCommitFgColor", col(m, "base"), "") +
+            style("cherryPickedCommitBgColor", col(m, "teal"), "") +
+            style("markedBaseCommitFgColor", col(m, "base"), "") +
+            style("markedBaseCommitBgColor", col(m, "yellow"), "") +
+            style("unstagedChangesColor", col(m, "red"), "") +
+            style("defaultFgColor", col(m, "text"), "")
+    }
+
     // blockLoading so write() can compare against what is already on disk in
     // the same statement; printErrors off because "not there yet" is the normal
     // case on a first run and not a fault worth shouting about. Same shape as
@@ -506,7 +723,50 @@ Scope {
     FileView { id: f5; blockLoading: true; printErrors: false }
     FileView { id: f6; blockLoading: true; printErrors: false }
     FileView { id: f7; blockLoading: true; printErrors: false }
+    FileView { id: f8; blockLoading: true; printErrors: false }
+    FileView { id: f9; blockLoading: true; printErrors: false }
+    FileView { id: f10; blockLoading: true; printErrors: false }
+    FileView { id: f11; blockLoading: true; printErrors: false }
+    FileView { id: f12; blockLoading: true; printErrors: false }
+    FileView { id: f13; blockLoading: true; printErrors: false }
     FileView { id: log; path: "/tmp/buchhwin-render.log" }
+
+    // ⚠️ bat NEEDS A SECOND STEP, and without it this whole target is the kitty
+    // mistake again: the .tmTheme sits in the right folder and bat has never
+    // heard of it until `bat cache --build` compiles it into its own cache.
+    //
+    // Only run when the theme actually changed — it takes about a second and
+    // rebuilding an unchanged cache on every look tweak is exactly the kind of
+    // idle work this project measures itself against. And the process is waited
+    // for rather than fired off: the renderer quits in the next event loop
+    // step, which would kill it.
+    property bool batPending: false
+    Process {
+        id: batCache
+        command: ["bat", "cache", "--build"]
+        onExited: function (code) {
+            root.note(code === 0 ? "  built  bat cache"
+                                 : "  ERROR  bat cache --build exited " + code)
+            root.finish()
+        }
+    }
+    Timer {
+        id: batGuard
+        interval: 10000
+        onTriggered: {
+            root.note("  ERROR  bat cache --build did not finish in 10 s")
+            root.finish()
+        }
+    }
+    function finish() {
+        batGuard.stop()
+        note("done: " + written + " written, " + unchanged + " unchanged")
+        if (root.threw) {
+            note("buchhwin render — ABORT")
+            note("  " + root.threw + " target(s) threw: " + root.thrown.join(", "))
+        }
+        Qt.callLater(Qt.quit)
+    }
 
     // Wait for the palette to actually be there. The previous fixed 700 ms
     // timer looked like it was doing this and was not: it touched Scheme for
@@ -537,11 +797,16 @@ Scope {
 
             var mGtk = stateOf("gtk"), mQt = stateOf("qt")
             var mKitty = stateOf("kitty"), mNiri = stateOf("niri")
+            var mBtop = stateOf("btop"), mAla = stateOf("alacritty")
+            var mTmux = stateOf("tmux"), mBat = stateOf("bat")
+            var mDelta = stateOf("delta"), mLazy = stateOf("lazygit")
 
             note("buchhwin render — palette " + Scheme.name +
                  " (" + Scheme.displayName + "), accent " + Config.theme.accent)
             note("  states: gtk=" + mGtk + " qt=" + mQt + " kitty=" + mKitty +
-                 " niri=" + mNiri + "   (theming.enabled " + Config.theming.enabled +
+                 " niri=" + mNiri + " btop=" + mBtop + " alacritty=" + mAla +
+                 " tmux=" + mTmux + " bat=" + mBat + " delta=" + mDelta +
+                 " lazygit=" + mLazy + "   (theming.enabled " + Config.theming.enabled +
                  ", theming.mode " + Config.theming.mode + ")")
 
             emitFile(mGtk, f1, root.cfg + "/gtk-3.0/gtk.css",
@@ -558,22 +823,43 @@ Scope {
                      niriColours, offText("//", "niri"), "niri colours", "niri")
             emitFile(mQt, f7, root.cfg + "/qt6ct/colors/buchhwin.conf",
                      qtColors, offText("#", "qt"), "qt6ct", "qt")
+            emitFile(mBtop, f8, root.cfg + "/btop/themes/buchhwin.theme",
+                     btopTheme, offText("#", "btop"), "btop", "btop")
+            emitFile(mAla, f9, root.cfg + "/alacritty/buchhwin.toml",
+                     alacrittyToml, offText("#", "alacritty"), "alacritty", "alacritty")
+            emitFile(mTmux, f10, root.cfg + "/tmux/buchhwin.conf",
+                     tmuxConf, offText("#", "tmux"), "tmux", "tmux")
+            emitFile(mDelta, f11, root.cfg + "/git/buchhwin-delta.gitconfig",
+                     function (mm) { return deltaGitconfig(mm, mBat !== "off") },
+                     offText("#", "delta"), "git-delta", "delta")
+            emitFile(mLazy, f12, root.cfg + "/lazygit/buchhwin.yml",
+                     lazygitYml, offText("#", "lazygit"), "lazygit", "lazygit")
 
-            // ⚠️ The eight remaining keys in Config.theming have no builder
-            // yet — btop, bat, fastfetch, git-delta, tmux, alacritty, starship
-            // and lazygit are the next milestone. They are named here rather
-            // than passed over in silence: a setting that does nothing is a
-            // promise, and the only way to find out it was empty must not be
-            // to try it.
-            note("  no writer yet: alacritty, btop, bat, fastfetch, delta, " +
-                 "tmux, starship, lazygit")
+            // bat last, because it is the one that has to be compiled after it
+            // is written.
+            var batBefore = written
+            emitFile(mBat, f13, root.cfg + "/bat/themes/buchhwin.tmTheme",
+                     batTheme, "<!-- buchhwin: theming is OFF for bat. -->\n",
+                     "bat", "bat")
+            root.batPending = written !== batBefore
 
-            note("done: " + written + " written, " + unchanged + " unchanged")
-            if (root.threw) {
-                note("buchhwin render — ABORT")
-                note("  " + root.threw + " target(s) threw: " + root.thrown.join(", "))
+            // ⚠️ Two keys still have no writer, and it is not an oversight:
+            // neither fastfetch nor starship has any include mechanism — read
+            // in their own binaries and --help output, both name a single
+            // config file that belongs to the user. Their colours come from the
+            // terminal's sixteen ANSI colours, which the kitty and alacritty
+            // themes above already set, so they follow the palette without a
+            // file of their own. Said out loud rather than silently skipped.
+            note("  no file of their own: fastfetch, starship — they follow the " +
+                 "terminal's ANSI colours (no include mechanism exists)")
+
+            if (root.batPending) {
+                note("  running bat cache --build (a theme file alone is invisible to bat)")
+                batGuard.start()
+                batCache.running = true
+                return
             }
-            Qt.callLater(Qt.quit)
+            root.finish()
         }
     }
 }

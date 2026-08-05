@@ -200,7 +200,15 @@ Scope {
         ["MOZ_ENABLE_WAYLAND", "1"],
         ["ELECTRON_OZONE_PLATFORM_HINT", "wayland"],
         ["XDG_SESSION_TYPE", "wayland"],
-        ["_JAVA_AWT_WM_NONREPARENTING", "1"]
+        ["_JAVA_AWT_WM_NONREPARENTING", "1"],
+        // ⚠️ THE ONE THEME POINTER THAT HAS TO BE AN ENVIRONMENT VARIABLE.
+        // lazygit reads exactly one config file, and its --help names the only
+        // way to add a second: "Comma separated list to custom config file(s)".
+        // Every other program we theme has an include of some kind; this one
+        // does not, so the pointer lives here instead of in a file of the
+        // user's. Ours is LAST, so anything they set themselves still wins.
+        ["LG_CONFIG_FILE", root.cfg + "/lazygit/config.yml," +
+                           root.cfg + "/lazygit/buchhwin.yml"]
         // ⚠️ GDK_BACKEND is deliberately absent. niri's own documentation:
         // "Do not set the GDK_BACKEND environment variable globally as this
         // will break the screencast portal." GTK apps pick Wayland on their

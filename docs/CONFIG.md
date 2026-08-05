@@ -54,10 +54,39 @@ font and `gtk-decoration-layout=:` all come out of the same generated file, so a
 GTK window gets its three title-bar buttons back and turns light. That is what
 "the way it would look without us" means here.
 
-**Keys with no writer yet:** `alacritty`, `btop`, `bat`, `fastfetch`, `delta`,
-`tmux`, `starship`, `lazygit`. They are accepted and listed in
-`/tmp/buchhwin-render.log` on every run as "no writer yet", so nobody has to
-find out by trying. Their generators are the next milestone.
+### What each program gets, and what points at it
+
+| Key | Generated file | What names it |
+|---|---|---|
+| `gtk` | `gtk-3.0/gtk.css`, `gtk-4.0/gtk.css` + both `settings.ini` | nothing — GTK reads them itself |
+| `qt` | `qt6ct/colors/buchhwin.conf` | `color_scheme_path` in `qt6ct.conf` |
+| `kitty` | `kitty/theme.conf` | `include theme.conf` in `kitty.conf` |
+| `niri` | `niri/colors.kdl` | `include optional=true` in the generated `config.kdl` |
+| `btop` | `btop/themes/buchhwin.theme` (37 keys) | `color_theme = "buchhwin"` in `btop.conf` |
+| `alacritty` | `alacritty/buchhwin.toml` | `[general] import` in `alacritty.toml` |
+| `tmux` | `tmux/buchhwin.conf` | `source-file` in `tmux.conf` |
+| `bat` | `bat/themes/buchhwin.tmTheme` | `--theme` in `bat/config` **plus `bat cache --build`** |
+| `delta` | `git/buchhwin-delta.gitconfig` | `[include]` in `~/.config/git/config` |
+| `lazygit` | `lazygit/buchhwin.yml` | `LG_CONFIG_FILE` in `environment.d` |
+
+Every pointer is seeded once by the installer and never edited again. If one of
+these files already exists without its pointer, the installer says so rather
+than reaching into it — and `bhctl doctor` keeps saying so.
+
+⚠️ **bat is the one with two steps.** A `.tmTheme` in the right folder is
+invisible to bat until `bat cache --build` compiles it. The renderer runs that
+itself, and only when the theme actually changed.
+
+⚠️ **`delta` is written into `~/.config/git/config`, never into `~/.gitconfig`.**
+Git reads both global files, so the include takes effect while a hand-written
+`~/.gitconfig` stays exactly as it was.
+
+**`fastfetch` and `starship` have no file of their own**, and that is not an
+omission: neither program has any include mechanism — each reads a single
+config file that belongs to you. Their colours come from the terminal's sixteen
+ANSI colours, which the kitty and alacritty themes above already set, so they
+follow the palette without us writing anything. The renderer says so on every
+run.
 
 **Only our own files are ever touched.** `kitty.conf`, `qt6ct.conf`, `btop.conf`
 and `~/.gitconfig` belong to you; the pointer lines in them are seeded once by

@@ -248,6 +248,38 @@ doctor)
         printf 'niri config MISSING — run: bhctl niri apply\n'
     fi
     printf 'startup     %s\n' "$(systemd-analyze --user critical-chain buchhwin-shell.service 2>/dev/null | grep -m1 '@' | sed 's/^ *//' || echo 'not measured')"
+    # ⚠️ THE PRICE OF THE TWO COPRs, paid where it can be seen.
+    #
+    # starship and lazygit are the only two packages here that Fedora does not
+    # ship, and taking a COPR means taking on somebody else's repository going
+    # away. That risk was accepted on the condition that it says so out loud
+    # rather than leaving two programs quietly missing after an update.
+    for pair in "starship:atim/starship" "lazygit:atim/lazygit"; do
+        p="${pair%%:*}"; repo="${pair##*:}"
+        if command -v "$p" >/dev/null 2>&1; then
+            printf '%-11s %s\n' "$p" "$("$p" --version 2>/dev/null | head -1)"
+        elif dnf repoquery --qf '%{name}' "$p" >/dev/null 2>&1 &&
+             [[ -n "$(dnf repoquery --qf '%{name}' "$p" 2>/dev/null)" ]]; then
+            printf '%-11s MISSING but available — sudo dnf install %s\n' "$p" "$p"
+        else
+            printf '%-11s MISSING and the copr %s does not resolve\n' "$p" "$repo"
+        fi
+    done
+    # Every generated theme needs something pointing at it. This is the same
+    # question tests/reachable.sh asks, asked on the machine you are sitting at.
+    miss=""
+    grep -qE '^ *include  *theme\.conf' "$CONFIG_HOME/kitty/kitty.conf" 2>/dev/null || miss+=" kitty"
+    grep -q 'colors/buchhwin\.conf' "$CONFIG_HOME/qt6ct/qt6ct.conf" 2>/dev/null || miss+=" qt6ct"
+    grep -qE '^color_theme *= *"buchhwin"' "$CONFIG_HOME/btop/btop.conf" 2>/dev/null || miss+=" btop"
+    grep -q 'buchhwin\.toml' "$CONFIG_HOME/alacritty/alacritty.toml" 2>/dev/null || miss+=" alacritty"
+    grep -q 'buchhwin\.conf' "$CONFIG_HOME/tmux/tmux.conf" 2>/dev/null || miss+=" tmux"
+    grep -q 'buchhwin' "$CONFIG_HOME/bat/config" 2>/dev/null || miss+=" bat"
+    grep -q 'buchhwin-delta' "$CONFIG_HOME/git/config" 2>/dev/null || miss+=" delta"
+    if [[ -n "$miss" ]]; then
+        printf 'theming     no pointer for:%s (their colours never arrive)\n' "$miss"
+    else
+        printf 'theming     every generated theme is pointed at\n'
+    fi
     # "as little XWayland as possible" is only a claim until something counts.
     if command -v niri >/dev/null && niri msg -j windows >/dev/null 2>&1; then
         if pgrep -x Xwayland >/dev/null 2>&1; then

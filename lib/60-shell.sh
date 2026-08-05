@@ -90,7 +90,10 @@ phase_shell() {
     # fresh machine none of these exist yet.
     mkdir -p "$CONFIG_HOME/niri" "$CONFIG_HOME/environment.d" \
              "$CONFIG_HOME/gtk-3.0" "$CONFIG_HOME/gtk-4.0" \
-             "$CONFIG_HOME/kitty" "$CONFIG_HOME/qt6ct/colors"
+             "$CONFIG_HOME/kitty" "$CONFIG_HOME/qt6ct/colors" \
+             "$CONFIG_HOME/btop/themes" "$CONFIG_HOME/alacritty" \
+             "$CONFIG_HOME/tmux" "$CONFIG_HOME/bat/themes" \
+             "$CONFIG_HOME/git" "$CONFIG_HOME/lazygit"
 
     # ⚠️ TWO OF THE GENERATED FILES ARE NOT READ BY ANYBODY UNLESS SOMETHING
     # POINTS AT THEM, and for months nothing did.
@@ -119,6 +122,74 @@ phase_shell() {
     elif ! grep -q 'buchhwin\.conf' "$CONFIG_HOME/qt6ct/qt6ct.conf"; then
         warn "qt6ct.conf exists but does not select colors/buchhwin.conf — Qt apps keep their own colours"
     fi
+
+    # The same shape for the six terminal programs, because it is the same
+    # problem six more times: we generate a theme, and something has to point
+    # at it. Seeded once, never edited afterwards — these files are the user's.
+    #
+    # Each pointer syntax was read in the program's own documentation or its
+    # --help, not remembered:
+    #   btop      "Themes should be placed in … $HOME/.config/btop/themes"  +
+    #             color_theme = "<name>"                     (btop --default-config)
+    #   alacritty import = [...] under [general]             (alacritty(5), GENERAL)
+    #   tmux      source-file, config at $XDG_CONFIG_HOME/tmux/tmux.conf (tmux(1))
+    #   bat       --theme in the config file                 (bat --config-file)
+    #   delta     git include.path — and ⚠️ into ~/.config/git/config, NEVER
+    #             ~/.gitconfig. git reads BOTH global files; measured with two
+    #             HOMEs, so a hand-written ~/.gitconfig stays untouched.
+    #   lazygit   has no include at all — its pointer is LG_CONFIG_FILE, written
+    #             into environment.d by tools/niri.qml. The file below only has
+    #             to EXIST so the list never names a missing file.
+    seed_pointer() {   # file  marker  what-it-does  content
+        local f="$1" marker="$2" what="$3" content="$4"
+        if [[ ! -f "$f" ]]; then
+            printf '%s' "$content" > "$f"
+            ok "$(basename "$f") seeded ($what)"
+        elif ! grep -qE "$marker" "$f"; then
+            warn "$(basename "$f") exists but does not $what — the palette will not reach it"
+        fi
+    }
+
+    seed_pointer "$CONFIG_HOME/btop/btop.conf" '^color_theme *= *"buchhwin"' \
+        'selects the generated theme' \
+        '#? buchhwin: colours come from themes/buchhwin.theme, regenerated on
+#? every palette change. Your own settings go below.
+color_theme = "buchhwin"
+'
+    seed_pointer "$CONFIG_HOME/alacritty/alacritty.toml" 'buchhwin\.toml' \
+        'import the generated theme' \
+        "# buchhwin: colours, font and transparency come from buchhwin.toml,
+# which is regenerated on every palette change. Yours go below — an import is
+# loaded BEFORE the importing file, so anything here wins.
+[general]
+import = [\"$CONFIG_HOME/alacritty/buchhwin.toml\"]
+"
+    seed_pointer "$CONFIG_HOME/tmux/tmux.conf" 'buchhwin\.conf' \
+        'source the generated theme' \
+        "# buchhwin: colours come from buchhwin.conf, regenerated on every
+# palette change. Your own settings go below.
+source-file \"$CONFIG_HOME/tmux/buchhwin.conf\"
+"
+    seed_pointer "$CONFIG_HOME/bat/config" '^--theme *= *"?buchhwin' \
+        'select the generated theme' \
+        '# buchhwin: the theme is built into bat cache from
+# themes/buchhwin.tmTheme. Your own options go below.
+--theme="buchhwin"
+'
+    seed_pointer "$CONFIG_HOME/git/config" 'buchhwin-delta\.gitconfig' \
+        'include the generated delta colours' \
+        "# buchhwin: git-delta's colours are generated into
+# buchhwin-delta.gitconfig and included from here. Your own ~/.gitconfig is
+# never touched — git reads both global files.
+[include]
+	path = $CONFIG_HOME/git/buchhwin-delta.gitconfig
+"
+    seed_pointer "$CONFIG_HOME/lazygit/config.yml" '.' \
+        'exist for LG_CONFIG_FILE' \
+        '# buchhwin: your lazygit settings. The generated colours are in
+# buchhwin.yml, and LG_CONFIG_FILE names both files — yours first, so anything
+# you set here wins.
+'
 
     # ⚠️ WITHOUT THIS FILE THE LOCK SCREEN CANNOT CHECK A PASSWORD. PamContext
     # names a service in /etc/pam.d and there is no sensible fallback: a locker
