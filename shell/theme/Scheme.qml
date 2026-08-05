@@ -195,9 +195,15 @@ Singleton {
     // "#rrggbb" for a semantic name, with the fallback behind it so a palette
     // that is missing a key degrades to a colour instead of to `undefined`,
     // which QML would render as black.
+    // What `hex()` answers for a name it does not know. Magenta because it is
+    // impossible to miss in a screenshot — and a named property rather than a
+    // literal in two places, so a test can ask "did anything come back unknown"
+    // without typing the colour again. tests/smoke.sh does exactly that.
+    readonly property string unknown: "#ff00ff"
+
     function hex(key) {
         var c = root.colors[key] || root.fallback[key]
-        return c ? "#" + c : "#ff00ff"      // magenta: impossible to miss in review
+        return c ? "#" + c : root.unknown
     }
 
     function color(key) { return Qt.color(hex(key)) }

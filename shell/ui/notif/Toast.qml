@@ -151,8 +151,14 @@ Item {
                     required property var modelData
                     interactive: true
 
+                    // ⚠️ NOT anchored. Pill sizes its inner Item from
+                    // `childrenRect`, so a child that anchors to that same
+                    // Item is a binding loop — the parent's size depends on the
+                    // child and the child's position depends on the parent.
+                    // QML logs it and carries on with whatever it computed
+                    // first, which is why it survived until the smoke test read
+                    // the log. Pill centres its content itself.
                     BarText {
-                        anchors.centerIn: parent
                         text: actionPill.modelData.text
                         font.pixelSize: Theme.fontSizeSm
                     }

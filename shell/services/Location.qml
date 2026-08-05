@@ -70,6 +70,17 @@ Singleton {
     readonly property bool known: root.name.length > 0 && !isNaN(root.lat)
     readonly property bool guessed: root.known && root.source !== "manual"
 
+    // ⚠️ Every service carries `available`, and this one did not. The rule
+    // exists so the ui can ASK rather than assume, and a service without it is
+    // used as though it were always there — here that would mean the weather
+    // and the sunrise schedule quietly working from a place of `NaN`. Missed
+    // for a whole milestone because nothing checked; tests/smoke.sh does now.
+    //
+    // "Available" for a place means we have one at all, however we got it —
+    // whether it was guessed or confirmed is a separate question, and that is
+    // what `guessed` is for.
+    readonly property bool available: root.known
+
     // The system's timezone, read rather than stored. A copy in our config
     // would drift, and then the clock and the weather would disagree about
     // which country this is.

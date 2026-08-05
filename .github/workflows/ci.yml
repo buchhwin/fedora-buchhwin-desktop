@@ -44,9 +44,13 @@ jobs:
         # swaylock. Asserting it here means every run proves it still holds.
         # jq is required by tests/all-palettes.sh, which exits 2 without it —
         # it was never installed explicitly before.
+        # material-icons-fonts is what tests/icons.sh measures glyphs in — the
+        # name in Fedora is "Material Icons Round", NOT the Symbols name the
+        # docs suggest, and that mismatch rendered every icon as tofu once.
         run: |
           dnf install -y --setopt=install_weak_deps=False \
-            quickshell qt6-qtdeclarative qt6-qtdeclarative-devel git-core niri jq
+            quickshell qt6-qtdeclarative qt6-qtdeclarative-devel git-core niri jq \
+            material-icons-fonts fontconfig
           for unwanted in waybar alacritty fuzzel swaylock; do
             if rpm -q "$unwanted" >/dev/null 2>&1; then
               echo "::error::$unwanted was pulled in despite install_weak_deps=False"
@@ -57,11 +61,32 @@ jobs:
         run: |
           qmllint-qt6 -I /usr/lib64/qt6/qml -I shell/ $(git ls-files 'shell/**/*.qml') \
             || echo "::warning::qmllint reported findings (not yet blocking)"
+
+      # ⚠️ THE CHECK A LINTER CANNOT DO, and the one the plan asked for in M1
+      # and never got. qmllint reads files; it does not build the object graph,
+      # so it cannot see a missing qmldir entry, a singleton shadowed by a Qt
+      # type, or a binding loop. Every one of those has broken this desktop.
+      # It found a real binding loop in its own first run.
+      - name: the shell actually builds, headless
+        run: bash tests/smoke.sh
+
+      # ⚠️ ALL of them. Eight suites existed and CI ran two, so six were only
+      # ever run by hand — which means they were green whenever somebody
+      # remembered, not whenever the code changed.
       - name: every palette resolves to a full token set
         run: bash tests/all-palettes.sh
-
       - name: the generated niri config parses, cleanly
         run: bash tests/niri-config.sh
+      - name: every icon name exists in the real font
+        run: bash tests/icons.sh
+      - name: the generated themes are actually reachable
+        run: bash tests/reachable.sh
+      - name: iCalendar round-trips, recurrences included
+        run: bash tests/calendar.sh
+      - name: coordinates, and the migration that moved them
+        run: bash tests/location.sh
+      - name: the wallpaper's palette, and where it is cached
+        run: bash tests/wallpaper.sh
 
   secrets:
     runs-on: ubuntu-latest
