@@ -34,7 +34,18 @@ PanelWindow {
     WlrLayershell.layer: WlrLayer.Top
 
     anchors { top: true; left: true; right: true }
-    implicitHeight: Config.notch.expandedHeight + Config.notch.flare
+
+    // The window is the ceiling for everything drawn in it, so it has to be at
+    // least as tall as the island ever gets. It used to be the constant
+    // `expandedHeight + flare`, which was invisible while every page fitted
+    // inside 135 px and became a hard crop the moment one did not — the
+    // calendar lost three of its six rows with no error anywhere.
+    //
+    // `islandH` is in the maximum on purpose: it is animated, and dropping the
+    // window to the collapsed size at the START of a close would cut the
+    // closing animation off halfway. The window shrinks when the shape has.
+    implicitHeight: Math.max(root.islandH, root.targetIslandHeight,
+                             Config.notch.expandedHeight) + Config.notch.flare
 
     exclusionMode: ExclusionMode.Ignore
     color: "transparent"            // literal-ok: absence of colour, not a colour
@@ -58,8 +69,14 @@ PanelWindow {
     readonly property real targetIslandWidth:
         root.expanded ? Math.max(Config.notch.minExpandedWidth, notch.implicitWidth)
                       : Config.notch.collapsedWidth
+    // Height works the way width already did: the configured number is a FLOOR,
+    // not a ceiling. `minExpandedWidth` was always documented as a lower bound
+    // and `expandedHeight` was not, which made the two axes behave differently
+    // for no reason — and a calendar, which genuinely needs six rows, was
+    // silently cropped top and bottom. The reference geometry is unchanged for
+    // every page that fits inside it; only pages that need more get more.
     readonly property real targetIslandHeight:
-        root.expanded ? Config.notch.expandedHeight
+        root.expanded ? Math.max(Config.notch.expandedHeight, notch.implicitHeight)
                       : Math.max(Config.bar.height, root.barH)
 
     // One pair of animated numbers drives the shape, the hit area and the
@@ -133,6 +150,10 @@ PanelWindow {
                 // The clock moves into the island exactly when the bar is not
                 // there to hold it.
                 showClock: !root.barEnabled
+                // For tray menus, which need a real window to open against.
+                // The bar passes the same thing; with the bar off this is the
+                // only one there is.
+                hostWindow: root
             }
         }
     }
