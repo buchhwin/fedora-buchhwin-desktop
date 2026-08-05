@@ -97,26 +97,23 @@ Singleton {
 
     property string _seen: ""
 
-    onFingerprintChanged: { root.log("fingerprint moved"); root._consider() }
+    onFingerprintChanged: { root.log("fingerprint moved, base=" + Scheme.colors.base); root._consider() }
 
-    // ⚠️ THE COLOURS ARE WATCHED BY SIGNAL, NOT BY THE BINDING ABOVE, and that
-    // is a measured correction rather than belt-and-braces.
+    // ⚠️ A BOUND PROPERTY, NOT `Connections`. This project already wrote the
+    // rule down after the first time it cost a day: "Connections { target:
+    // <Singleton> } on a singleton that is only just coming into existence
+    // misbehaves — use your own bound property and an on…Changed handler."
+    // Both of the forms tried before this were the forbidden ones: a JS block
+    // with an early `return` (whose skipped branch does not reliably register
+    // its dependencies) and a Connections on Scheme. Neither ever fired, while
+    // the palette demonstrably re-derived on disk.
     //
-    // `fingerprint` reads Scheme.colors, so in principle a change re-evaluates
-    // it. In practice it fired exactly once — at startup — and never again,
-    // while the palette demonstrably re-derived (the cache file on disk changed
-    // its `source` and its `base` colour). A binding whose first evaluation
-    // takes an early `return` does not reliably carry the dependencies of the
-    // branch it did not run, and this one returns "" until the config settles.
-    //
-    // So the signal is connected explicitly. The fingerprint still decides
-    // WHETHER anything changed; this only decides when to ask.
-    Connections {
-        target: Scheme
-        function onColorsChanged() { root._consider() }
-        function onReadyChanged() { root._consider() }
-        function onDarkChanged() { root._consider() }
-    }
+    // A plain binding has no branch to skip and no target to resolve late.
+    readonly property var schemeColors: Scheme.colors
+    readonly property bool schemeReady: Scheme.ready
+
+    onSchemeColorsChanged: root._consider()
+    onSchemeReadyChanged: root._consider()
 
     function _consider() {
         // Both guards matter. Before the config settles the fingerprint is
@@ -129,7 +126,7 @@ Singleton {
         if (root._seen === "") {
             // First settled state: record it, render nothing. See the note above.
             root._seen = root.fingerprint
-            root.log("armed — watching for colour and look changes")
+            root.log("armed — Scheme.name=" + Scheme.name + " base=" + Scheme.colors.base + " ready=" + Scheme.ready)
             return
         }
         if (root._seen === root.fingerprint)
