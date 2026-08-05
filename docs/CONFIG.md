@@ -17,8 +17,8 @@ desktop — which is what makes it safe to add settings without a migration.
 | `theming` | which programs we colour, and how — one state each, see below |
 | `look` | `rounding`, `borderWidth`, `gapsIn/Out`, opacities, `blur`, `blurPasses`, `shadows`, fonts, `fontSize`, `profile` |
 | `surfaces` | `notifications`, `osd`, `wallpaper` — each on its own |
-| `bar` / `notch` | geometry, and a monitor list (empty = all) |
-| `programs` | argument **lists**: `terminal`, `browser`, `fileManager`, `editor`, `imageViewer`, `video`, `launcher` |
+| `bar` / `notch` / `launcher` | geometry, and a monitor list (empty = all) |
+| `programs` | argument **lists**: `terminal`, `browser`, `fileManager`, `editor`, `imageViewer`, `video` |
 | `keys` | `mod` plus `binds`: `{ key, action, arg, desc }` |
 | `input` | `keyboard`, `touchpad`, `mouse`, `focusFollowsMouse`, `warpMouseToFocus` |
 | `windows` | `noCsd`, `floating`, `blockFromScreencast` |
@@ -92,6 +92,41 @@ run.
 and `~/.gitconfig` belong to you; the pointer lines in them are seeded once by
 the installer and never edited afterwards, not even by `off`.
 
+## The launcher
+
+```json
+"launcher": { "enabled": true, "width": 720, "height": 460, "monitors": [] }
+```
+
+`Super+D` or `Super+Space`. Type to search, arrow keys to move, Enter to start,
+Escape to close; Tab steps through the categories without leaving the keyboard.
+
+⚠️ **It is the one surface that opens in the MIDDLE of the screen**, and the only
+one that leaves the notch where it is — everything else opens at the notch, and
+the notch steps aside for it. That is why it is not a notch page and has its own
+ipc target: `qs -c buchhwin ipc call launcher toggle`.
+
+A fixed size, unlike the notch pages: those are as big as their content because
+their content is short, and a program list is not. A launcher that changes shape
+while you type is a moving target.
+
+**Where the list comes from.** Quickshell's `DesktopEntries` — the same
+freedesktop database every desktop reads, so a newly installed program appears
+without anything being rescanned. Three things are dropped or ignored, each of
+them a fault the predecessor had: `NoDisplay=true` entries (they exist to own a
+MIME type, not to be picked), `Actions` (one program is one row — listing them
+turned Evolution into twenty lines), and everything in `Categories` that is not
+a freedesktop **main** category, first match winning. `GTK`, `Qt`, `KDE` and
+`X-*` are not categories, however often they appear in that field.
+
+A program whose categories say nothing usable lands in **Other**, and a category
+with nothing in it is never offered.
+
+**Frequent** counts what you start from here, in
+`~/.local/state/buchhwin/app-usage.json`. It is data rather than a setting, so
+it is deliberately not in `shell.json` — and writing it there would mean
+rewriting your whole configuration every time you started a program.
+
 ## The wallpaper, and what survives a restart
 
 ```json
@@ -127,9 +162,9 @@ repository is public. `install.sh --wallpapers <dir>` copies them to
 
 ## Defaults worth knowing
 
-**Only the notch is on.** `bar.enabled` is `false` and `surfaces.dock` is
-`false`. The notch is the surface, not an ornament — so anything the bar would
-have carried needs a key and an ipc verb as well, or it is unreachable.
+**Only the notch is on.** `bar.enabled` is `false`, and there is no dock at all
+yet. The notch is the surface, not an ornament — so anything the bar would have
+carried needs a key and an ipc verb as well, or it is unreachable.
 
 **`look.profile: "minimal"`** is the one switch that turns the expensive things
 off everywhere: `blur { off }`, no shadows, shorter motion. It is the first

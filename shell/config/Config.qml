@@ -32,6 +32,7 @@ Singleton {
     readonly property alias clipboard: adapter.clipboard
     readonly property alias notch: adapter.notch
     readonly property alias bar: adapter.bar
+    readonly property alias launcher: adapter.launcher
 
     // Everything below feeds the generated niri config.
     readonly property alias programs: adapter.programs
@@ -141,9 +142,25 @@ Singleton {
             return
         }
         root.migrationError = ""
-        // Triggers onFileChanged → reload → onLoaded, where `needed` is now
-        // false. One pass, then it settles.
         file.setText(JSON.stringify(res.config, null, 2) + "\n")
+
+        // ⚠️ THE NEW NUMBER IS ADOPTED HERE, NOT WHEN THE FILE COMES BACK.
+        //
+        // The write triggers onFileChanged → reload → onLoaded, and until that
+        // round trip completes the adapter still reports the OLD version — so
+        // anything asking "is this config current" during the first run after a
+        // version bump gets the wrong answer. Measured: bumping to 5 made
+        // tests/smoke.sh fail on its first run on the test VM and pass on the
+        // second.
+        //
+        // Waiting for that notification is the same mistake theme/Scheme.qml
+        // documents at length: in a container it never arrives at all. The
+        // migration has already happened in memory, so the number is set from
+        // memory and the file is what the NEXT start reads.
+        //
+        // Only the version needs this. JsonAdapter drops every key it does not
+        // declare, so a removed key was never in the adapter to begin with.
+        adapter.version = Migrations.current
     }
 
     FileView {
@@ -177,7 +194,7 @@ Singleton {
             // only the migration chain quietly papering over it. Both now write
             // no version at all: a file without one reads as 0 and is migrated
             // forward, which is exactly the path a genuinely old file takes.
-            property int version: 4
+            property int version: 5
 
             property JsonObject theme: JsonObject {
                 property string palette: "everforest-dark"
@@ -380,6 +397,21 @@ Singleton {
                 property list<string> monitors: []
             }
 
+            // The launcher, which is the one surface that opens in the MIDDLE
+            // of the screen rather than at the notch — so the notch stays where
+            // it is while it is open.
+            //
+            // A fixed size, unlike the notch pages: those are as big as their
+            // content because their content is short, and a program list is
+            // not. A launcher that changes shape while you type is a moving
+            // target.
+            property JsonObject launcher: JsonObject {
+                property bool enabled: true
+                property int width: 720
+                property int height: 460
+                property list<string> monitors: []
+            }
+
             // The clipboard history page. Counts belong here rather than in the
             // page: a token decides what a row LOOKS like, a setting decides
             // how many of them you want to see. Anything that is a matter of
@@ -413,10 +445,13 @@ Singleton {
                 property list<string> editor: ["code"]
                 property list<string> imageViewer: ["loupe"]
                 property list<string> video: ["vlc"]
-                // Deliberately empty until M6 builds one. An empty list means
-                // the generator skips the binding entirely rather than writing
-                // a key that silently does nothing.
-                property list<string> launcher: []
+                // ⚠️ NO `launcher` KEY. There was one, empty, waiting for M6 to
+                // fill it with the name of some other program. M6 built the
+                // launcher instead, so the key would now point at a second one
+                // that nothing starts — and a setting nothing reads is the
+                // fault this project has removed four times. The launcher is
+                // opened by `ipc call launcher toggle`, like every other
+                // surface the shell owns.
             }
 
             // ---------------------------------------------------------------
@@ -520,6 +555,22 @@ Singleton {
                     { key: "Mod+C", action: "spawn-sh",
                       arg: "qs -c buchhwin ipc call notch calendar",
                       desc: "Calendar" },
+                    // ⚠️ TWO KEYS FOR ONE SURFACE, on purpose. Mod+D is what
+                    // niri's own default config binds a launcher to, so it is
+                    // the key somebody coming from any other setup will press
+                    // first; Mod+Space is the one somebody coming from a Mac
+                    // will press. Neither is used for anything else here, and a
+                    // launcher nobody can find is a launcher nobody uses.
+                    //
+                    // `ipc call launcher`, not `notch`: it is not a notch page
+                    // — it opens in the middle of the screen and leaves the
+                    // notch alone. See ipc/Ipc.qml.
+                    { key: "Mod+D", action: "spawn-sh",
+                      arg: "qs -c buchhwin ipc call launcher toggle",
+                      desc: "Launcher" },
+                    { key: "Mod+Space", action: "spawn-sh",
+                      arg: "qs -c buchhwin ipc call launcher toggle",
+                      desc: "Launcher" },
                     { key: "Mod+T", action: "spawn-sh",
                       arg: "qs -c buchhwin ipc call notch tray",
                       desc: "Tray" },

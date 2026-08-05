@@ -3,6 +3,7 @@
 #
 # Registered here because Quickshell loads through a virtual filesystem, where
 # QML's implicit same-folder rule does not apply. See common/qmldir.
+singleton Apps 1.0 Apps.qml
 singleton Compositor 1.0 Compositor.qml
 singleton Niri 1.0 Niri.qml
 singleton Power 1.0 Power.qml

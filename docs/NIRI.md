@@ -150,12 +150,19 @@ qs -c buchhwin ipc call notch collapse
 session menu took `Super+Shift+E`, the key that used to log you out without
 asking.
 
-### Keys that are not bound yet
+### The launcher, and the key that used to be missing
 
-`programs.launcher` is empty, so the launcher key is **not** generated. A
-binding that points at a program which does not exist would look like a
-feature and do nothing; the generator drops it instead. It appears
-automatically once M6 provides a launcher.
+`programs.launcher` is gone. It was an empty argument list waiting to be filled
+with the name of some other launcher, and the generator dropped the binding
+rather than write a key that did nothing. The shell has its own launcher now, so
+the key points at the shell instead of at a program:
+
+    Super+D      qs -c buchhwin ipc call launcher toggle
+    Super+Space  the same thing
+
+Two keys for one surface, on purpose: `Super+D` is what niri's own default
+config binds a launcher to, and `Super+Space` is what somebody coming from a Mac
+will press. Neither is used for anything else.
 
 ## Traps that cost a debugging round
 

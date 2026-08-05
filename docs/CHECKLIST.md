@@ -123,7 +123,7 @@ A broken `config.kdl` is not a disaster: the keys live in the compositor, and
 
 ## Deliberately not built yet
 
-Launcher, dock, settings window, greeter (M6–M9) · XWayland measurement (M11).
+Dock, settings window, greeter (M7–M9) · XWayland measurement (M11).
 Bar and island have been there since M3; notifications, the lock screen and the
 wallpaper picker with its derived scheme are done.
 
@@ -372,3 +372,34 @@ demonstrably right first — points 3 to 6 above.
       ANSI colours** — neither has an include mechanism. If you would rather
       they had real colours of their own, say so: that means we take over their
       config files, and you lose the ability to edit them freely.
+
+---
+
+# Checklist M6 — the launcher
+
+## Proven on screen, and end to end
+
+| | |
+|---|---|
+| Two columns | categories left, programs right, All and Frequent pinned above them |
+| It opens in the middle | and the notch stays where it is — the clock is still readable behind it |
+| `Super+D` opens it | sent through the Proxmox console, not over VNC |
+| Typing filters | "alac" → one result, the category column dims, the count says 1 |
+| Enter starts it | Alacritty ran, the launcher closed itself, and Frequent counted it |
+| Icons come from the icon theme | with the first letter on a tile where a program has none |
+| Two programs may share a name | nemo and Nautilus are both "Files" — the binary is shown to tell them apart, rather than one of them being dropped |
+| Empty categories are not offered | Media and Office are absent because nothing on the machine is in them |
+
+## What only you can check
+
+- [ ] **Does it feel fast enough to replace the terminal?** The test is not the
+      animation, it is whether you stop typing `alacritty &` into a shell.
+- [ ] **`Super+Space`** as well as `Super+D` — both are bound, and one of them is
+      probably the one your hands already know.
+- [ ] **A program with no icon in the theme**: does the letter tile read as a
+      stand-in, or does it look broken?
+- [ ] **Frequent, after a week.** It is counted from zero on the machine you use,
+      so it means nothing until you have used it.
+- [ ] **A machine with a lot of programs.** The test VM has sixteen; a laptop
+      with a full Fedora has several hundred, and scrolling and search behave
+      differently at that size.

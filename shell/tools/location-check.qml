@@ -91,7 +91,7 @@ Scope {
                     empty.config.location === undefined, true)
 
             note(root.failures === 0 ? "all good"
-                                     : root.failures + " Pruefung(en) fehlgeschlagen")
+                                     : root.failures + " check(s) failed")
             Qt.callLater(Qt.quit)
         }
     }

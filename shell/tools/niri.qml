@@ -404,6 +404,11 @@ Scope {
         // treatment. Their surface is sized to the cards, so the shadow niri
         // draws behind the whole thing is the cards' shadow.
         s += "\n" + surface("buchhwin-toast", L.rounding, blurOn)
+        // The launcher is a translucent pane like the pages, and the only one
+        // that sits in the middle of the screen — which is exactly where a
+        // missing blur rule would be most obvious, with the wallpaper showing
+        // through sharp behind a list of programs.
+        s += "\n" + surface("buchhwin-launcher", L.rounding, blurOn)
         return s
     }
 

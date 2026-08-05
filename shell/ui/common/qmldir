@@ -6,3 +6,4 @@ BarText 1.0 BarText.qml
 LevelRow 1.0 LevelRow.qml
 LocationPicker 1.0 LocationPicker.qml
 GlassPane 1.0 GlassPane.qml
+AppIcon 1.0 AppIcon.qml

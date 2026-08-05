@@ -202,7 +202,7 @@ Scope {
             root.eq("February 2032 starts on a Sunday", leading(2032, 1), 6)
 
             note(root.failures === 0 ? "all good"
-                                     : root.failures + " Pruefung(en) fehlgeschlagen")
+                                     : root.failures + " check(s) failed")
             Qt.callLater(Qt.quit)
         }
     }

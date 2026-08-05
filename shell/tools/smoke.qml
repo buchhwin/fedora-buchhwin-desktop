@@ -163,18 +163,27 @@ Scope {
             // answers with an error nobody sees. Checked against the config
             // rather than a list typed here, so a new binding cannot be added
             // without its verb.
-            var verbs = ["media", "volume", "quick", "notifications", "calendar",
-                         "tray", "wallpaper", "event", "brightness", "session",
-                         "clipboard", "collapse", "state"]
+            // ⚠️ BOTH TARGETS. The launcher is not a notch page — it has its
+            // own ipc target — and a check that only knew about `notch` would
+            // have let a typo in the launcher's key through silently, which is
+            // the one thing this check exists to prevent.
+            var verbs = ({
+                "notch": ["media", "volume", "quick", "notifications", "calendar",
+                          "tray", "wallpaper", "event", "brightness", "session",
+                          "clipboard", "collapse", "state"],
+                "launcher": ["toggle", "show", "hide", "state"]
+            })
             var binds = Config.keys.binds
             var orphans = []
             for (var b = 0; b < binds.length; b++) {
                 var arg = String(binds[b].arg || "")
-                var m = arg.match(/ipc call notch ([a-z]+)/)
-                if (m && verbs.indexOf(m[1]) < 0)
-                    orphans.push(binds[b].key + " → " + m[1])
+                var m = arg.match(/ipc call ([a-z]+) ([a-z]+)/)
+                if (!m)
+                    continue
+                if (!verbs[m[1]] || verbs[m[1]].indexOf(m[2]) < 0)
+                    orphans.push(binds[b].key + " → " + m[1] + " " + m[2])
             }
-            root.ok("no keybinding calls an ipc verb that does not exist" +
+            root.ok("no keybinding calls an ipc target or verb that does not exist" +
                     (orphans.length ? " (" + orphans.join(", ") + ")" : ""),
                     orphans.length === 0)
 

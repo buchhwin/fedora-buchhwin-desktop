@@ -192,6 +192,12 @@ Singleton {
     // ---------------------------------------------------------------- motion
     // Calm: three durations, one curve, no overshoot anywhere. Motion explains
     // a state change; if there is no state change there is no motion.
+    // Something that is still there but no longer the thing you are looking at
+    // — the launcher's category column while a search is running. A token
+    // rather than a number typed where it is needed, for the same reason every
+    // colour is: one dimmed thing and another dimmed thing have to match.
+    readonly property real dimmed: 0.45
+
     readonly property bool animate: Config.look.profile !== "minimal"
     readonly property int durFast: animate ? 120 : 0
     readonly property int durBase: animate ? 200 : 0

@@ -31,7 +31,7 @@ Singleton {
     // Must match Config's `version` default. A file with a lower number is
     // brought forward; a HIGHER number means the config was written by a newer
     // build than this one, which we must not "migrate" — see needed().
-    readonly property int current: 4
+    readonly property int current: 5
 
     // step[n] upgrades a config at version n to version n+1.
     // Each is a pure function: take the parsed object, return it changed.
@@ -108,6 +108,24 @@ Singleton {
             delete cfg.dock
             if (cfg.surfaces && typeof cfg.surfaces === "object")
                 delete cfg.surfaces.dock
+            return cfg
+        },
+
+        // 4 → 5: `programs.launcher` removed.
+        //
+        // It was an empty argument list waiting for M6 to name some other
+        // program to shell out to. M6 built the launcher instead, so the key
+        // now describes a second launcher that nothing would ever start — the
+        // same emptiness as the `dock` block above, and removed for the same
+        // reason rather than left as furniture.
+        //
+        // ⚠️ Only the key goes. Somebody who put a real command in it was
+        // asking for that program to be their launcher, and they lose that
+        // here — which is why it is a migration with a note and not a silent
+        // default change. The shell's own launcher is on Super+D.
+        function (cfg) {
+            if (cfg.programs && typeof cfg.programs === "object")
+                delete cfg.programs.launcher
             return cfg
         }
     ]

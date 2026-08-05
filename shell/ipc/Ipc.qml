@@ -57,6 +57,23 @@ Singleton {
         root.page = ""
     }
 
+    // ------------------------------------------------------------- launcher
+    //
+    // ⚠️ NOT A PAGE, AND THAT IS THE WHOLE POINT. Pages open AT the notch, so
+    // the notch steps aside while one is up (see ui/surface/ShellSurface.qml's
+    // `mode`). The launcher opens in the MIDDLE of the screen, and the brief is
+    // explicit that a surface there leaves the notch alone. Making it a page
+    // would hide the clock to show a program list on the other half of the
+    // screen.
+    //
+    // It is also the one surface that can be open at the same time as a page,
+    // which a single `page` string cannot express.
+    property bool launcher: false
+
+    function showLauncher() { root.launcher = true }
+    function hideLauncher() { root.launcher = false }
+    function toggleLauncher() { root.launcher = !root.launcher }
+
     Timer {
         id: idle
         interval: 1600
@@ -91,5 +108,17 @@ Singleton {
         function clipboard(): void { root.toggle("clipboard") }
         function collapse(): void { root.collapse() }
         function state(): string { return root.page }
+    }
+
+    // Its own target rather than a verb on `notch`, because it is not one:
+    // `qs -c buchhwin ipc call launcher toggle` says what it does, and the
+    // notch's verb list stays a list of the notch's pages.
+    IpcHandler {
+        target: "launcher"
+
+        function toggle(): void { root.toggleLauncher() }
+        function show(): void { root.showLauncher() }
+        function hide(): void { root.hideLauncher() }
+        function state(): string { return root.launcher ? "open" : "closed" }
     }
 }

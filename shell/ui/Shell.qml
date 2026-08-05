@@ -20,6 +20,7 @@ import "../theme"
 import "../ipc"
 import "../services" as Services
 import "surface"
+import "launcher"
 import "wallpaper"
 import "notif"
 import "common"
@@ -95,6 +96,10 @@ Scope {
             readonly property bool notchHere:
                 Config.notch.enabled && root.wants(Config.notch.monitors, modelData)
 
+            readonly property bool launcherHere:
+                Config.launcher.enabled
+                && root.wants(Config.launcher.monitors, modelData)
+
             // No image, no surface — an empty black layer over the compositor's
             // own background is not a wallpaper, it is a bug that looks like one.
             readonly property bool wallpaperHere:
@@ -136,6 +141,19 @@ Scope {
             LazyLoader {
                 activeAsync: perScreen.notchHere && Ipc.expanded
                 component: ClickCatcher { modelData: perScreen.modelData }
+            }
+
+            // The launcher, in the middle of the screen. Its own surface and
+            // NOT a notch page: it is the one thing the brief says may be open
+            // without the notch stepping aside, so it cannot go through
+            // `Ipc.page`.
+            //
+            // ⚠️ It does not need `notchHere`. A machine with the notch turned
+            // off still has to be able to start a program — tying the launcher
+            // to the notch would make one setting quietly disable the other.
+            LazyLoader {
+                activeAsync: perScreen.launcherHere && Ipc.launcher
+                component: LauncherSurface { modelData: perScreen.modelData }
             }
 
             // Arriving messages, top-right, on their own surface. Not a page of
