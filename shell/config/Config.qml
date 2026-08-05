@@ -198,6 +198,15 @@ Singleton {
                 // is the first thing to turn down on a slow machine.
                 property int blurPasses: 3
                 property bool shadows: true
+                // A shadow you notice as depth rather than as a shadow. These
+                // are niri's own numbers (CSS box-shadow semantics): softness
+                // is the blur radius, spread grows the rectangle, offset moves
+                // it down. Generous and soft, as in the reference screenshots —
+                // and the same three values apply to windows AND to our own
+                // surfaces, so nothing floats differently from anything else.
+                property int shadowSoftness: 28
+                property int shadowSpread: 2
+                property int shadowOffsetY: 6
                 property string fontUi: "Inter"
                 property string fontMono: "JetBrainsMono Nerd Font"
                 // ⚠️ "Material Symbols Rounded" is NOT what Fedora ships.
@@ -338,8 +347,11 @@ Singleton {
                     // --- windows --------------------------------------------
                     { key: "Mod+Q",       action: "close-window", desc: "Fenster schliessen", repeat: false },
                     { key: "Alt+F4",      action: "close-window", desc: "Fenster schliessen", repeat: false },
-                    { key: "Mod+F",       action: "maximize-column",   desc: "Maximieren" },
-                    { key: "Mod+Shift+F", action: "fullscreen-window", desc: "Vollbild" },
+                    // Fullscreen is the one people reach for, so it gets the
+                    // short key. `fullscreen-window` is already a toggle, so the
+                    // same press brings the window back.
+                    { key: "Mod+F",       action: "fullscreen-window", desc: "Vollbild" },
+                    { key: "Mod+Shift+F", action: "maximize-column",   desc: "Maximieren" },
                     { key: "Mod+W",       action: "toggle-column-tabbed-display", desc: "Spalte als Reiter" },
                     { key: "Mod+O",       action: "toggle-overview",   desc: "Uebersicht" },
                     { key: "Mod+Shift+Slash", action: "show-hotkey-overlay", desc: "Tastenuebersicht" },
@@ -465,6 +477,18 @@ Singleton {
                 property bool noCsd: true
                 // Programs that must never be recorded or streamed.
                 property list<string> blockFromScreencast: []
+                // Windows that get the wallpaper blurred behind them.
+                //
+                // ⚠️ Blur is only VISIBLE where the window is translucent —
+                // an opaque window covers it completely. The terminal is here
+                // because look.opacityTerminal makes it see-through; adding an
+                // opaque application would cost the GPU work and show nothing.
+                //
+                // niri turns on "xray" automatically alongside blur, which
+                // blurs the wallpaper ONCE and reuses it for every window
+                // instead of recomputing per window per frame. That is the
+                // cheap path and the reason this is affordable on a laptop.
+                property list<string> blurred: ["kitty"]
                 // app-ids that should open floating.
                 property list<string> floating: []
             }

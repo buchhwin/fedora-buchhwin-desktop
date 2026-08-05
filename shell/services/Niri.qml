@@ -37,6 +37,28 @@ Singleton {
 
     property bool _connected: false
 
+    // Is the focused window filling its output?
+    //
+    // ⚠️ niri does not say. There is no `is_fullscreen` on a window — measured
+    // on 26.04, the fields are app_id, focus_timestamp, id, is_floating,
+    // is_focused, is_urgent, layout, pid, title, workspace_id. What there is,
+    // is the size, and a fullscreen window's `window_size` is EXACTLY the
+    // output's logical size (1280×800 measured, against 608×734 tiled).
+    //
+    // The honest limit: with `gaps 0` AND no reserved strip, an ordinary tiled
+    // window would measure the same. With the defaults this desktop ships
+    // (gaps 16, a 34 px strut) it cannot — but that is a property of the
+    // settings, not a law, so it is written down rather than assumed.
+    //
+    // The caller supplies the size, because the service has no business
+    // knowing which screen anybody is looking at.
+    function isFullscreen(w, screenW, screenH) {
+        if (!w || !w.layout || !w.layout.window_size)
+            return false
+        var s = w.layout.window_size
+        return Math.abs(s[0] - screenW) < 2 && Math.abs(s[1] - screenH) < 2
+    }
+
     readonly property var focusedWindow: {
         for (var i = 0; i < windows.length; i++)
             if (windows[i].id === focusedWindowId)
@@ -169,6 +191,36 @@ Singleton {
                 if (root.windows[n].id !== closed) rest.push(root.windows[n])
             root.windows = rest
             if (root.focusedWindowId === closed) root.focusedWindowId = -1
+            return
+        }
+        if (e.WindowLayoutsChanged !== undefined) {
+            // ⚠️ This used to be in the ignore list, and that is what made
+            // fullscreen invisible to the shell.
+            //
+            // niri does NOT report `is_fullscreen` on a window — measured, the
+            // fields are app_id, focus_timestamp, id, is_floating, is_focused,
+            // is_urgent, layout, pid, title, workspace_id. The only signal is
+            // the SIZE, and the size arrives here: one entry per changed
+            // window, as [id, layout].
+            var ch = e.WindowLayoutsChanged.changes || []
+            if (!ch.length) return
+            var upd = root.windows.slice()
+            for (var c = 0; c < ch.length; c++) {
+                var wid = ch[c][0]
+                var lay = ch[c][1]
+                for (var u = 0; u < upd.length; u++) {
+                    if (upd[u].id === wid) {
+                        // A copy, or the assignment below sees the same object
+                        // it already had and no binding re-evaluates.
+                        var copy = {}
+                        for (var key in upd[u]) copy[key] = upd[u][key]
+                        copy.layout = lay
+                        upd[u] = copy
+                        break
+                    }
+                }
+            }
+            root.windows = upd
             return
         }
         if (e.WindowFocusChanged !== undefined) {

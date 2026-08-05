@@ -32,6 +32,12 @@ Singleton {
     // say which it was.
     readonly property bool configFailed: Services.Niri.configFailed
 
+    // Whether the focused window fills the given screen. The screen comes from
+    // the caller — a surface knows which output it is on, a service does not.
+    function focusedIsFullscreen(screenW, screenH) {
+        return Services.Niri.isFullscreen(Services.Niri.focusedWindow, screenW, screenH)
+    }
+
     function focusWorkspace(idx) { Services.Niri.focusWorkspace(idx) }
     function focusWindow(id) { Services.Niri.focusWindow(id) }
     function toggleOverview() { Services.Niri.toggleOverview() }

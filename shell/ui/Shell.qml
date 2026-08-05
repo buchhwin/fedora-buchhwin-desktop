@@ -78,8 +78,16 @@ Scope {
                 }
             }
 
-            // Only while the island is open. A permanent fullscreen surface
-            // that swallows clicks is the kind of bug nobody suspects.
+            // The pages, floating under the notch. Its own window so that both
+            // it and the notch are exactly the size of what they draw — niri
+            // blurs and shadows the whole surface, invisible margins included.
+            LazyLoader {
+                activeAsync: perScreen.notchHere && Ipc.expanded
+                component: OverlaySurface { modelData: perScreen.modelData }
+            }
+
+            // Only while a page is open. A permanent fullscreen surface that
+            // swallows clicks is the kind of bug nobody suspects.
             LazyLoader {
                 activeAsync: perScreen.notchHere && Ipc.expanded
                 component: ClickCatcher { modelData: perScreen.modelData }

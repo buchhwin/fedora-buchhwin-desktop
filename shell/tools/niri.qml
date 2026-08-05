@@ -165,7 +165,19 @@ Scope {
         s += "    }\n"
         s += "    focus-ring {\n        off\n    }\n"
         s += "    shadow {\n"
-        s += (Theme.shadows ? "        on\n" : "        off\n")
+        if (Theme.shadows) {
+            s += "        on\n"
+            // Same three numbers as our own surfaces, so a window and the notch
+            // sit at the same apparent height above the wallpaper.
+            s += "        softness " + L.shadowSoftness + "\n"
+            s += "        spread " + L.shadowSpread + "\n"
+            s += "        offset x=0 y=" + L.shadowOffsetY + "\n"
+            // niri cannot know a client's own corner radius, so without this
+            // the shadow shows through the rounded corners as square artefacts.
+            s += "        draw-behind-window true\n"
+        } else {
+            s += "        off\n"
+        }
         s += "    }\n"
         s += "    struts {\n"
         s += "        left " + L.gapsIn + "\n"
@@ -240,6 +252,43 @@ Scope {
         return s
     }
 
+    // ------------------------------------------------------------ animations
+    // niri's own motion, on the shell's clock.
+    //
+    // Without this the compositor animates to its defaults — springs, and
+    // ease-out-expo at 150 ms — while the island moves at 120/200/320 ms with a
+    // soft curve. Two rhythms on one screen is exactly the "everything looks
+    // like one system" promise coming apart, and it is the kind of difference
+    // people feel without being able to name.
+    //
+    // ⚠️ Durations, not springs. A spring overshoots by definition, and the
+    // brief rules overshoot out: fluid, not springy.
+    function animationsSection() {
+        if (Config.look.profile === "minimal") {
+            // One line, and every animation in the compositor stops. This is the
+            // switch to reach for on a slow machine.
+            return "animations {\n    off\n}\n"
+        }
+        var fast = Theme.durFast, base = Theme.durBase, slow = Theme.durSlow
+        function anim(name, ms) {
+            return "    " + name + " {\n" +
+                   "        duration-ms " + ms + "\n" +
+                   "        curve \"ease-out-cubic\"\n" +
+                   "    }\n"
+        }
+        var s = "animations {\n"
+        s += anim("workspace-switch", base)
+        s += anim("window-open", base)
+        s += anim("window-close", fast)
+        s += anim("horizontal-view-movement", base)
+        s += anim("window-movement", base)
+        s += anim("window-resize", base)
+        s += anim("config-notification-open-close", slow)
+        s += anim("overview-open-close", base)
+        s += "}\n"
+        return s
+    }
+
     // ------------------------------------------------------------- rules
     function windowRules() {
         var L = Config.look
@@ -260,6 +309,15 @@ Scope {
             s += "    open-floating true\n"
             s += "}\n"
         }
+        // Blur behind the windows that are translucent enough to show it.
+        var bw = Config.windows.blurred
+        for (var b = 0; b < bw.length; b++) {
+            s += "\nwindow-rule {\n"
+            s += "    match app-id=" + q("^" + bw[b] + "$") + "\n"
+            s += "    background-effect {\n        blur true\n    }\n"
+            s += "}\n"
+        }
+
         var bl = Config.windows.blockFromScreencast
         for (var j = 0; j < bl.length; j++) {
             s += "\nwindow-rule {\n"
@@ -273,21 +331,50 @@ Scope {
     function layerRules() {
         // The namespace is a public interface: the shell's layer surfaces are
         // named buchhwin-* and these rules match them. Renaming one later
-        // silently drops its blur, so they do not get renamed.
-        if (Config.look.profile === "minimal" || !Config.look.blur)
-            return "// Blur off (look.profile minimal): no layer effects.\n"
-        var s = "layer-rule {\n"
-        s += "    match namespace=" + q("^buchhwin-notch$") + "\n"
-        s += "    background-effect {\n"
-        s += "        blur true\n"
-        s += "    }\n"
-        s += "}\n"
-        s += "\nlayer-rule {\n"
-        s += "    match namespace=" + q("^buchhwin-bar$") + "\n"
-        s += "    background-effect {\n"
-        s += "        blur true\n"
-        s += "    }\n"
-        s += "}\n"
+        // silently drops its effects, so they do not get renamed.
+        //
+        // ⚠️ TWO THINGS NIRI'S DOCS SAY THAT DECIDE THIS WHOLE FUNCTION:
+        //
+        // 1. "niri has no way of knowing about invisible margins, and will draw
+        //    the shadow behind the entire surface." Blur behaves the same. So a
+        //    surface with a transparent border gets a blurred, colour-fringed
+        //    halo — which is exactly what "the colours bug out around the
+        //    notch" turned out to be. Our surfaces are sized to what they draw.
+        //
+        // 2. "Layer surface shadows always need to be enabled with a layer
+        //    rule" — the `shadow` block in the layout section does NOT reach
+        //    them. Which is why the shell's own surfaces had no shadow at all
+        //    while every window did.
+        var L = Config.look
+        var s = ""
+
+        function surface(ns, radius, blur) {
+            var r = "layer-rule {\n"
+            r += "    match namespace=" + q("^" + ns + "$") + "\n"
+            r += "    geometry-corner-radius " + radius + "\n"
+            if (Theme.shadows) {
+                r += "    shadow {\n        on\n"
+                r += "        softness " + L.shadowSoftness + "\n"
+                r += "        spread " + L.shadowSpread + "\n"
+                r += "        offset x=0 y=" + L.shadowOffsetY + "\n"
+                r += "    }\n"
+            }
+            if (blur) {
+                r += "    background-effect {\n        blur true\n    }\n"
+            }
+            r += "}\n"
+            return r
+        }
+
+        var blurOn = !(L.profile === "minimal" || !L.blur)
+
+        // ⚠️ NO BLUR BEHIND THE NOTCH. It is near-black and opaque, so there was
+        // never anything to see through it — the blur bought nothing and cost
+        // both the halo and a full-screen GPU read per frame. Blur belongs where
+        // something is actually translucent.
+        s += surface("buchhwin-notch", L.rounding, false)
+        s += "\n" + surface("buchhwin-overlay", L.rounding, blurOn)
+        s += "\n" + surface("buchhwin-bar", 0, blurOn)
         return s
     }
 
@@ -389,6 +476,7 @@ Scope {
         parts.push(inputSection())
         parts.push(outputsSection())
         parts.push(layoutSection())
+        parts.push(animationsSection())
         // AFTER layout, on purpose: an include overrides what came before it,
         // so the colours have to be read after the structure that they tint.
         parts.push("// Colours, written by tools/render.qml on every palette change.\n" +
