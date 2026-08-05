@@ -146,8 +146,9 @@ qs -c buchhwin ipc call notch media
 qs -c buchhwin ipc call notch collapse
 ```
 
-`Super+M` was the predecessor's power menu. That does not exist yet; when the
-session menu arrives in M5 one of the two has to move.
+`Super+M` was the predecessor's power menu. Nothing had to move in the end: the
+session menu took `Super+Shift+E`, the key that used to log you out without
+asking.
 
 ### Keys that are not bound yet
 

@@ -273,3 +273,35 @@ Wetterfeld ohne Eingabefeld für den Ort auf einem fremden Gerät nur hübsch l�
 die Oberfläche dafür fehlt bewusst noch: ein falsches Löschen trifft einen echten
 Termin, und dafür will ich erst, dass die Anzeige nachweislich stimmt — Punkte 3 bis 6
 oben.
+
+
+---
+
+# Prüfliste M5 — Sitzung, Helligkeit, Lautstärke
+
+## Am Bildschirm belegt
+
+| | |
+|---|---|
+| Sitzungsmenü | fünf Kacheln, alle Symbole richtig, Tastatur-Hinweis darunter |
+| Lautstärke ist wieder dezent | ~256 × 34 statt 619 × 135, dünne Spur |
+| Der Blur folgt der Insel | kein blurriges Fünftel mehr über dem Schirm |
+| Fenster sind Bubbles | Abstand ringsum, runde Ecken, Oberkante sichtbar |
+| Alle 21 Symbolnamen lösen auf | `tests/icons.sh` misst sie in der echten Schrift |
+| Keine Taste doppelt belegt | `tests/niri-config.sh` prüft es jetzt |
+
+## Was nur du prüfen kannst
+
+- [ ] **Mausrad über der Lautstärke-Seite** ändert sie in 5-%-Schritten, und die
+      Seite bleibt offen, solange du drehst.
+- [ ] **`Super+Shift+E`** → Menü. Eine der drei rechten Kacheln antippen: sie muss
+      **fragen**, nicht sofort handeln. Escape nimmt die Frage zurück, ein zweites
+      Mal führt aus. ⚠️ Vorsicht beim Ausprobieren von „Ausschalten".
+- [ ] **`Super+Ctrl+L`** sperrt sofort (nicht `Super+L`, das ist die Navigation).
+- [ ] **Helligkeitstasten am Laptop**: das Bild wird heller **und** die Insel zeigt
+      den Wert. ⚠️ Gegenprobe: mit gestopptem Shell
+      (`systemctl --user stop buchhwin-shell`) müssen die Tasten das Bild
+      **trotzdem** heller machen — nur ohne Anzeige.
+- [ ] **Wie fühlen sich die Übergänge an?** Der Inhalt soll sich in die Form
+      *hineinsetzen*, nicht darüber einblenden — und nirgends nachfedern.
+- [ ] **Sind die Abstände der Fenster recht so?** `look.gapsOut` steht auf 16.
