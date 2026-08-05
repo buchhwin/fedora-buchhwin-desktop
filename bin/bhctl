@@ -24,10 +24,24 @@ EOF
 # One runner for every tool. This used to be a second copy of the installer's
 # render(), with the tool name baked in — so adding a tool meant editing both.
 run_tool() {
+    local log="/tmp/buchhwin-$1.log"
     BUCHHWIN_TOOL="$1" QT_QPA_PLATFORM=offscreen timeout 60 qs -p "$REPO_DIR/shell" >/dev/null 2>&1
-    # The tools exit 0 even when they abort; their report is the real result.
-    if grep -q ABORT "/tmp/buchhwin-$1.log" 2>/dev/null; then
-        sed -n '/ABORT/,$p' "/tmp/buchhwin-$1.log" >&2
+    local code=$?
+    # ⚠️ TWO DIFFERENT FAILURES, and this used to see only one of them.
+    #
+    # A tool that REFUSES exits 0 and says ABORT in its report — that is the
+    # designed path, and the report is the only place it shows. A tool that
+    # CRASHES says nothing at all, and the exit code was being thrown away
+    # here, so a segfault came back as success while the log still held the
+    # previous run's cheerful "done". lib/common.sh has always checked the
+    # code; this is the copy that did not.
+    if (( code != 0 )); then
+        echo "$1 crashed or timed out (exit $code) — see $log" >&2
+        [[ -f "$log" ]] && tail -3 "$log" >&2
+        return 1
+    fi
+    if grep -q ABORT "$log" 2>/dev/null; then
+        sed -n '/ABORT/,$p' "$log" >&2
         return 1
     fi
     return 0

@@ -37,6 +37,23 @@ Scope {
 
     function note(s) { report += s + "\n"; log.setText(report) }
 
+    // ⚠️ SAY THAT WE STARTED, BEFORE ANYTHING CAN GO WRONG.
+    //
+    // note() overwrites the log rather than appending, so the file describes
+    // one run — but only from the FIRST note(), and until now that was inside
+    // WaitFor's onReady. A process that died before ever getting there (a QML
+    // load error, a segfault) left the PREVIOUS run's text lying there, and
+    // every reader treats that file as this run's result: bin/bhctl greps it
+    // for ABORT, lib/common.sh reports from it, tests/reachable.sh is a wrapper
+    // around both. That is not theory — it cost a whole attempt at the
+    // per-target states, where "the renderer aborted" was read off a stale log
+    // and the real failure was never seen.
+    //
+    // With this line a log that ends at "start" is a crash, a log that ends at
+    // "ABORT" is a refusal, and a log that ends at "done" is a run. Three
+    // distinguishable outcomes, one file write on tmpfs.
+    Component.onCompleted: note("buchhwin render — start")
+
     // Every file goes through here so that "what did the renderer touch" is a
     // single list, and so a failure is reported rather than swallowed.
     //

@@ -28,9 +28,33 @@ trap 'rm -rf "$work"' EXIT
 cfg="$work/config"
 mkdir -p "$cfg"
 
-XDG_CONFIG_HOME="$cfg" timeout 120 bash install.sh --only shell >/dev/null 2>&1
+# ⚠️ KEEP BOTH REPORTS, because "not written" on its own is a dead end.
+#
+# That is exactly what this suite said the last time it went red, and it is
+# what a refusal, a crash and a genuinely skipped file all look like from out
+# here. The renderer's own log tells the three apart — it ends at "start" when
+# the process died, at "ABORT" when it refused, at "done" when it ran — and the
+# installer's output carries the warning run_tool prints. Both were being sent
+# to /dev/null, so the one run that mattered was undiagnosable.
+#
+# The log is a fixed path shared by every run, so it is copied HERE: this
+# script installs twice, and the second run would otherwise overwrite the
+# evidence from the first.
+rm -f /tmp/buchhwin-render.log
+XDG_CONFIG_HOME="$cfg" timeout 120 bash install.sh --only shell >"$work/install.log" 2>&1
+cp -f /tmp/buchhwin-render.log "$work/render.log" 2>/dev/null || true
+
+why() {
+    printf '        ---- renderer log ----\n'
+    sed 's/^/        /' "$work/render.log" 2>/dev/null || printf '        (no log at all)\n'
+    if grep -qE 'warn|fail|abort' "$work/install.log" 2>/dev/null; then
+        printf '        ---- installer complaints ----\n'
+        grep -iE 'warn|fail|abort' "$work/install.log" | sed 's/^/        /'
+    fi
+}
 
 # Written at all.
+missing=0
 for pair in \
     "gtk3 css|$cfg/gtk-3.0/gtk.css" \
     "gtk3 settings|$cfg/gtk-3.0/settings.ini" \
@@ -39,8 +63,10 @@ for pair in \
     "qt6ct colours|$cfg/qt6ct/colors/buchhwin.conf"
 do
     label="${pair%%|*}"; path="${pair##*|}"
-    [[ -s "$path" ]] && pass "written: $label" || bad "not written: $label ($path)"
+    if [[ -s "$path" ]]; then pass "written: $label"
+    else bad "not written: $label ($path)"; missing=1; fi
 done
+(( missing )) && why
 
 # Reachable — the half that used to be missing.
 if grep -qE '^ *include  *theme\.conf' "$cfg/kitty/kitty.conf" 2>/dev/null; then
