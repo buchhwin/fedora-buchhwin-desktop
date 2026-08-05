@@ -7,9 +7,14 @@ pragma ComponentBehavior: Bound
 // handful of sliders worth reaching for, and the way into the settings. Every
 // other page is a single answer to a single question.
 //
-// Two columns, because the island is wide and short. The calendar is the tall
-// thing, so it takes the left side and sets the height; everything else stacks
-// beside it.
+// TABS, and that was a decision rather than a default. Media could have been a
+// third column, but the panel already carries a month, the weather, the sliders
+// and the way into the settings — a fourth thing beside them stops being a
+// glance and starts being a window. Two tabs keep each view as sparse as it was.
+//
+// Two columns inside the overview, because the island is wide and short. The
+// calendar is the tall thing, so it takes the left side and sets the height;
+// everything else stacks beside it.
 //
 // ⚠️ The calendar here is the SAME CalendarPage, not a copy of it. A second
 // month grid would drift from the first — different weekday order, different
@@ -22,11 +27,63 @@ import "../../../ipc"
 import "../../../services" as Services
 import "../../common"
 
-RowLayout {
+ColumnLayout {
     id: root
-    spacing: Theme.space5
+    spacing: Theme.space4
 
-    CalendarPage {
+    // 0 = overview, 1 = media. An int rather than a string: there are two, and
+    // a name would invite a third without anybody deciding to add one.
+    property int tab: 0
+
+    // ------------------------------------------------------------------- tabs
+    RowLayout {
+        Layout.fillWidth: true
+        spacing: Theme.space2
+
+        Repeater {
+            model: ["Übersicht", "Medien"]
+
+            Pill {
+                id: tabPill
+                required property int index
+                required property string modelData
+                interactive: true
+                // Accent marks the tab you are on, and nothing else on this row.
+                active: root.tab === tabPill.index
+                BarText {
+                    text: tabPill.modelData
+                    font.pixelSize: Theme.fontSizeSm
+                    color: tabPill.active ? Theme.accentFg : Theme.fgMuted
+                }
+                TapHandler { onTapped: root.tab = tabPill.index }
+            }
+        }
+
+        Item { Layout.fillWidth: true }
+
+        // The gear sits on the tab row rather than inside a tab: it leaves the
+        // panel entirely, so it does not belong to either view.
+        Pill {
+            interactive: true
+            Icon { text: "settings"; size: Theme.fontSizeLg }
+            TapHandler { onTapped: root.openSettings() }
+        }
+    }
+
+    // ---------------------------------------------------------------- media
+    // The same MediaPage the island uses on its own — artwork, title, transport.
+    // A second one would drift, exactly as a second calendar would.
+    MediaPage {
+        Layout.fillWidth: true
+        visible: root.tab === 1
+    }
+
+    // --------------------------------------------------------------- overview
+    RowLayout {
+        visible: root.tab === 0
+        spacing: Theme.space5
+
+        CalendarPage {
         Layout.alignment: Qt.AlignTop
     }
 
@@ -126,25 +183,17 @@ RowLayout {
             font.pixelSize: Theme.fontSizeSm
         }
 
-        // ------------------------------------------------------------- footer
-        RowLayout {
-            Layout.fillWidth: true
-            spacing: Theme.space2
-
-            BarText {
-                Layout.fillWidth: true
-                text: root.note
-                font.pixelSize: Theme.fontSizeSm
-                color: Theme.fgMuted
-                elide: Text.ElideRight
-            }
-
-            Pill {
-                interactive: true
-                Icon { text: "settings"; size: Theme.fontSizeLg }
-                TapHandler { onTapped: root.openSettings() }
-            }
         }
+    }
+
+    // Why the gear does not open anything yet. One line, and it clears itself.
+    BarText {
+        Layout.fillWidth: true
+        visible: root.note.length > 0
+        text: root.note
+        font.pixelSize: Theme.fontSizeSm
+        color: Theme.fgMuted
+        wrapMode: Text.WordWrap
     }
 
     // The gear will open the settings window. It does not exist yet (M8), and

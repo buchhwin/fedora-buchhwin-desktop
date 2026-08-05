@@ -31,6 +31,12 @@ Singleton {
         return title.length ? title : artist
     }
 
+    readonly property bool canNext: available && player.canGoNext
+    readonly property bool canPrevious: available && player.canGoPrevious
+
+    function next() { if (root.canNext) root.player.next() }
+    function previous() { if (root.canPrevious) root.player.previous() }
+
     function toggle() {
         if (!available || !player.canTogglePlaying) return
         if (player.isPlaying) player.pause()
