@@ -25,6 +25,7 @@ import Quickshell.Wayland
 import "../../theme"
 import "../../config"
 import "../../ipc"
+import "../common"
 import "../notch"
 
 PanelWindow {
@@ -62,15 +63,21 @@ PanelWindow {
 
     mask: Region { item: card }
 
-    Rectangle {
+    Item {
         id: card
         anchors.centerIn: parent
 
         implicitWidth: content.implicitWidth
         implicitHeight: content.implicitHeight
 
-        radius: Theme.radiusLg
-        color: Theme.panelBg
+        // The pane, drawn behind the page rather than as the page's own
+        // background: a lit rim has to sit on top of the fill, and a Rectangle
+        // can only have one flat border colour.
+        GlassPane {
+            anchors.fill: parent
+            radius: Theme.radiusLg
+            fill: Theme.panelBg
+        }
 
         // Grows out of nothing rather than appearing: slightly small and
         // slightly high, so it reads as coming from the notch above it. No

@@ -110,6 +110,31 @@ Singleton {
     readonly property color scrim:     alpha(bgDeep, 0.55)
     readonly property color shadow:    alpha("#000000", dark ? 0.45 : 0.18)
 
+    // ----------------------------------------------------------------- glass
+    //
+    // What makes a translucent panel read as a pane of glass rather than as a
+    // tinted rectangle is its EDGE, not its middle. The middle is blur, and the
+    // compositor already does that — for free, once, via xray. So these four
+    // tokens describe a rim and a sheen and nothing else.
+    //
+    // ⚠️ Deliberately NOT a shader. Refraction needs to sample what lies behind
+    // the window, and a layer surface cannot see that — only the compositor
+    // can. A shader here would have to draw and blur its own copy of the
+    // wallpaper to refract, duplicating the one thing niri already does
+    // cheaply, and paying for it every frame on a laptop. A gradient costs one
+    // draw and no per-frame work.
+    //
+    // Brightest along the top edge, where light would land; a weaker return
+    // along the bottom, which is the light bouncing back up through the pane —
+    // that faint lower hairline is the most recognisable part of the look.
+    readonly property color glassRimTop:    alpha(fg, dark ? 0.30 : 0.42)
+    readonly property color glassRimSide:   alpha(fg, dark ? 0.08 : 0.14)
+    readonly property color glassRimBottom: alpha(fg, dark ? 0.18 : 0.26)
+    // The sheen lies over the top of the pane and fades out well before the
+    // middle. Any further and it stops reading as light and starts reading as
+    // a lighter background.
+    readonly property color glassSheen:     alpha(fg, dark ? 0.07 : 0.10)
+
     // ----------------------------------------------------------------- shape
 
     readonly property int r: Config.look.rounding
@@ -121,6 +146,11 @@ Singleton {
     readonly property int radiusPill: 999
 
     readonly property int borderWidth: Config.look.borderWidth
+
+    // One device pixel at scale 1, and the width of the glass rim. It is a
+    // token rather than a bare 1 so the tripwire stays honest and so a future
+    // "thicker edges" setting has one place to land.
+    readonly property int hairline: 1
 
     // ---------------------------------------------------------------- spacing
     // One 4px grid. No "about ten pixels" anywhere.
@@ -164,6 +194,7 @@ Singleton {
     readonly property bool effects: Config.look.profile !== "minimal"
     readonly property bool blur:    Config.look.blur && effects
     readonly property bool shadows: Config.look.shadows && effects
+    readonly property bool glass:   Config.look.glass && effects
 
     // ------------------------------------------------------------------ misc
     // Hex without alpha, for the foreign config files that cannot take rgba.

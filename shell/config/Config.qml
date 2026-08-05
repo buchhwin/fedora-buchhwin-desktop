@@ -188,7 +188,12 @@ Singleton {
                 property int gapsOut: 16
                 property real opacityActive: 1.0
                 property real opacityInactive: 0.98
-                property real opacityPanel: 0.88   // translucency the blur sits behind
+                // Translucency the blur sits behind. Lower than it looks like it
+                // should be: a panel is read, not looked through, so this is the
+                // one place where legibility outranks the effect — but at 0.88
+                // the blur behind it was being computed and then covered, the
+                // same waste as the terminal at 0.90.
+                property real opacityPanel: 0.78
                 // The terminal's own background, through kitty rather than
                 // through the compositor — see tools/render.qml for why.
                 //
@@ -223,6 +228,10 @@ Singleton {
                 // plastic — blur alone washes the colour out, and the reference
                 // screenshots are anything but washed out. niri's default is 1.5.
                 property real blurSaturation: 1.8
+                // The lit edge on our own surfaces — rim and sheen, no shader.
+                // See the glass tokens in theme/Theme.qml for why it is drawn
+                // this way and not as refraction.
+                property bool glass: true
                 property bool shadows: true
                 // A shadow you notice as depth rather than as a shadow. These
                 // are niri's own numbers (CSS box-shadow semantics): softness
