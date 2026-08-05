@@ -90,6 +90,8 @@ Item {
                        : root.page === "tray" ? trayPage
                        : root.page === "wallpaper" ? wallpaperPage
                        : root.page === "event" ? eventPage
+                       : root.page === "brightness" ? brightnessPage
+                       : root.page === "session" ? sessionPage
                        : null
 
         // The shape leads, the contents follow — that is what makes the change
@@ -133,4 +135,6 @@ Item {
     Component { id: trayPage; TrayPage { hostWindow: root.hostWindow } }
     Component { id: wallpaperPage; WallpaperPage {} }
     Component { id: eventPage; EventPage {} }
+    Component { id: brightnessPage; BrightnessPage {} }
+    Component { id: sessionPage; SessionPage {} }
 }

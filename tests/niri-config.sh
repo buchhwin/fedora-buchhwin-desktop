@@ -89,4 +89,26 @@ else
 fi
 rm -rf "$tmp"
 
+# No key may be bound twice.
+#
+# niri takes the LAST binding for a key and says nothing about the one it
+# dropped, so a duplicate is a shortcut that silently stopped working. The
+# predecessor accumulated several of these — a duplicated Super+Tab is in the
+# list of things deliberately left behind — and it happened again the moment a
+# conventional Super+L was added on top of the vim navigation group.
+printf '  %-34s ' "no key is bound twice"
+tmp="$(mktemp -d)"; mkdir -p "$tmp/buchhwin" "$tmp/niri" "$tmp/environment.d"
+printf '{"version":2}\n' > "$tmp/buchhwin/shell.json"
+XDG_CONFIG_HOME="$tmp" BUCHHWIN_TOOL=niri QT_QPA_PLATFORM=offscreen \
+    timeout 60 qs -p shell >/dev/null 2>&1
+dupes="$(sed -n '/^binds {/,/^}/p' "$tmp/niri/config.kdl" \
+         | grep -oE '^    [A-Za-z0-9+_]+' | tr -d ' ' | sort | uniq -d)"
+if [[ -z "$dupes" ]]; then
+    printf '\033[38;5;114mok\033[0m\n'
+else
+    printf '\033[38;5;203mbound twice: %s\033[0m\n' "$(echo "$dupes" | tr '\n' ' ')"
+    fail=1
+fi
+rm -rf "$tmp"
+
 exit $fail

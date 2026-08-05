@@ -395,13 +395,32 @@ Singleton {
                     { key: "XF86AudioMicMute", action: "spawn-sh",
                       arg: "wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle",
                       desc: "Mikrofon aus", allowWhenLocked: true },
+                    // ⚠️ brightnessctl FIRST, the shell second, joined with `;`
+                    // rather than `&&`. The screen has to brighten even when the
+                    // shell is dead — that is the one moment when not being able
+                    // to see the screen is worst — so telling the island is a
+                    // best-effort afterthought, never a precondition.
                     { key: "XF86MonBrightnessUp", action: "spawn-sh",
-                      arg: "brightnessctl set 5%+", desc: "Heller", allowWhenLocked: true },
+                      arg: "brightnessctl set 5%+ ; qs -c buchhwin ipc call notch brightness",
+                      desc: "Heller", allowWhenLocked: true },
                     { key: "XF86MonBrightnessDown", action: "spawn-sh",
-                      arg: "brightnessctl set 5%-", desc: "Dunkler", allowWhenLocked: true },
+                      arg: "brightnessctl set 5%- ; qs -c buchhwin ipc call notch brightness",
+                      desc: "Dunkler", allowWhenLocked: true },
 
                     // --- session --------------------------------------------
-                    { key: "Mod+Shift+E", action: "quit", desc: "Abmelden" },
+                    // ⚠️ This was bound straight to niri's `quit`: one keystroke,
+                    // no question, every unsaved thing gone. It opens the session
+                    // page now, and THAT asks before anything irreversible.
+                    { key: "Mod+Shift+E", action: "spawn-sh",
+                      arg: "qs -c buchhwin ipc call notch session",
+                      desc: "Sitzung beenden" },
+                    // ⚠️ NOT Mod+L, however conventional that is: Mod+L is
+                    // already focus-column-right in the vim group. A second
+                    // binding for the same key is the kind of leftover the
+                    // predecessor collected, and tests/niri-config.sh now fails
+                    // on one.
+                    { key: "Mod+Ctrl+L", action: "spawn-sh",
+                      arg: "loginctl lock-session", desc: "Sperren" },
                     { key: "Mod+Shift+P", action: "power-off-monitors", desc: "Bildschirme aus" }
                 ]
             }

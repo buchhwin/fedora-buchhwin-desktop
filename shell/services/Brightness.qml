@@ -50,21 +50,55 @@ Singleton {
                 // stays 0 and `available` is false.
                 var parts = text.trim().split(",")
                 if (parts.length >= 5 && parts[1] === "backlight") {
+                    root._device = parts[0]
                     root.value = parseInt(parts[2]) || 0
                     root.max = parseInt(parts[4]) || 0
                 } else {
+                    root._device = ""
                     root.max = 0
                 }
             }
         }
     }
 
-    // Something else may change it — the hardware keys go straight to
-    // brightnessctl, not through here.
-    Timer {
-        interval: 4000
-        repeat: true
-        running: root.available
-        onTriggered: probe.running = true
+    // ⚠️ THERE IS NO POLL TIMER HERE, and that is deliberate.
+    //
+    // There was one: every four seconds, forever, it ran `brightnessctl` — a
+    // process spawn, 21 600 of them a day, to re-read a number that changes
+    // when somebody presses a key. On the laptop this is built for that is
+    // battery and heat spent on nothing, and "the shell does nothing while
+    // nothing is happening" is the standard the whole project is held to.
+    //
+    // Instead the value is read when there is a reason to believe it changed:
+    //
+    //   * we changed it        — `set()` knows the new value already
+    //   * a key changed it     — the binding runs brightnessctl and THEN tells
+    //                            the shell, which calls refresh() (see
+    //                            config/Config.qml; that order also means the
+    //                            screen still brightens when the shell is dead)
+    //   * the file changed     — the watch below, where the kernel offers one
+    //
+    // `sysfs` does not reliably deliver inotify events for attribute writes, so
+    // the watch is a bonus rather than the mechanism. refresh() is the contract.
+    function refresh() {
+        if (root._device.length)
+            level.reload()
+        else
+            probe.running = true
+    }
+
+    property string _device: ""
+
+    FileView {
+        id: level
+        path: root._device.length
+              ? "/sys/class/backlight/" + root._device + "/brightness" : ""
+        watchChanges: true
+        printErrors: false
+        onFileChanged: reload()
+        onLoaded: {
+            var v = parseInt(text().trim())
+            if (!isNaN(v)) root.value = v
+        }
     }
 }

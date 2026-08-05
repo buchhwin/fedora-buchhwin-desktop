@@ -77,6 +77,8 @@ Singleton {
         function tray(): void { root.toggle("tray") }
         function wallpaper(): void { root.toggle("wallpaper") }
         function event(): void { root.toggle("event") }
+        function brightness(): void { root.toggle("brightness") }
+        function session(): void { root.toggle("session") }
         function collapse(): void { root.collapse() }
         function state(): string { return root.page }
     }

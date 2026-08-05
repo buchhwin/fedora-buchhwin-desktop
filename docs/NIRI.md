@@ -110,8 +110,26 @@ setup, so a page you could only click on the bar would not be reachable at all.
 | `Super+C` | calendar |
 | `Super+Shift+N` | new appointment |
 | `Super+T` | the system tray |
+| `Super+Shift+E` | the session menu — lock, suspend, log out, restart, shut down |
+| `Super+Ctrl+L` | lock straight away |
 | `Super+Shift+W` | choose a wallpaper |
 | `Super+Escape` | close the island |
+
+⚠️ **`Super+Shift+E` used to be niri's `quit`, directly.** One keystroke, no
+question, every unsaved thing gone. It opens the session menu now, and the menu
+asks before anything irreversible — the second press is the feature, not the
+list of buttons. Locking and suspending skip the question because both are
+reversible, and a question people learn to dismiss without reading is what makes
+the shutdown question useless too.
+
+⚠️ **Lock is `Super+Ctrl+L`, not `Super+L`.** `Super+L` is already
+focus-column-right in the vim group, and niri silently takes the last binding
+for a key — so a duplicate is a shortcut that quietly stopped working.
+`tests/niri-config.sh` fails on one now.
+
+⚠️ **The brightness keys run `brightnessctl` first and tell the shell second**,
+joined with `;` rather than `&&`. The screen has to brighten even when the shell
+is dead, which is the one moment when not seeing the screen is worst.
 
 ⚠️ **Tray menus need a window to open against.** With the bar off, that window
 is the island's own — which is why the tray page is a page and not a popup. If
