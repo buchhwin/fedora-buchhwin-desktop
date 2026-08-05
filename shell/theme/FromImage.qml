@@ -128,8 +128,42 @@ Singleton {
     function build(colors, dark, name, source) {
         if (!colors || colors.length === 0)
             return null
+        return fromSeed(seedOf(colors), dark, name, source,
+                        "Wallpaper", "From the wallpaper")
+    }
 
-        var seed = seedOf(colors)
+    // A whole palette from ONE colour the user picked.
+    //
+    // ⚠️ This is not a second palette generator. Everything below `seedOf()`
+    // was already a pure function of (h, s, dark) — the image only ever
+    // contributed those two numbers — so an entry point that supplies them
+    // directly reuses the identical code. Two ways in, one way through; a
+    // second generator would be a second look, which is the whole thing this
+    // project exists to avoid.
+    function fromColour(c, dark, name) {
+        if (!c) return null
+        return fromSeed(_hsl(c), dark, name, "",
+                        "Custom", "From your own colour")
+    }
+
+    // The neutral scheme: themed, but colourless.
+    //
+    // Saturation zero, so the ramps come out grey — and the `achromatic` guard
+    // below then keeps the accent grey too instead of inventing one. The
+    // SEMANTIC colours stay anchored and therefore stay coloured, which is
+    // correct: an error has to read as an error in a grey scheme as well.
+    //
+    // The hue is kept rather than zeroed: at saturation 0 it makes no
+    // difference to the output, and keeping it means "neutral" and "colour" are
+    // the same call with one number changed.
+    function neutral(dark, hue) {
+        return fromSeed({ h: hue || 0, s: 0, l: 0.5 }, dark, "neutral", "",
+                        "Neutral", "Neutral grey")
+    }
+
+    // The shared body. `seed` is {h, s, l} with all three in 0..1.
+    function fromSeed(seed, dark, name, source, family, displayName) {
+        if (!seed) return null
         var h = seed.h
 
         // ⚠️ An image with no colour in it must not be handed one.
@@ -217,12 +251,13 @@ Singleton {
 
         return {
             name: name,
-            family: "Wallpaper",
-            // Which image this came from. It is what lets a cached derived
-            // palette be trusted across a restart: the file on disk is only
-            // still valid while it names the wallpaper that is actually set.
+            family: family || "Derived",
+            // What this came from — an image path, or the colour that was
+            // picked. It is what lets a cached derived palette be trusted
+            // across a restart: the file on disk is only still valid while it
+            // names the source that is actually set.
             source: source || "",
-            display_name: "Aus dem Hintergrundbild",
+            display_name: displayName || "Derived",
             dark: dark,
             // The accent the shell picks by default. `blue` is the seed itself
             // — the name is inherited from the palette schema, not a claim

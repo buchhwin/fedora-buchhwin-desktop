@@ -74,15 +74,37 @@ Singleton {
     property var _data: ({})
 
     // ------------------------------------------------------ derived palette
-    // True while the active palette is the one built from the wallpaper.
-    readonly property bool derived: root.name === "wallpaper"
+    //
+    // Three palettes are GENERATED rather than shipped, and they all come out
+    // of the same function in FromImage — only the seed differs:
+    //
+    //   "wallpaper"  the seed is quantised out of the current image
+    //   "custom"     the seed IS theme.customColor
+    //   "neutral"    the seed has saturation 0, so the ramps come out grey
+    //
+    // They share everything below: the same cache file shape, the same guards,
+    // the same "is what is on disk still valid" test. What separates them is
+    // one line in `_maybeDerive()` — wallpaper has to read an image and is
+    // therefore asynchronous, the other two are a calculation.
+    readonly property bool derivedFromImage: root.name === "wallpaper"
+    readonly property bool derivedFromColour: root.name === "custom"
+    readonly property bool derivedNeutral: root.name === "neutral"
+    readonly property bool derived: derivedFromImage || derivedFromColour
+                                    || derivedNeutral
 
-    // The image the derived palette SHOULD be built from, and the one the
-    // loaded file was actually built from. Both are bindings on purpose: a
-    // function that read Config here would run before JsonAdapter had pushed
-    // the parsed values in, and would compare against an empty string.
+    // What the palette SHOULD be built from, and what the loaded file actually
+    // was built from. Bindings on purpose: a function reading Config here would
+    // run before JsonAdapter had pushed the parsed values in and would compare
+    // against an empty string.
+    //
+    // For the two calculated modes the "source" is not a file but the input
+    // itself — the colour, or the constant "neutral". Same comparison, same
+    // cache invalidation, no second mechanism.
     readonly property string wantedSource:
-        root.derived ? String(Config.wallpaper.current) : ""
+        root.derivedFromImage ? String(Config.wallpaper.current)
+      : root.derivedFromColour ? String(Config.theme.customColor)
+      : root.derivedNeutral ? "neutral"
+      : ""
     readonly property string loadedSource: _data.source ? String(_data.source) : ""
 
     // Two guards, each against a loop that would otherwise be silent:
@@ -114,10 +136,12 @@ Singleton {
             // derived palette with no wallpaper currently set is what a
             // headless tool run sees, and it is perfectly usable.
             if (!root._data.colors)
-                root.failure = "theme.palette is \"wallpaper\" but no wallpaper is set"
+                root.failure = root.derivedFromColour
+                    ? "theme.palette is \"custom\" but theme.customColor is empty"
+                    : "theme.palette is \"wallpaper\" but no wallpaper is set"
             return
         }
-        // The cache already describes this image, or we are already busy with
+        // The cache already describes this source, or we are already busy with
         // it, or it has been tried and refused.
         if (src === root.loadedSource || src === root._deriving || src === root._refused)
             return
@@ -126,8 +150,43 @@ Singleton {
         // read as the outcome of the work that is only just starting.
         root.failure = ""
         root._deriving = src
+
+        // ⚠️ THE TWO CALCULATED MODES DO NOT GO THROUGH THE QUANTISER, and it
+        // is not an optimisation — a colour is already a seed. Sending them
+        // round the image path would mean setting `quant.source` to something
+        // that is not an image and then waiting 1800 ms for a timer that exists
+        // only because the quantiser lies on its first signal.
+        if (root.derivedFromColour || root.derivedNeutral) {
+            _finish(root.derivedNeutral
+                    ? FromImage.neutral(root._deriveDark, 0)
+                    : FromImage.fromColour(Qt.color(src), root._deriveDark,
+                                           root.name),
+                    src)
+            return
+        }
+
         quant.source = src
         settle.restart()
+    }
+
+    // Everything that happens once a palette object exists, whichever way it
+    // was built. It was inline in the timer while there was only one way in.
+    function _finish(pal, src) {
+        root._deriving = ""
+
+        var why = pal ? FromImage.usable(pal) : "no palette was built"
+        if (why.length) {
+            // Leaving the previous scheme in place is the right answer.
+            root._refused = src
+            root.failure = "palette refused: " + why
+            return
+        }
+
+        root.failure = ""
+        // Written through the SAME view that reads it. The write triggers
+        // onFileChanged → reload → onLoaded, which parses it back in and finds
+        // `source` matching, so this settles after exactly one pass.
+        file.setText(JSON.stringify(pal, null, 2) + "\n")
     }
 
     onWantedSourceChanged: _maybeDerive()
@@ -149,31 +208,23 @@ Singleton {
         interval: 1800
         onTriggered: {
             var src = root._deriving
-            root._deriving = ""
-            if (!src.length || src !== root.wantedSource)
+            if (!src.length || src !== root.wantedSource) {
+                root._deriving = ""
                 return          // the user moved on while we were working
+            }
 
             if (!quant.colors || quant.colors.length === 0) {
+                root._deriving = ""
                 root._refused = src
                 root.failure = "no colours came back from " + src +
                                " — is the format supported? (this Qt has no WebP and no TIFF plugin)"
                 return
             }
 
-            var pal = FromImage.build(quant.colors, root._deriveDark, "wallpaper", src)
-            var why = FromImage.usable(pal)
-            if (why.length) {
-                // Leaving the previous scheme in place is the right answer.
-                root._refused = src
-                root.failure = "wallpaper refused: " + why
-                return
-            }
-
-            root.failure = ""
-            // Written through the SAME view that reads it. The write triggers
-            // onFileChanged → reload → onLoaded, which parses it back in and
-            // finds `source` matching, so this settles after exactly one pass.
-            file.setText(JSON.stringify(pal, null, 2) + "\n")
+            // Everything from here on is the same for all three modes, so it
+            // lives in _finish() rather than being written out twice.
+            root._finish(FromImage.build(quant.colors, root._deriveDark,
+                                         "wallpaper", src), src)
         }
     }
 
@@ -225,16 +276,34 @@ Singleton {
     // XDG_STATE_HOME, not cache: it has to survive a reboot (that was tested
     // for M3.5 and is a promise now), and a cache is something a cleaner is
     // entitled to empty.
-    readonly property string derivedPath:
+    //
+    // One file per generated mode, named after the mode: they have different
+    // sources and must not overwrite each other, or switching from a custom
+    // colour back to the wallpaper would re-derive the image every time.
+    readonly property string stateDir:
         (Quickshell.env("XDG_STATE_HOME")
-         || (Quickshell.env("HOME") + "/.local/state"))
-        + "/buchhwin/wallpaper.json"
+         || (Quickshell.env("HOME") + "/.local/state")) + "/buchhwin"
+
+    // ⚠️ ONE expression, not a chain, and that is a bug fix rather than a
+    // style. It was `derived ? derivedPath : shellPath(name)` with
+    // `derivedPath` separately built from `name` — three bindings that update
+    // in an order QML does not promise. Switching from everforest-dark to
+    // custom therefore wrote the freshly calculated custom palette into
+    // `<state>/everforest-dark.json`: `derived` had already turned true while
+    // the path still carried the old name. Measured, not reasoned about — the
+    // file was on disk with `"name": "custom"` inside it.
+    //
+    // Written out per mode rather than interpolated, so a palette that ships
+    // can never resolve into the state directory by accident.
+    readonly property string palettePath:
+        root.derivedFromImage ? stateDir + "/wallpaper.json"
+      : root.derivedFromColour ? stateDir + "/custom.json"
+      : root.derivedNeutral ? stateDir + "/neutral.json"
+      : Quickshell.shellPath("theme/palettes/" + root.name + ".json")
 
     FileView {
         id: file
-        path: root.derived
-              ? root.derivedPath
-              : Quickshell.shellPath("theme/palettes/" + root.name + ".json")
+        path: root.palettePath
         watchChanges: true
         // Loud on purpose. This failing silently is exactly how the whole
         // desktop ran on fallback colours without anyone noticing.

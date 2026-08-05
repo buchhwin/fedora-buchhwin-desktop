@@ -26,6 +26,7 @@ Singleton {
 
     readonly property alias look: adapter.look
     readonly property alias theme: adapter.theme
+    readonly property alias theming: adapter.theming
     readonly property alias surfaces: adapter.surfaces
     readonly property alias notifications: adapter.notifications
     readonly property alias clipboard: adapter.clipboard
@@ -183,6 +184,50 @@ Singleton {
                 property string accent: "green"
                 // "" = follow `palette`; a name here switches on a schedule later.
                 property string lightPalette: "everforest-light"
+                // Used when `palette` is "custom": one colour, and the whole
+                // 26-name scheme is calculated from it. The same calculation
+                // the wallpaper goes through — the image only ever contributed
+                // a hue and a saturation, so handing those over directly needs
+                // no second generator. See theme/FromImage.qml.
+                // The default seed a "custom" scheme is calculated from — not a
+                // colour anything is painted with, and only in effect once the
+                // user has chosen "custom", by which point it is their value.
+                property string customColor: "#7fbbb3"  // literal-ok: a seed, not a style
+            }
+
+            // ⚠️ WHICH PROGRAMS WE COLOUR, AND HOW — one of three states each.
+            //
+            //   "colour"   the system's colours (wallpaper, custom, or a
+            //              shipped palette — whatever `theme.palette` says)
+            //   "neutral"  a grey scheme: themed, but colourless
+            //   "off"      we write nothing AND remove what we wrote before,
+            //              so the program looks the way it would without us
+            //   "inherit"  follow `mode` below — the default, so switching
+            //              everything at once is one edit rather than twelve
+            //
+            // ⚠️ "off" has to CLEAN UP, not merely skip. A switch that leaves
+            // the last file lying there does nothing visible, and a setting
+            // that does nothing is the fault this project has now fixed four
+            // times over. Only our own files are touched: kitty.conf,
+            // btop.conf and .gitconfig belong to the user and are never
+            // overwritten — only the pointer line we added is taken back out.
+            property JsonObject theming: JsonObject {
+                property bool enabled: true
+                property string mode: "colour"
+                property JsonObject targets: JsonObject {
+                    property string gtk: "inherit"
+                    property string qt: "inherit"
+                    property string kitty: "inherit"
+                    property string alacritty: "inherit"
+                    property string niri: "inherit"
+                    property string btop: "inherit"
+                    property string bat: "inherit"
+                    property string fastfetch: "inherit"
+                    property string delta: "inherit"
+                    property string tmux: "inherit"
+                    property string starship: "inherit"
+                    property string lazygit: "inherit"
+                }
             }
 
             property JsonObject look: JsonObject {

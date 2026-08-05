@@ -33,13 +33,30 @@ Scope {
 
     property string report: ""
     property int written: 0
+    property int unchanged: 0
 
     function note(s) { report += s + "\n"; log.setText(report) }
 
     // Every file goes through here so that "what did the renderer touch" is a
     // single list, and so a failure is reported rather than swallowed.
+    //
+    // ⚠️ IT COMPARES FIRST. This used to write every file on every run, and the
+    // plan is explicit that "a second installation run changes no file" — which
+    // was simply not true. It matters beyond tidiness: a program watching its
+    // own config reloads on every write, so an unchanged rewrite is a reload
+    // for nothing, and `bhctl theme apply` on an unchanged palette touched
+    // seven files' mtimes. tools/niri.qml has done it this way from the start,
+    // because niri live-reloads and the cost was immediately visible there.
+    //
+    // `blockLoading` on the views is what makes reading and writing possible in
+    // the same statement.
     function write(view, path, text, label) {
         view.path = path
+        if (view.text() === text) {
+            unchanged++
+            note("  same   " + label)
+            return
+        }
         view.setText(text)
         written++
         note("  wrote  " + label + "  ->  " + path)
@@ -240,13 +257,17 @@ Scope {
                                 q(Theme.fg), q(Theme.fgDisabled)].join(", ") + "\n"
     }
 
-    FileView { id: f1 }
-    FileView { id: f2 }
-    FileView { id: f3 }
-    FileView { id: f4 }
-    FileView { id: f5 }
-    FileView { id: f6 }
-    FileView { id: f7 }
+    // blockLoading so write() can compare against what is already on disk in
+    // the same statement; printErrors off because "not there yet" is the normal
+    // case on a first run and not a fault worth shouting about. Same shape as
+    // tools/niri.qml:520-521.
+    FileView { id: f1; blockLoading: true; printErrors: false }
+    FileView { id: f2; blockLoading: true; printErrors: false }
+    FileView { id: f3; blockLoading: true; printErrors: false }
+    FileView { id: f4; blockLoading: true; printErrors: false }
+    FileView { id: f5; blockLoading: true; printErrors: false }
+    FileView { id: f6; blockLoading: true; printErrors: false }
+    FileView { id: f7; blockLoading: true; printErrors: false }
     FileView { id: log; path: "/tmp/buchhwin-render.log" }
 
     // Wait for the palette to actually be there. The previous fixed 700 ms
@@ -281,7 +302,7 @@ Scope {
             write(f6, root.cfg + "/niri/colors.kdl",      niriColours(), "niri colours")
             write(f7, root.cfg + "/qt6ct/colors/buchhwin.conf", qtColors(), "qt6ct")
 
-            note("done: " + written + " files")
+            note("done: " + written + " written, " + unchanged + " unchanged")
             Qt.callLater(Qt.quit)
         }
     }
