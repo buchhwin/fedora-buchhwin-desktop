@@ -89,6 +89,31 @@ else
     bad "no background_opacity in the kitty theme"
 fi
 
+# ⚠️ THE SAME FAILURE AS THE KITTY INCLUDE, ONE LAYER DEEPER.
+#
+# qt6ct takes a colour scheme only when active, inactive AND disabled each
+# carry a full set of roles, and silently keeps Qt's own default otherwise:
+#
+#     if(activeColors.count() >= QPalette::NColorRoles &&
+#        inactiveColors.count() >= QPalette::NColorRoles &&
+#        disabledColors.count() >= QPalette::NColorRoles) { … }
+#     else { customPalette = fallback; }
+#         — qt6ct-0.11, src/qt6ct-common/qt6ct.cpp
+#
+# The renderer wrote active_colors and nothing else for months, so the file
+# existed, the pointer was right, this suite was green, and every Qt program
+# ran on Fusion grey. Counted rather than grepped, because "the line is there"
+# was exactly the assertion that did not hold.
+qtc="$cfg/qt6ct/colors/buchhwin.conf"
+for group in active inactive disabled; do
+    n=$(grep -m1 "^${group}_colors=" "$qtc" 2>/dev/null | cut -d= -f2- | awk -F, '{print NF}')
+    if [[ "${n:-0}" -ge 21 ]]; then
+        pass "qt6ct ${group}_colors has $n roles"
+    else
+        bad "qt6ct ${group}_colors has ${n:-0} roles — qt6ct falls back to Qt's default palette"
+    fi
+done
+
 # A second run must not fight the user's own file.
 printf '# mine\ninclude theme.conf\nfont_size 14\n' > "$cfg/kitty/kitty.conf"
 XDG_CONFIG_HOME="$cfg" timeout 120 bash install.sh --only shell >/dev/null 2>&1
@@ -96,6 +121,150 @@ if grep -q '^font_size 14' "$cfg/kitty/kitty.conf"; then
     pass "an existing kitty.conf is left alone"
 else
     bad "the installer overwrote a kitty.conf that already existed"
+fi
+
+# --------------------------------------------------------------------------
+# One state per program — checked, not claimed.
+#
+# The point of the three states is that they differ FROM EACH OTHER on the same
+# machine at the same moment: one program grey while the next is coloured. A
+# test that renders one state and looks at one file cannot see that, which is
+# how twelve switches that did nothing at all passed for months.
+#
+# The renderer is called directly from here rather than through install.sh:
+# same tool, same code path (lib/common.sh and bin/bhctl both run exactly this
+# line), a fraction of the time, and the installer would not touch shell.json
+# again anyway — it seeds it once and never overwrites.
+if ! command -v jq >/dev/null; then
+    echo "  jq not installed — skipping the state matrix"
+    exit $fail
+fi
+
+set_states() {   # mode gtk qt kitty niri  [enabled]
+    jq --arg m "$1" --arg g "$2" --arg q "$3" --arg k "$4" --arg n "$5" \
+       --argjson e "${6:-true}" \
+       '.theming = {enabled: $e, mode: $m, gtk: $g, qt: $q, kitty: $k, niri: $n}' \
+       "$cfg/buchhwin/shell.json" > "$work/s.json" \
+        && mv "$work/s.json" "$cfg/buchhwin/shell.json"
+}
+
+render_now() {
+    rm -f /tmp/buchhwin-render.log
+    XDG_CONFIG_HOME="$cfg" BUCHHWIN_TOOL=render QT_QPA_PLATFORM=offscreen \
+        timeout 60 qs -p shell >/dev/null 2>"$work/render.err"
+    local code=$?
+    cp -f /tmp/buchhwin-render.log "$work/render.log" 2>/dev/null || true
+    if (( code != 0 )); then
+        bad "the renderer exited $code"
+        sed 's/^/        /' "$work/render.log" 2>/dev/null
+        tail -5 "$work/render.err" 2>/dev/null | sed 's/^/        /'
+        return 1
+    fi
+    if grep -q ABORT "$work/render.log" 2>/dev/null; then
+        bad "the renderer aborted"
+        sed -n '/ABORT/,$p' "$work/render.log" | sed 's/^/        /'
+        return 1
+    fi
+    return 0
+}
+
+# Grey means r == g == b. The same question tests/wallpaper.sh asks of the
+# palette, asked here of the file a program actually reads.
+#
+# ⚠️ Asked of `background` and `color4`, NOT of `foreground`: the neutral text
+# ramp keeps a trace of warmth (#e8e3e3 measured), which is deliberate and
+# would make a strict r==g==b check fail on the one line that is least
+# interesting.
+hex_of() { grep -m1 "^$2 " "$1" 2>/dev/null | awk '{print $2}' | tr -d '#'; }
+is_grey() { [[ -n "$1" && "${1:0:2}" == "${1:2:2}" && "${1:2:2}" == "${1:4:2}" ]]; }
+
+# --- A: the mixed case. One program grey, the rest coloured, one switched off.
+if set_states colour inherit off neutral inherit && render_now; then
+    bg=$(hex_of "$cfg/kitty/theme.conf" background)
+    c4=$(hex_of "$cfg/kitty/theme.conf" color4)
+    c1=$(hex_of "$cfg/kitty/theme.conf" color1)
+    if is_grey "$bg" && is_grey "$c4"; then
+        pass "neutral: the terminal's background and blue are grey (#$bg, #$c4)"
+    else
+        bad "neutral: the terminal is not grey (background #$bg, color4 #$c4)"
+    fi
+    # The anchored colours stay coloured on purpose — an error has to read as
+    # an error in a grey scheme too (theme/FromImage.qml).
+    if is_grey "$c1"; then
+        bad "neutral: red went grey (#$c1) — meaning colours must stay anchored"
+    else
+        pass "neutral: red is still red (#$c1)"
+    fi
+    # Colourless, not unstyled.
+    if grep -q '^background_opacity ' "$cfg/kitty/theme.conf" &&
+       grep -q '^font_family ' "$cfg/kitty/theme.conf"; then
+        pass "neutral: transparency and font survive"
+    else
+        bad "neutral: transparency or font was dropped — neutral means colourless, not unstyled"
+    fi
+    # …and the program next to it is untouched. This is the assertion that the
+    # reverted first attempt would have failed: its switches never took effect.
+    if grep -qE '^@define-color theme_bg_color #' "$cfg/gtk-3.0/gtk.css" &&
+       ! is_grey "$(grep -m1 '^@define-color accent_color ' "$cfg/gtk-3.0/gtk.css" \
+                    | awk '{print $3}' | tr -d '#;')"; then
+        pass "one program neutral leaves the others coloured"
+    else
+        bad "gtk went grey as well — the state is not per program"
+    fi
+    if [[ -s "$cfg/qt6ct/colors/buchhwin.conf" ]] &&
+       ! grep -q 'active_colors=' "$cfg/qt6ct/colors/buchhwin.conf" &&
+       grep -q 'theming is OFF' "$cfg/qt6ct/colors/buchhwin.conf"; then
+        pass "off: the file is a stub that overrides nothing, and says so"
+    else
+        bad "off: the qt6ct colours were not taken back"
+    fi
+    if grep -q 'colors/buchhwin\.conf' "$cfg/qt6ct/qt6ct.conf"; then
+        pass "off: the user's qt6ct.conf is untouched"
+    else
+        bad "off: something edited qt6ct.conf, which belongs to the user"
+    fi
+fi
+
+# --- B: the other direction. System neutral, one program explicitly coloured.
+if set_states neutral colour inherit inherit inherit && render_now; then
+    acc=$(grep -m1 '^@define-color accent_color ' "$cfg/gtk-3.0/gtk.css" | awk '{print $3}' | tr -d '#;')
+    kbg=$(hex_of "$cfg/kitty/theme.conf" background)
+    if ! is_grey "$acc" && is_grey "$kbg"; then
+        pass "mode neutral with one target on colour: gtk #$acc, kitty #$kbg"
+    else
+        bad "inherit does not follow mode (gtk accent #$acc, kitty background #$kbg)"
+    fi
+fi
+
+# --- C: the way back. off must not be a one-way door.
+if set_states colour inherit inherit inherit inherit && render_now; then
+    if grep -q 'active_colors=' "$cfg/qt6ct/colors/buchhwin.conf"; then
+        pass "back from off: the qt6ct colours return"
+    else
+        bad "back from off: the qt6ct colours did not return"
+    fi
+    if grep -qE '^ *include  *theme\.conf' "$cfg/kitty/kitty.conf"; then
+        pass "back from off: the kitty pointer was never lost"
+    else
+        bad "back from off: kitty.conf lost its include"
+    fi
+    # And nothing is rewritten for nothing.
+    if render_now && grep -q 'done: 0 written' "$work/render.log"; then
+        pass "an unchanged run writes no file"
+    else
+        bad "a second run rewrote files that did not change"
+    fi
+fi
+
+# --- D: the master switch beats everything, in one line.
+if set_states colour colour colour colour colour false && render_now; then
+    stubs=0
+    for f in gtk-3.0/gtk.css gtk-3.0/settings.ini gtk-4.0/gtk.css gtk-4.0/settings.ini \
+             kitty/theme.conf niri/colors.kdl qt6ct/colors/buchhwin.conf; do
+        grep -q 'theming is OFF' "$cfg/$f" || stubs=1
+    done
+    (( stubs )) && bad "theming.enabled=false left files behind" \
+                || pass "theming.enabled=false takes all seven files back"
 fi
 
 exit $fail

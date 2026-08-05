@@ -109,6 +109,47 @@ Scope {
                     (missing.length ? " (missing: " + missing.join(", ") + ")" : ""),
                     missing.length === 0)
 
+            // The neutral set, asked the same question. tools/render.qml builds
+            // it with FromImage.neutral() to theme a single program grey while
+            // the rest stay coloured; a name missing from it would come out as
+            // one black surface in one program — the kind of gap that is only
+            // ever found by looking.
+            var neutral = FromImage.neutral(true, 0)
+            var greyMissing = []
+            for (var g = 0; g < names.length; g++)
+                if (!neutral || !neutral.colors || !neutral.colors[names[g]])
+                    greyMissing.push(names[g])
+            root.ok("the neutral set has all 26 names" +
+                    (greyMissing.length ? " (missing: " + greyMissing.join(", ") + ")" : ""),
+                    greyMissing.length === 0)
+
+            // ⚠️ TWO VOCABULARIES FOR ONE COLOUR, checked rather than trusted.
+            //
+            // The shell draws with ROLES (Theme.bg), the renderer writes with
+            // PALETTE KEYS (Scheme.hex("base")) — it has to, because it must be
+            // able to read the same role out of a second, grey colour set that
+            // Theme knows nothing about. Theme.qml says the two are the same
+            // thing; here they are compared, so that renaming a role or
+            // repointing it cannot silently give foreign applications different
+            // colours from our own surfaces.
+            var roles = [[Theme.bg, "base"], [Theme.bgDim, "mantle"],
+                         [Theme.bgDeep, "crust"], [Theme.surface, "surface0"],
+                         [Theme.surfaceHigh, "surface1"],
+                         [Theme.surfaceHigher, "surface2"],
+                         [Theme.overlay, "overlay0"], [Theme.outline, "overlay1"],
+                         [Theme.fgDisabled, "overlay2"], [Theme.fg, "text"],
+                         [Theme.fgMuted, "subtext1"], [Theme.fgDim, "subtext0"],
+                         [Theme.ok, "green"], [Theme.warn, "yellow"],
+                         [Theme.error, "red"], [Theme.info, "sapphire"],
+                         [Theme.accentAlt, "teal"]]
+            var drifted = []
+            for (var r = 0; r < roles.length; r++)
+                if (Theme.hex(roles[r][0]) !== Scheme.hex(roles[r][1]))
+                    drifted.push(roles[r][1])
+            root.ok("every Theme role is the palette key the renderer writes" +
+                    (drifted.length ? " (drifted: " + drifted.join(", ") + ")" : ""),
+                    drifted.length === 0)
+
             root.ok("theme tokens exist",
                     Theme.panelBg !== undefined && Theme.radiusLg > 0
                     && Theme.space4 > 0 && Theme.fontSize > 0)

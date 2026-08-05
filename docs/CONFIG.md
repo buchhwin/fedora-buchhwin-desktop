@@ -13,10 +13,11 @@ desktop — which is what makes it safe to add settings without a migration.
 | Group | What |
 |---|---|
 | `version` | migration marker; bumped only on a rename or removal |
-| `theme` | `palette`, `accent`, `lightPalette` |
+| `theme` | `palette`, `accent`, `lightPalette`, `customColor` |
+| `theming` | which programs we colour, and how — one state each, see below |
 | `look` | `rounding`, `borderWidth`, `gapsIn/Out`, opacities, `blur`, `blurPasses`, `shadows`, fonts, `fontSize`, `profile` |
-| `surfaces` | `notifications`, `osd`, `dock`, `wallpaper` — each on its own |
-| `bar` / `notch` / `dock` | geometry, and a monitor list (empty = all) |
+| `surfaces` | `notifications`, `osd`, `wallpaper` — each on its own |
+| `bar` / `notch` | geometry, and a monitor list (empty = all) |
 | `programs` | argument **lists**: `terminal`, `browser`, `fileManager`, `editor`, `imageViewer`, `video`, `launcher` |
 | `keys` | `mod` plus `binds`: `{ key, action, arg, desc }` |
 | `input` | `keyboard`, `touchpad`, `mouse`, `focusFollowsMouse`, `warpMouseToFocus` |
@@ -25,7 +26,42 @@ desktop — which is what makes it safe to add settings without a migration.
 | `autostart` | extra programs — **not** the shell or the clipboard watcher |
 | `workspaces` | named workspaces |
 | `wallpaper` | `folder`, `current` image, `monitors` |
-| `weather` | `name` (display only), `lat`, `lon` — set from the quick panel |
+| `location` | `name` (display only), `lat`, `lon` — set from the quick panel |
+
+## One state per program
+
+```json
+"theming": { "enabled": true, "mode": "colour", "kitty": "neutral", "qt": "off" }
+```
+
+`mode` is the house rule, and every program follows it unless it says otherwise.
+The per-program keys are flat (`"kitty"`, not `"targets": {"kitty": …}`) — two
+levels of `JsonObject` do not come back from the file, so the block would parse
+and every switch would silently do nothing.
+
+| State | What it means |
+|---|---|
+| `colour` | the system's colours, whatever `theme.palette` says |
+| `neutral` | a grey scheme: themed, but colourless. **Colourless, not unstyled** — transparency, fonts and corners stay, and red, green and yellow stay coloured, because an error has to read as an error in a grey scheme too |
+| `off` | we take our file back: it is left in place as a stub that overrides nothing, so the `include` that reads it does not point at nothing |
+| `inherit` | follow `mode` — the default, so switching everything at once is one edit rather than twelve |
+
+`enabled: false` is the master switch: every program behaves as `off`, files and
+all. Setting it back to `true` fills them again — `off` is not a one-way door.
+
+⚠️ **`off` for `gtk` is visible, and that is the point.** Theme name, icon theme,
+font and `gtk-decoration-layout=:` all come out of the same generated file, so a
+GTK window gets its three title-bar buttons back and turns light. That is what
+"the way it would look without us" means here.
+
+**Keys with no writer yet:** `alacritty`, `btop`, `bat`, `fastfetch`, `delta`,
+`tmux`, `starship`, `lazygit`. They are accepted and listed in
+`/tmp/buchhwin-render.log` on every run as "no writer yet", so nobody has to
+find out by trying. Their generators are the next milestone.
+
+**Only our own files are ever touched.** `kitty.conf`, `qt6ct.conf`, `btop.conf`
+and `~/.gitconfig` belong to you; the pointer lines in them are seeded once by
+the installer and never edited afterwards, not even by `off`.
 
 ## The wallpaper, and what survives a restart
 

@@ -48,7 +48,14 @@ Singleton {
                          0.587 * col.g * col.g +
                          0.114 * col.b * col.b)
     }
-    function on(c) { return luminance(c) > 0.55 ? p("crust") : p("text") }
+    // ⚠️ A NAME, because the renderer has to apply the same rule against a
+    // DIFFERENT colour set. Theme is bound to the one active Scheme, so
+    // Theme.on() always answers out of the system palette — which is the wrong
+    // answer when a single program is being themed neutral grey. The renderer
+    // therefore reimplements the choice, and reads the threshold from here so
+    // there is one number rather than two that drift.
+    readonly property real onThreshold: 0.55
+    function on(c) { return luminance(c) > onThreshold ? p("crust") : p("text") }
 
     function p(key) { return Scheme.color(key) }
 
