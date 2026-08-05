@@ -18,6 +18,23 @@
 // shoulders flaring straight off the screen edge. One shape, two modes, no
 // second code path — which is the only reason a palette or a size change can
 // be trusted to affect both the same way.
+//
+// ⚠️ THE SHOULDERS CURVE INWARDS, and this is the whole point rather than a
+// detail. `islandWidth` is the span at `shoulderTop` — the widest place — and
+// the straight sides sit `flare` px inside it. Drawing them the other way
+// round, outside `islandWidth`, is what was here before: ShellSurface makes the
+// window exactly `islandWidth` wide, so the arcs landed outside the surface and
+// were clipped away entirely. Measured on the running VM: the pill came out
+// 150×34 with perfectly vertical sides and no shoulder anywhere, which is not a
+// wrong radius but a missing curve.
+//
+// Widening the window instead is not the fix. niri "has no way of knowing about
+// invisible margins, and will draw the shadow behind the entire surface" — blur
+// likewise — so a window wider than its shape brings back the coloured halo.
+// The shape has to fit the window, not the other way round.
+//
+// It also matches the brief, which says the shoulders run "zum Bildschirmrand
+// hin": the material widens as it approaches the top edge.
 
 import QtQuick
 import QtQuick.Shapes
@@ -36,13 +53,18 @@ Item {
     readonly property real cx: width / 2
     readonly property real halfW: islandWidth / 2
 
-    // A shoulder wider than half the island makes the two arcs cross, which
-    // renders as a knot rather than as a curve.
-    readonly property real f: Math.max(0, Math.min(flare, halfW))
+    // A shoulder deeper than the island is tall, or wider than half of it, makes
+    // the two arcs cross — which renders as a knot rather than as a curve.
+    readonly property real f: Math.max(0, Math.min(flare, halfW,
+                                                   islandHeight - barHeight))
+
+    // Where the straight side runs: `flare` inside the widest span.
+    readonly property real bodyHalfW: Math.max(0, halfW - f)
 
     // The island's own corner radius, clamped so it cannot exceed the shape.
-    readonly property real r: Math.max(0, Math.min(cornerRadius, halfW,
-                                                   (islandHeight - barHeight) / 2))
+    // Against `bodyHalfW`, not `halfW`, because the corners belong to the body.
+    readonly property real r: Math.max(0, Math.min(cornerRadius, bodyHalfW,
+                                                   (islandHeight - barHeight - f) / 2))
 
     // Not "bottom": Item already has a final member of that name, and overriding
     // it fails the whole type with "Cannot override FINAL property".
@@ -72,7 +94,7 @@ Item {
             // Top edge, all the way across.
             PathLine { x: root.width; y: 0 }
             PathLine { x: root.width; y: root.shoulderTop }
-            PathLine { x: root.cx + root.halfW + root.f; y: root.shoulderTop }
+            PathLine { x: root.cx + root.halfW; y: root.shoulderTop }
 
             // Right shoulder: CONCAVE — the screen edge curves down into the
             // notch, it does not bulge out around it.
@@ -83,39 +105,39 @@ Item {
             // picks between them. Clockwise here produced little ears sticking
             // out at the top — measured on screen, not reasoned about.
             PathArc {
-                x: root.cx + root.halfW
+                x: root.cx + root.bodyHalfW
                 y: root.shoulderTop + root.f
                 radiusX: root.f
                 radiusY: root.f
                 direction: PathArc.Counterclockwise
             }
 
-            PathLine { x: root.cx + root.halfW; y: root.islandBottom - root.r }
+            PathLine { x: root.cx + root.bodyHalfW; y: root.islandBottom - root.r }
 
             // Bottom-right corner: ordinary convex rounding.
             PathArc {
-                x: root.cx + root.halfW - root.r
+                x: root.cx + root.bodyHalfW - root.r
                 y: root.islandBottom
                 radiusX: root.r
                 radiusY: root.r
                 direction: PathArc.Clockwise
             }
 
-            PathLine { x: root.cx - root.halfW + root.r; y: root.islandBottom }
+            PathLine { x: root.cx - root.bodyHalfW + root.r; y: root.islandBottom }
 
             PathArc {
-                x: root.cx - root.halfW
+                x: root.cx - root.bodyHalfW
                 y: root.islandBottom - root.r
                 radiusX: root.r
                 radiusY: root.r
                 direction: PathArc.Clockwise
             }
 
-            PathLine { x: root.cx - root.halfW; y: root.shoulderTop + root.f }
+            PathLine { x: root.cx - root.bodyHalfW; y: root.shoulderTop + root.f }
 
             // Left shoulder, mirrored.
             PathArc {
-                x: root.cx - root.halfW - root.f
+                x: root.cx - root.halfW
                 y: root.shoulderTop
                 radiusX: root.f
                 radiusY: root.f

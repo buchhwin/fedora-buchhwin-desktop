@@ -244,10 +244,22 @@ Singleton {
                 property list<string> monitors: []
             }
 
+            // ⚠️ `collapsedWidth` is the width AT THE SCREEN EDGE — the widest
+            // point of the shape, not the width of the pill's body. The
+            // shoulders flare outwards towards the edge, so the body measures
+            // `collapsedWidth - 2 * flare`. That is what keeps the layer surface
+            // exactly as big as what is painted on it: niri blurs and shadows
+            // the whole surface, invisible margins included, and a shape that
+            // reached past its own window was the coloured halo around the pill.
             property JsonObject notch: JsonObject {
                 property bool enabled: true
-                property int flare: 14             // the concave shoulder radius
+                property int flare: 7             // the concave shoulder radius
                 property int collapsedWidth: 150
+                // Its own key on purpose. This used to borrow `bar.height`,
+                // which meant the notch changed size when a bar that was
+                // switched off was resized.
+                property int collapsedHeight: 34
+                property int cornerRadius: 9      // the two rounded corners below
                 property int expandedHeight: 135
                 property int minExpandedWidth: 619
                 property list<string> monitors: []

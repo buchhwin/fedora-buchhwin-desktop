@@ -51,8 +51,11 @@ PanelWindow {
     exclusionMode: ExclusionMode.Ignore
     color: "transparent"                    // literal-ok: absence of colour
 
-    // Sits below the notch, with the island's own gap under it.
-    margins.top: Config.bar.height + Theme.space2
+    // Sits below the notch, with the island's own gap under it. That is the
+    // island's height — which is its own key, and only rises to the bar's when
+    // a bar is actually on screen to sit inside.
+    margins.top: Math.max(Config.notch.collapsedHeight,
+                          Config.bar.enabled ? Config.bar.height : 0) + Theme.space2
 
     implicitWidth: Math.max(1, card.implicitWidth)
     implicitHeight: Math.max(1, card.implicitHeight)

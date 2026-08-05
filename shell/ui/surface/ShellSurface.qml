@@ -127,22 +127,28 @@ PanelWindow {
     // The strip is deliberately thin and deliberately still THERE: a fullscreen
     // window with a hairline above it reads as fullscreen, while nothing at all
     // reads as a screen with a missing edge.
-    readonly property real stripHeight: Math.max(2, Math.round(Config.bar.height / 8))
+    readonly property real stripHeight:
+        Math.max(2, Math.round(Config.notch.collapsedHeight / 8))
 
     readonly property real targetIslandWidth:
         root.mode === "hidden" ? 0
       : root.mode === "strip" ? Config.notch.collapsedWidth * 0.55
       : Config.notch.collapsedWidth
 
+    // The island has its OWN height. It used to read `bar.height`, so resizing a
+    // bar that was switched off resized the notch — two things that look
+    // unrelated moving together is the kind of surprise that costs an evening.
+    // With the bar on, the island still cannot be shorter than the bar, or the
+    // one shared silhouette would have a step in it.
     readonly property real targetIslandHeight:
         root.mode === "hidden" ? 0
       : root.mode === "strip" ? root.stripHeight
-      : Math.max(Config.bar.height, root.barH)
+      : Math.max(Config.notch.collapsedHeight, root.barH)
 
     // One pair of animated numbers drives the shape, the hit area and the
     // contents, so they cannot disagree about how far open the island is.
     property real islandW: Config.notch.collapsedWidth
-    property real islandH: Config.bar.height
+    property real islandH: Config.notch.collapsedHeight
 
     Binding on islandW { value: root.targetIslandWidth }
     Binding on islandH { value: root.targetIslandHeight }
@@ -166,10 +172,13 @@ PanelWindow {
         barHeight: root.barH
         islandWidth: root.islandW
         islandHeight: root.islandH
-        // The shoulders shrink with the shape, so they never need room outside
-        // the surface — see the note on implicitWidth above.
-        flare: root.notchEnabled
-               ? Math.min(Config.notch.flare, root.islandH / 2) : 0
+        // Passed whole; Silhouette clamps it against its own geometry, which is
+        // the only place that knows how much room is left. Clamping twice, with
+        // two different limits, is how the two ended up disagreeing before.
+        // The shoulders curve INSIDE `islandWidth`, so they never need room
+        // outside the surface — see the note on implicitWidth above.
+        flare: root.notchEnabled ? Config.notch.flare : 0
+        cornerRadius: Config.notch.cornerRadius
         // The reference calls for a near-black island that stands clearly
         // apart from what is behind it — panelBg sat so close to the desktop
         // backdrop that the shape was invisible on screen.

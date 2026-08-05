@@ -46,7 +46,7 @@ Item {
     readonly property real floorWidth:
         pageIsCompact ? Config.notch.collapsedWidth : Config.notch.minExpandedWidth
     readonly property real floorHeight:
-        pageIsCompact ? Config.bar.height : Config.notch.expandedHeight
+        pageIsCompact ? Config.notch.collapsedHeight : Config.notch.expandedHeight
 
     readonly property real pagePadding:
         pageIsCompact ? Theme.space3 : Theme.space5
@@ -57,7 +57,7 @@ Item {
 
     implicitHeight: expanded && loader.item
         ? Math.max(floorHeight, loader.item.implicitHeight + pagePadding * 2)
-        : Config.bar.height
+        : Config.notch.collapsedHeight
 
     // Collapsed: the clock — but only when the bar is not already showing one.
     BarText {
