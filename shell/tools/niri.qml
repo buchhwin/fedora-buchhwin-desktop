@@ -394,11 +394,11 @@ Scope {
         var L = Config.look
         var s = ""
 
-        function surface(ns, radius, blur) {
+        function surface(ns, radius, blur, shadow) {
             var r = "layer-rule {\n"
             r += "    match namespace=" + q("^" + ns + "$") + "\n"
             r += "    geometry-corner-radius " + radius + "\n"
-            if (Theme.shadows) {
+            if (Theme.shadows && shadow !== false) {
                 r += "    shadow {\n        on\n"
                 r += "        softness " + L.shadowSoftness + "\n"
                 r += "        spread " + L.shadowSpread + "\n"
@@ -440,7 +440,22 @@ Scope {
         // never anything to see through it — the blur bought nothing and cost
         // both the halo and a full-screen GPU read per frame. Blur belongs where
         // something is actually translucent.
-        s += surface("buchhwin-notch", notchRadius, false)
+        //
+        // ⚠️ AND NO SHADOW EITHER, which is what "left and right of the notch
+        // there is a slight blur, something is wrong there" turned out to be.
+        // Measured on the wallpaper beside it: brightness sum 76 undisturbed,
+        // 71 in a ~15 px band at the sides, 70 all the way across underneath.
+        //
+        // niri draws the shadow behind the WHOLE surface, and the notch's
+        // surface is 150 px wide while the silhouette is only 136 at the bottom
+        // — so the shadow shows where nothing is painted. No radius fixes it
+        // either: niri's shadow is a ROUNDED-RECTANGLE shadow and the notch is
+        // not a rounded rectangle, it has concave shoulders and two different
+        // widths. There is no number that makes a rect follow that shape.
+        //
+        // And it was never wanted: the reference says "Kein Rand, keine Linie,   english-ok: the specification, quoted
+        // kein sichtbarer Schatten an der Pille selbst".                         english-ok: the specification, quoted
+        s += surface("buchhwin-notch", notchRadius, false, false)
         s += "\n" + surface("buchhwin-overlay", paneRadius, blurOn)
         s += "\n" + surface("buchhwin-bar", 0, blurOn)
         // The toasts are translucent panes like the pages, so they get the same

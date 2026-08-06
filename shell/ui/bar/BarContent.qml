@@ -259,6 +259,20 @@ Item {
 
         // ------------------------------------------------------ clock
         Pill {
+            // ⚠️ IT DID NOTHING. This pill sat between the battery and the gear,
+            // both of which answer a click, and looked exactly like them — and
+            // it had neither `interactive` nor `onClicked`. Reported as "wenn    english-ok: the report, quoted
+            // man die bar aktiviert hat und man klickt aufs datum dann           english-ok: the report, quoted
+            // erscheint der kalender nicht".                                     english-ok: the report, quoted
+            //
+            // ⚠️ Through Pill's OWN handler, never a TapHandler in the contents.
+            // A handler written inside a Pill lands in the inner Item, which is
+            // sized to its text — that is the "every pill was half dead" bug,
+            // and tests/tap-targets.sh guards the call sites against it.
+            interactive: true
+            active: Ipc.page === "calendar"
+            onClicked: Ipc.toggle("calendar")
+
             BarText {
                 // SystemClock rather than a Timer: it ticks on the minute
                 // boundary instead of a second after whenever the shell
