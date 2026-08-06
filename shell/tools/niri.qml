@@ -408,27 +408,49 @@ Scope {
 
         var blurOn = !(L.profile === "minimal" || !L.blur)
 
+        // ⚠️ THE RADIUS HERE MUST BE THE RADIUS THE SURFACE DRAWS, and getting
+        // that wrong is what "the corners of all the panels are a weird red"
+        // was. It used to pass `L.rounding` for every one of them, which is the
+        // BASE from which the radii are derived — the panes actually draw
+        // `Theme.radiusLg`, and with rounding 16 that is 21.
+        //
+        // Those five pixels are not cosmetic. `background-effect` belongs to the
+        // SURFACE, not to the pane painted on it, and niri clips the blur to
+        // this radius. A 16-radius blur under a 21-radius pane leaves a crescent
+        // at every corner where the blurred wallpaper is shown RAW — and raw
+        // means through `blur { saturation … }`. Measured on the running VM with
+        // the panel open: the panel interior is rgb(44,44,42), r−b = +2, and the
+        // crescent is rgb(144,46,6), r−b = +138 — MORE saturated than the
+        // wallpaper below the panel (+81). Four red arcs, one per corner, on
+        // every surface with blur.
+        //
+        // So each namespace is handed the number its own painter uses. If a
+        // surface ever changes what it draws, this has to follow — which is why
+        // tests/niri-config.sh now checks the pairing rather than trusting it.
+        var paneRadius = Theme.radiusLg          // GlassPane in overlay/launcher/toast
+        var notchRadius = Config.notch.cornerRadius  // Silhouette's own corners
+
         // ⚠️ NO BLUR BEHIND THE NOTCH. It is near-black and opaque, so there was
         // never anything to see through it — the blur bought nothing and cost
         // both the halo and a full-screen GPU read per frame. Blur belongs where
         // something is actually translucent.
-        s += surface("buchhwin-notch", L.rounding, false)
-        s += "\n" + surface("buchhwin-overlay", L.rounding, blurOn)
+        s += surface("buchhwin-notch", notchRadius, false)
+        s += "\n" + surface("buchhwin-overlay", paneRadius, blurOn)
         s += "\n" + surface("buchhwin-bar", 0, blurOn)
         // The toasts are translucent panes like the pages, so they get the same
         // treatment. Their surface is sized to the cards, so the shadow niri
         // draws behind the whole thing is the cards' shadow.
-        s += "\n" + surface("buchhwin-toast", L.rounding, blurOn)
+        s += "\n" + surface("buchhwin-toast", paneRadius, blurOn)
         // The launcher is a translucent pane like the pages, and the only one
         // that sits in the middle of the screen — which is exactly where a
         // missing blur rule would be most obvious, with the wallpaper showing
         // through sharp behind a list of programs.
-        s += "\n" + surface("buchhwin-launcher", L.rounding, blurOn)
+        s += "\n" + surface("buchhwin-launcher", paneRadius, blurOn)
         // The pill beside the notch. Same treatment as the notch itself and
         // for the same reason: it is a small opaque shape, so there is nothing
         // to see through it and a blur pass behind it would be paid for and
         // then covered up.
-        s += "\n" + surface("buchhwin-aside", L.rounding, false)
+        s += "\n" + surface("buchhwin-aside", notchRadius, false)
         return s
     }
 

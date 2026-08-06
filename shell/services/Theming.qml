@@ -73,6 +73,20 @@ Singleton {
         if (!Config.settled)
             return ""
         var t = Config.theme, l = Config.look, g = Config.theming
+        // ⚠️ AND `settled` IS NOT ENOUGH — measured, not reasoned about. It goes
+        // true one event-loop step before JsonAdapter has built its sub-objects,
+        // so `t` is NULL here on every single start and this whole binding threw
+        // with "Cannot read property 'palette' of null". Silently: the watcher
+        // simply never got a fingerprint, so changing the palette re-coloured
+        // the shell and left GTK, Qt, kitty and niri alone — the exact failure
+        // this service was written to end.
+        //
+        // The test belongs here rather than inside `settled`: putting it in that
+        // binding made quickshell segfault 6 runs out of 6, because reading a
+        // JsonAdapter sub-object from a binding the adapter itself dirties is
+        // re-entrant. See Config.qml's note.
+        if (!t || !l || !g)
+            return ""
         return [t.palette, t.accent, t.customColor,
                 l.rounding, l.borderWidth, l.opacityPanel, l.opacityTerminal,
                 l.fontUi, l.fontMono, l.fontSize, l.profile,

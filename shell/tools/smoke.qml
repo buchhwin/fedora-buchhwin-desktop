@@ -173,10 +173,16 @@ Scope {
             root.ok("theme tokens exist",
                     Theme.panelBg !== undefined && Theme.radiusLg > 0
                     && Theme.space4 > 0 && Theme.fontSize > 0)
+            // ⚠️ `glassRimBottom` is gone on purpose — the panes have no edge
+            // any more ("ganz weg", 06.08.2026), so the token was deleted rather  english-ok: quoted answer
+            // than left unread. What replaces it is the optional border, which
+            // is 0 by default and must still HAVE a value: a key nobody reads is
+            // exactly the debt this file exists to catch.
             root.ok("glass tokens exist",
-                    Theme.glassRimBottom !== undefined
-                    && Theme.glassSheen !== undefined
-                    && Theme.hairline > 0)
+                    Theme.glassSheen !== undefined
+                    && Theme.hairline > 0
+                    && Theme.panelBorderWidth !== undefined
+                    && Theme.outline !== undefined)
 
             // ⚠️ THE TAP TARGET, because this one shipped. A TapHandler written
             // inside a Pill lands in the Pill's inner Item, which is sized to

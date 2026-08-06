@@ -117,6 +117,74 @@ rm -rf "$tmp"
 # quietly did not exist. The real check is in tools/smoke.qml, against
 # Config.keys.binds. This one is kept as the second net — it would catch a
 # duplicate the generator itself introduced, which the other cannot see.
+# Every layer rule must name the radius its surface actually DRAWS.
+#
+# ⚠️ THIS IS THE CHECK FOR "the corners of all the panels are a weird red".
+# `background-effect` belongs to the SURFACE, and niri clips the blur to
+# `geometry-corner-radius`. The generator used to pass `look.rounding` for every
+# namespace — but that is the BASE the radii derive from, not a radius anybody
+# paints: the panes draw `Theme.radiusLg`, which at rounding 16 is 21. The five
+# pixels between the two came out as a crescent of RAW blurred wallpaper at each
+# corner, and raw means through `blur { saturation }`. Measured on the VM before
+# the fix: panel interior r−b = +2, crescent r−b = +138, i.e. more saturated
+# than the wallpaper itself.
+#
+# ⚠️ AND IT DOES NOT RE-COMPUTE THE FORMULA. Multiplying rounding by 1.33 here
+# would pass whatever the theme does, including the same mistake — the check
+# would be a mirror. Instead the two independent producers are compared: the
+# token dump says what QML draws, the generated config says what niri is told.
+# Both must be run with the SAME shell.json, or they are answering different
+# questions.
+printf '  %-34s ' "layer radii match what is drawn"
+tmp="$(mktemp -d)"; mkdir -p "$tmp/buchhwin" "$tmp/niri" "$tmp/environment.d"
+# Deliberately NOT the defaults: a wrong radius that happens to equal the right
+# one on the default numbers would slip through. 20 → radiusLg 27, and the notch
+# corner is moved off both.
+printf '{"version":2,"look":{"rounding":20},"notch":{"cornerRadius":11}}\n' \
+    > "$tmp/buchhwin/shell.json"
+rm -f /tmp/buchhwin-tokens.txt
+XDG_CONFIG_HOME="$tmp" XDG_DATA_HOME="$tmp/share" BUCHHWIN_TOOL=dump-tokens \
+    QT_QPA_PLATFORM=offscreen timeout 60 qs -p shell >/dev/null 2>&1
+XDG_CONFIG_HOME="$tmp" XDG_DATA_HOME="$tmp/share" BUCHHWIN_TOOL=niri \
+    QT_QPA_PLATFORM=offscreen timeout 60 qs -p shell >/dev/null 2>&1
+
+# "  radius xs..pill        7 10 20 27 33 999"
+# ⚠️ SIX NUMBERS AFTER TWO WORDS. "radius" and "xs..pill" are fields 1 and 2, so
+# xs..pill run from $3 to $8 and radiusLg — the one the panes draw — is $6. The
+# first version of this line took $4 and reported "drawn 10" against a config
+# that said 27; the check failed while the code under it was correct, which is
+# the worst kind of test.
+drawn="$(awk '/^  radius xs\.\.pill/ { print $6 }' /tmp/buchhwin-tokens.txt 2>/dev/null)"
+radius_of() {   # $1 = namespace
+    awk -v ns="\"^$1\$\"" '
+        $1 == "layer-rule" { inrule = 1; match_ns = 0 }
+        inrule && $1 == "match" && $2 == "namespace=" ns { match_ns = 1 }
+        inrule && match_ns && $1 == "geometry-corner-radius" { print $2; exit }
+        $1 == "}" { inrule = 0 }
+    ' "$tmp/niri/config.kdl"
+}
+bad=""
+if [[ -z "$drawn" ]]; then
+    bad="no radius in the token dump"
+else
+    for ns in buchhwin-overlay buchhwin-toast buchhwin-launcher; do
+        got="$(radius_of "$ns")"
+        [[ "$got" == "$drawn" ]] || bad+="$ns=$got (drawn $drawn) "
+    done
+    for ns in buchhwin-notch buchhwin-aside; do
+        got="$(radius_of "$ns")"
+        [[ "$got" == "11" ]] || bad+="$ns=$got (notch corner 11) "
+    done
+    got="$(radius_of buchhwin-bar)"
+    [[ "$got" == "0" ]] || bad+="buchhwin-bar=$got (draws nothing rounded) "
+fi
+if [[ -z "$bad" ]]; then
+    printf '\033[38;5;114mok\033[0m  panes %s, notch 11, bar 0\n' "$drawn"
+else
+    printf '\033[38;5;203m%s\033[0m\n' "$bad"; fail=1
+fi
+rm -rf "$tmp"
+
 printf '  %-34s ' "no key is bound twice"
 tmp="$(mktemp -d)"; mkdir -p "$tmp/buchhwin" "$tmp/niri" "$tmp/environment.d"
 printf '{"version":2}\n' > "$tmp/buchhwin/shell.json"

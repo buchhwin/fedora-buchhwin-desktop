@@ -80,7 +80,12 @@ Singleton {
     readonly property color fgDim:      p("subtext0")
     readonly property color fgDisabled: p("overlay2")
 
-    readonly property color accent:       p(Config.theme.accent)
+    // ⚠️ Guarded for the same reason as Scheme's `name`: `Config.theme` is null
+    // for a moment while JsonAdapter builds. `p("")` would hand back the magenta
+    // sentinel and paint it for a frame, so the fallback is the same key the
+    // config declares as its default rather than nothing.
+    readonly property string accentName: Config.theme ? Config.theme.accent : "green"
+    readonly property color accent:       p(accentName)
     readonly property color accentFg:     on(accent)
     readonly property color accentHover:  lighten(accent, 0.06)
     readonly property color accentActive: darken(accent, 0.06)
@@ -131,19 +136,23 @@ Singleton {
     // cheaply, and paying for it every frame on a laptop. A gradient costs one
     // draw and no per-frame work.
     //
-    // ⚠️ TWO TOKENS, NOT FOUR. There were a top and a side rim as well, drawn as
-    // a gradient ring behind every pane. On screen that reads as a border, and
-    // it was reported as one; the reference screenshots have no ring at all,
-    // only "a fine lighter line along the bottom edge". They are deleted rather
-    // than set to transparent, because a token with no reader is the same debt
-    // as a config key with no reader — see GlassPane.qml.
+    // ⚠️ ONE TOKEN, NOT FOUR. There were a top rim, a side rim and a glint along
+    // the bottom edge. The ring went first — on screen it reads as a border and
+    // was reported as one. The glint went on 06.08.2026, on a direct answer:
+    // asked whether the fine line along the bottom should stay now that the red
+    // corners were going, the answer was "ganz weg" — the panes are to have no  english-ok: quoted answer
+    // edge at all, like the windows, which have neither border nor focus ring.
     //
-    // What is left is the light bouncing back up through the pane, which is the
-    // most recognisable part of the look and the cheapest part to draw.
-    readonly property color glassRimBottom: alpha(fg, dark ? 0.18 : 0.26)
-    // The sheen lies over the top of the pane and fades out well before the
-    // middle. Any further and it stops reading as light and starts reading as
-    // a lighter background.
+    // ⚠️ That DEPARTS from the two reference screenshots, which both show the
+    // line. The newer instruction wins over the older one, and the note it
+    // contradicts has been corrected rather than left to disagree.
+    //
+    // Tokens are deleted rather than set to transparent: a token with no reader
+    // is the same debt as a config key with no reader.
+    //
+    // What is left is the sheen — light lying over the top of the pane, fading
+    // out well before the middle. Any further and it stops reading as light and
+    // starts reading as a lighter background.
     readonly property color glassSheen:     alpha(fg, dark ? 0.07 : 0.10)
 
     // ----------------------------------------------------------------- shape
@@ -157,6 +166,9 @@ Singleton {
     readonly property int radiusPill: 999
 
     readonly property int borderWidth: Config.look.borderWidth
+    // The optional edge on OUR panes. 0 by default, which is the look asked
+    // for; the settings window will make it a row rather than a discovery.
+    readonly property int panelBorderWidth: Config.look.panelBorderWidth
 
     // One device pixel at scale 1, and the width of the glass rim. It is a
     // token rather than a bare 1 so the tripwire stays honest and so a future

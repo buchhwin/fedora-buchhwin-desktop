@@ -91,6 +91,39 @@ Singleton {
     // The one-step deferral therefore lives in common/WaitFor.qml, so that
     // every consumer gets it instead of each rediscovering it. (`adapterUpdated`
     // looks like the right signal and is not: it does not fire on load.)
+    //
+    // ⚠️ AND IT HAS TO SEE THAT THE BLOCKS EXIST, not only that the file was
+    // read. During the window above, `adapter.theme` is NULL — not "still the
+    // defaults", null — and everything that reads `Config.theme.palette` in that
+    // moment throws. Measured with a config file that contains no nulls at all,
+    // so it is the adapter's construction order and not the file: three readers
+    // went down on every single start, Scheme (the palette name), Theme (the
+    // accent) and the Theming watcher, and Theming was already gating on this
+    // very property. It was gating on a promise the property could not keep.
+    //
+    // `theme` stands for all of them: JsonAdapter builds its sub-objects
+    // together, so one being present means they all are. On a machine with no
+    // file at all the declared JsonObject is there from the start, which is why
+    // this does not break the `_failed` path.
+    // ⚠️ AND `settled` DELIBERATELY DOES NOT TEST THAT THE BLOCKS EXIST.
+    //
+    // During the window above `adapter.theme` is NULL — not "still the
+    // defaults", null — so `Config.theme.palette` throws, and it does so with a
+    // config file that contains no nulls at all. The obvious repair, adding
+    // `&& adapter.theme !== null` to this binding, made `qs -p shell` SEGFAULT
+    // 6 times out of 6 where the same run without it merely warned. The
+    // backtrace is the one this project knows by heart: QObjectWrapper::wrap ←
+    // QQmlVMEMetaObject::writeProperty ← JsonAdapter::deserializeRec. Reading a
+    // JsonAdapter sub-object from a binding that the adapter's own
+    // deserialisation dirties is re-entrant, and quickshell does not survive it.
+    // Moving the test into `onLoaded` avoided the crash and then hung on the
+    // `onLoadFailed` path instead — two ways of being wrong about the same
+    // thing.
+    //
+    // So the guard lives where the value is READ, not where it is announced:
+    // theme/Scheme.qml, theme/Theme.qml and services/Theming.qml each check
+    // `Config.theme` before dereferencing it. Three small guards that cannot
+    // re-enter beat one clever one that can.
     readonly property bool settled: file.loaded || _failed
     property bool _failed: false
 
@@ -100,6 +133,13 @@ Singleton {
     // window will show it, because a config that refused to move forward is
     // something the user has to know about rather than something to log.
     property string migrationError: ""
+
+    // Blocks that came back as `null` and were replaced by their defaults. It
+    // is a property rather than a log line for the same reason `migrationError`
+    // is: something silently reverted to defaults is a thing the user has to be
+    // able to find out about. tools/smoke.qml reports it and the settings
+    // window will show it.
+    property var nulledKeys: []
 
     // Bring an older file forward, before anything reads meaning into it.
     //
@@ -124,6 +164,71 @@ Singleton {
             // replacing it with guesswork. Leave it; FileView already shouted.
             root.migrationError = "shell.json is not valid JSON: " + e
             return
+        }
+
+        // ⚠️ A `null` BLOCK IS DAMAGE, NOT A SETTING — and it perpetuates itself.
+        //
+        // Found on the test VM: shell.json contained `"theme": null`. JsonAdapter
+        // then hands back null for the whole block, so `Config.theme.palette`
+        // throws, and three separate readers went down with it — Scheme (the
+        // palette name), Theme (the accent) and the Theming watcher (which
+        // re-renders GTK, kitty and niri when the palette changes). None of them
+        // said anything: the shell fell back to the built-in palette, which
+        // happens to look like the default, so the desktop looked right while
+        // choosing a different palette would have changed nothing outside the
+        // shell. tests/smoke.sh had been failing on it for at least a day.
+        //
+        // Worse, `save()` writes the adapter back out — so once a null is in the
+        // file, every settings change writes it again. The file heals only if
+        // something removes it before the adapter ever sees it, which is here.
+        //
+        // ⚠️ HOW IT GOT THERE IS NOT PROVEN. No migration writes null, so the
+        // likeliest source is a `writeAdapter()` during the window Shell.qml
+        // documents at length — JsonAdapter is demonstrably racy while the shell
+        // is still being built. That is a guess and is labelled as one; the
+        // repair does not depend on it being right.
+        //
+        // ⚠️ AND IT HAS TO GO ALL THE WAY DOWN. The first version of this only
+        // looked at the top level, which fixed `"theme": null` and left
+        // `"timer": {"presets": null}` — measured on the same file, and the
+        // adapter says so out loud: "Failed to deserialize property presets:
+        // expected QList<int> but got std::nullptr_t". Nested is where a null is
+        // most likely to appear and least likely to be noticed.
+        //
+        // Only exact `null`. `0`, `""`, `false` and `[]` are values somebody
+        // chose; a null is a value nothing in this shell ever writes on purpose.
+        var scrubbed = []
+        function scrub(node, path) {
+            if (node === null || typeof node !== "object")
+                return
+            if (Array.isArray(node)) {
+                // A null IN a list would deserialize just as badly. Walk
+                // backwards so removing one does not renumber the rest.
+                for (var i = node.length - 1; i >= 0; i--) {
+                    if (node[i] === null) {
+                        node.splice(i, 1)
+                        scrubbed.push(path + "[" + i + "]")
+                    } else {
+                        scrub(node[i], path + "[" + i + "]")
+                    }
+                }
+                return
+            }
+            for (var key in node) {
+                if (node[key] === null) {
+                    delete node[key]
+                    scrubbed.push(path + key)
+                } else {
+                    scrub(node[key], path + key + ".")
+                }
+            }
+        }
+        scrub(cfg, "")
+        if (scrubbed.length) {
+            root.nulledKeys = scrubbed
+            // Written even when no migration is due — see below. A repair is not
+            // a migration, so it does not wait for a version bump.
+            file.setText(JSON.stringify(cfg, null, 2) + "\n")
         }
 
         if (Migrations.fromFuture(cfg)) {
@@ -299,6 +404,18 @@ Singleton {
                 property real uiScale: 1.0
                 property int rounding: 16          // every radius derives from this
                 property int borderWidth: 0        // 0: no window borders anywhere
+                // The same question for OUR surfaces — the quick panel, the
+                // launcher, the toasts. 0 is the default and the brief:
+                // "ich will das die ohne umrandung sind wie die fenster dort  english-ok: quoted brief
+                // auch sowas nicht, aber in den settings später soll man       english-ok: quoted brief
+                // optional einen rand einstellen können". The window rule above english-ok: quoted brief
+                // is off, so the panes match the windows.
+                //
+                // ⚠️ It has a reader NOW, in ui/common/GlassPane.qml, rather
+                // than waiting for the settings window to give it one. A key
+                // nothing reads is the fault this project has found five times;
+                // M8 adds the row, not the meaning.
+                property int panelBorderWidth: 0
                 property int gapsIn: 8
                 // Windows should read as separate objects lying on the
                 // wallpaper, not as panes butted against the screen edge —
@@ -351,7 +468,17 @@ Singleton {
                 // 2 is doubled. This is the difference between glass and frosted
                 // plastic — blur alone washes the colour out, and the reference
                 // screenshots are anything but washed out. niri's default is 1.5.
-                property real blurSaturation: 1.8
+                //
+                // ⚠️ 1.8 was too much, and it took the corner bug to show it.
+                // Measured with the quick panel open over a warm wallpaper: where
+                // the blur came through unattenuated it read rgb(144,46,6),
+                // r−b = +138, against +81 for the same wallpaper unblurred — the
+                // "glass" was more colourful than the thing behind it. With the
+                // corners fixed that only shows THROUGH the pane, but the pane is
+                // 0.78 opaque, so the tint is still there and still overdone.
+                // 1.2 keeps the colour without the neon. His call, and it stays a
+                // key: the settings window makes it a slider.
+                property real blurSaturation: 1.2
                 // The lit edge on our own surfaces — rim and sheen, no shader.
                 // See the glass tokens in theme/Theme.qml for why it is drawn
                 // this way and not as refraction.

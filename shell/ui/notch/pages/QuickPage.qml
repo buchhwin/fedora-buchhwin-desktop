@@ -47,9 +47,31 @@ ColumnLayout {
     // forget the tab between openings.
     readonly property int tab: Ipc.quickTab
 
+    // ⚠️ ONE WIDTH FOR ALL FIVE TABS, and it is a bug fix rather than tidiness.
+    // Measured on the running VM: the panel was 669 px wide on Overview and
+    // 619 px on Settings, so it changed size by 50 px every time you touched a
+    // tab. Each view was simply asking for whatever its own contents wanted,
+    // and the surface follows the content on both axes (see NotchContent).
+    //
+    // The number is the widest view — the month grid beside the weather column
+    // needs about 621 px — rounded up onto the 32 px grid with a little air.
+    // ⚠️ It is deliberately MORE than `notch.minExpandedWidth` (619): that key
+    // is a FLOOR from the reference screenshot, not a ceiling, and the quick
+    // panel is the one page whose job is to gather things rather than show one.
+    //
+    // ⚠️ Declared through `Layout.preferredWidth` rather than by assigning
+    // `implicitWidth`. A Layout computes its own implicit size and writes it,
+    // so assigning it means whoever writes last wins — which is a size that
+    // changes on rearrange.
+    readonly property int contentWidth: Theme.space6 * 20
+
     // ------------------------------------------------------------------- tabs
     RowLayout {
         Layout.fillWidth: true
+        // The row is on every tab, so pinning the width here pins it for all of
+        // them. Everything else may be narrower; nothing may be wider, and
+        // tests/quick-panel.sh measures that rather than trusting it.
+        Layout.preferredWidth: root.contentWidth
         spacing: Theme.space2
 
         Repeater {
@@ -97,9 +119,22 @@ ColumnLayout {
     // view that starts wifi scans are not, and building them to leave them
     // hidden is exactly the idle work this desktop is not allowed to do. Each
     // exists only while its tab is the one showing.
+    //
+    // ⚠️ AND EVERY ONE OF THEM NEEDS `visible: active`. This is "der abstand im  english-ok: the report, quoted
+    // quicksettings menu passt immer noch nicht", and it is not a padding       english-ok: the report, quoted
+    // problem at all. A Loader with `active: false` is 0 px tall — but it is
+    // still VISIBLE, and QtQuick.Layouts gives every visible item its row
+    // spacing whether or not it has any height. Three loaders sit between the
+    // tab row and the content, so on Settings two of them were contributing
+    // `space4` each for nothing.
+    //
+    // Measured on the VM before the fix, column x=700 through the Overview pill
+    // and the Wi-Fi tile: pill bottom y=49, tile top y=98 — a 48 px gap where
+    // `space4` is 16. Exactly three spacings where there should be one.
     Loader {
         Layout.fillWidth: true
         active: root.tab === Ipc.quickNotifications
+        visible: active
         asynchronous: true
         sourceComponent: notificationsTab
     }
@@ -111,13 +146,19 @@ ColumnLayout {
     Loader {
         Layout.fillWidth: true
         active: root.tab === Ipc.quickTimer
+        visible: active
         asynchronous: true
-        sourceComponent: TimerPage {}
+        // ⚠️ `timerTab`, not `TimerPage {}`. This one was left behind when the
+        // other two were fixed, in the same file, four lines above the comment
+        // that explains why it is wrong — a recipe is what a Loader wants, and
+        // an instance is built once and kept forever.
+        sourceComponent: timerTab
     }
 
     Loader {
         Layout.fillWidth: true
         active: root.tab === Ipc.quickSettings
+        visible: active
         asynchronous: true
         sourceComponent: settingsTab
     }
@@ -132,6 +173,7 @@ ColumnLayout {
     // reported as "sometimes the gap gets too big, down to the bottom of the
     // screen, but only sometimes".
     Component { id: notificationsTab; NotificationsPage {} }
+    Component { id: timerTab; TimerPage {} }
     Component { id: settingsTab; QuickSettings {} }
 
     // --------------------------------------------------------------- overview

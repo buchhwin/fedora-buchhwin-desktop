@@ -6,13 +6,25 @@
 // sheen lying over the upper part of the pane, and a fine glint along the
 // bottom where light bounces back up through it.
 //
-// ⚠️ THERE IS NO RING. There was one — a gradient rectangle behind the body,
-// showing as a hairline all the way round — and it was reported as "the quick
-// panel still has a border round it, that should go". Going back to the two
-// reference screenshots settles it: neither shows a ring. Both show one thing
-// only, "a fine lighter line along the bottom edge". So the top and side rim
-// tokens are gone rather than dimmed, because a rim nobody can see is two draws
-// nobody pays for on purpose.
+// ⚠️ THERE IS NO EDGE AT ALL ANY MORE, and that is a decision rather than an
+// omission. First the ring went — a gradient rectangle behind the body, showing
+// as a hairline all the way round, reported as "the quick panel still has a
+// border round it, that should go". What survived that was the glint along the
+// bottom, because both reference screenshots show "a fine lighter line along the
+// bottom edge".
+//
+// On 06.08.2026 the glint went too. Asked directly whether it should stay once
+// the red corners were fixed, the answer was "ganz weg": the panes are to look  english-ok: quoted answer
+// like the windows, and the windows have neither border nor focus ring
+// (`border { off }`, `focus-ring { off }` in the generated niri config).
+//
+// ⚠️ THIS DEPARTS FROM THE REFERENCE SCREENSHOTS. That is deliberate and the
+// newer instruction wins; it is written down here so nobody later "restores"
+// the line by going back to the pictures.
+//
+// What is left for anyone who wants an edge is `look.panelBorderWidth`, which
+// is 0 by default and draws a real border when it is not — one key, one reader,
+// and a row in the settings window when that exists.
 //
 // ⚠️ WHY THERE IS NO SHADER HERE. Refraction — the thing that actually bends
 // what is behind the glass — needs to sample the backdrop, and a layer surface
@@ -23,9 +35,9 @@
 // refraction because it runs inside Hyprland's render pipeline; niri has no
 // plugin interface, so that road is closed rather than merely harder.
 //
-// Cost: one extra draw for the sheen and one for the glint, no per-frame work,
-// nothing running when the surface is closed. `look.glass false` (or
-// `look.profile minimal`) removes both and leaves the plain body.
+// Cost: one extra draw for the sheen, no per-frame work, nothing running when
+// the surface is closed. `look.glass false` (or `look.profile minimal`) removes
+// it and leaves the plain body.
 
 import QtQuick
 import "../../theme"
@@ -43,6 +55,10 @@ Item {
         anchors.fill: parent
         radius: root.radius
         color: root.fill
+        // Off by default. `border.width: 0` draws nothing at all, so this costs
+        // one comparison and no pixels in the state everybody runs.
+        border.width: Theme.panelBorderWidth
+        border.color: Theme.outline
     }
 
     // The sheen. It stops well before the middle: any further and it stops
@@ -57,22 +73,4 @@ Item {
         }
     }
 
-    // The glint, and the whole of the edge treatment that is left.
-    //
-    // ⚠️ Inset by the corner radius on both sides. A line drawn the full width
-    // would run out past where the body has already curved away, and the two
-    // stubs sticking out of the corners are the one thing that looks like a
-    // fault rather than like light.
-    Rectangle {
-        anchors {
-            left: parent.left
-            right: parent.right
-            bottom: parent.bottom
-            leftMargin: root.radius
-            rightMargin: root.radius
-        }
-        height: Theme.hairline
-        visible: Theme.glass
-        color: Theme.glassRimBottom
-    }
 }

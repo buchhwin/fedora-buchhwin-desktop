@@ -48,7 +48,14 @@ Singleton {
     // It stays a binding rather than a readonly alias so a headless tool can
     // still assign over it — an assignment breaks the binding, which is exactly
     // the escape hatch the old comment wanted.
-    property string name: Config.theme.palette || "everforest-dark"
+    // ⚠️ `Config.theme` can be NULL, and this binding is one of the three that
+    // proved it. JsonAdapter has a window during construction where the block
+    // does not exist yet — see Config.qml's note on `settled`. A binding
+    // re-evaluates once it does, so the guard costs a frame of the fallback and
+    // nothing else; without it the binding throws and QML keeps whatever the
+    // property had, which is the empty string.
+    property string name: (Config.theme ? Config.theme.palette : "")
+                          || "everforest-dark"
 
     // Honest readiness: the data is what matters, not the file object's state
     // — and it must be the data for the palette we are asking about NOW.
