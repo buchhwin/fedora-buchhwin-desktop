@@ -31,7 +31,7 @@ Singleton {
     // Must match Config's `version` default. A file with a lower number is
     // brought forward; a HIGHER number means the config was written by a newer
     // build than this one, which we must not "migrate" — see needed().
-    readonly property int current: 7
+    readonly property int current: 8
 
     // step[n] upgrades a config at version n to version n+1.
     // Each is a pure function: take the parsed object, return it changed.
@@ -190,6 +190,57 @@ Singleton {
                 l.shadowOffsetY = 8
             }
             return cfg
+        },
+
+        // 7 → 8: a frozen copy of the DEFAULT key bindings is dropped.
+        //
+        // ⚠️ THIS IS A LANDMINE THAT WOULD HAVE GONE OFF ON EVERY FUTURE
+        // BINDING. Found while adding one: `Mod+Tab` for the workspace map was
+        // in the defaults, the generator ran, the config validated — and the
+        // key was not in it. The reason was in shell.json: 63 entries under
+        // `binds`, every one of them our own default, put there by the build in
+        // which `keys.binds` was a `var` inside a nested JsonObject and carried
+        // the whole list as its default. JsonAdapter wrote them out, the 5 → 6
+        // step moved them to the top level, and "the file wins when it says
+        // anything at all" did the rest: the defaults were frozen at the day
+        // that file was first written. Every binding added since — and every one
+        // that will ever be added — would have been invisible on every machine
+        // that has run this shell, silently.
+        //
+        // So a list that is EXACTLY ours is not a decision, it is a fossil, and
+        // it goes. The test is per entry: same key, same action, same argument.
+        // One rebound key, one added binding, one entry we never shipped, and
+        // the whole list is a decision and stays untouched.
+        //
+        // ⚠️ WHAT THIS DOES COST, said plainly: somebody who deleted a default
+        // binding by hand and changed nothing else gets it back. That is the
+        // one case this cannot tell from a fossil, and it is the smaller harm —
+        // a binding you did not want is a nuisance, a binding you cannot get is
+        // a feature that does not exist.
+        function (cfg, ctx) {
+            var b = cfg.binds
+            var d = ctx ? ctx.defaultBinds : null
+            if (!Array.isArray(b) || b.length === 0 || !Array.isArray(d))
+                return cfg
+
+            function sig(e) {
+                return (e && e.action !== undefined ? e.action : "")
+                     + " " + (e && e.arg !== undefined ? e.arg : "")
+            }
+            var ours = {}
+            for (var i = 0; i < d.length; i++)
+                if (d[i] && d[i].key !== undefined)
+                    ours[d[i].key] = sig(d[i])
+
+            for (var j = 0; j < b.length; j++) {
+                var e = b[j]
+                if (!e || e.key === undefined || ours[e.key] === undefined)
+                    return cfg               // something we never shipped
+                if (ours[e.key] !== sig(e))
+                    return cfg               // a key bound to something else
+            }
+            delete cfg.binds
+            return cfg
         }
     ]
 
@@ -216,7 +267,14 @@ Singleton {
     // Returns { ok, config, from, to, error }.
     // On any failure the ORIGINAL object comes back untouched — a half-migrated
     // config is worse than an old one.
-    function migrate(cfg) {
+    //
+    // ⚠️ `ctx` carries what a step cannot know on its own — today only
+    // `defaultBinds`, for the 7 → 8 step. It is PASSED IN rather than imported:
+    // Config already imports this file, so reaching back for Config from here
+    // would close a circle between two singletons, and the failure mode for
+    // that in this project is "Type Config unavailable" with a stack that names
+    // the wrong file.
+    function migrate(cfg, ctx) {
         var from = versionOf(cfg)
 
         if (fromFuture(cfg))
@@ -243,7 +301,7 @@ Singleton {
                 return { ok: false, config: cfg, from: from, to: v,
                          error: "no migration from version " + v }
             try {
-                out = step(out)
+                out = step(out, ctx || {})
             } catch (e2) {
                 return { ok: false, config: cfg, from: from, to: v,
                          error: "migration " + v + "→" + (v + 1) + " failed: " + e2 }

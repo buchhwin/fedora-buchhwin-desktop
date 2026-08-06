@@ -127,6 +127,27 @@ Scope {
                     && eigen.config.look.shadowSpread === 2
                     && eigen.config.look.shadowOffsetY === 6)
 
+            // The 7 → 8 step, both ways round for the same reason. A frozen
+            // copy of our own defaults has to go, or no binding added from now
+            // on ever reaches a machine that has run this shell before; a list
+            // somebody has actually touched must survive untouched.
+            var ctx = { defaultBinds: Config.defaultBinds }
+            var fossil = []
+            for (var b = 0; b < Config.defaultBinds.length; b++)
+                fossil.push(Config.defaultBinds[b])
+            var gone = Migrations.migrate({ version: 7, binds: fossil }, ctx)
+            root.ok("7→8 drops a frozen copy of the defaults",
+                    gone.ok && gone.config.binds === undefined)
+
+            var mine = []
+            for (var c = 0; c < Config.defaultBinds.length; c++)
+                mine.push(Config.defaultBinds[c])
+            mine[0] = { key: mine[0].key, action: "spawn-sh", arg: "my-own-terminal" }
+            var kept = Migrations.migrate({ version: 7, binds: mine }, ctx)
+            root.ok("7→8 keeps a list that was rebound",
+                    kept.ok && kept.config.binds !== undefined
+                    && kept.config.binds.length === Config.defaultBinds.length)
+
             // ------------------------------------------------------ theme
             // All 26 palette names resolve. `hex()` answers Scheme.unknown for
             // a name it does not know — magenta, impossible to miss in a
@@ -225,10 +246,15 @@ Scope {
             // have let a typo in the launcher's key through silently, which is
             // the one thing this check exists to prevent.
             var verbs = ({
+                // ⚠️ This list is typed by hand and ipc/Ipc.qml is the truth, so
+                // it goes stale in one direction only: a verb that exists and is
+                // missing here. `workspaces` was exactly that — the page and its
+                // handler shipped a round ago with nothing calling them, so the
+                // gap could not show. It showed the moment a key did.
                 "notch": ["media", "volume", "quick", "notifications", "calendar",
-                          "tray", "wallpaper", "event", "brightness", "session",
-                          "clipboard", "settings", "mic", "calculator", "timer",
-                          "collapse", "state"],
+                          "tray", "workspaces", "wallpaper", "event", "brightness",
+                          "session", "clipboard", "settings", "mic", "calculator",
+                          "timer", "collapse", "state"],
                 "launcher": ["toggle", "show", "hide", "state"],
                 "bar": ["toggle", "state"]
             })

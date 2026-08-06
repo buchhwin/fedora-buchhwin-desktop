@@ -1,76 +1,46 @@
 // A few pixels in a corner of the screen that open something when you rest in
 // them.
 //
-// His idea: top-right for the notifications, top-left for the workspace map.
-//
-// ⚠️ NIRI ALREADY OWNS THE TOP-LEFT CORNER, and it is on by default. From its
-// own docs, Configuration: Gestures.md: "Put your mouse at the very top-left
-// corner of a monitor to toggle the overview", with `off` to disable. So a
-// corner configured here has to be one niri is not using, or niri's has to be
-// switched off — one gesture may not mean two things, and this project has
-// already paid for that lesson once with the fullscreen strip.
+// His decision, 06.08.2026: the TOP-RIGHT corner is ours and opens the
+// notifications. The top-left stays niri's, where it toggles the overview —
+// one gesture may not mean two things, and this project has already paid for
+// that lesson once with the fullscreen strip. `left` and `both` remain settings
+// (choosing either also switches niri's off, in tools/niri.qml), but the
+// default is `right`.
 //
 // ⚠️ AND IT WAITS. A corner that fires the moment the pointer brushes it is a
-// trap rather than a shortcut: you reach for a window's close button, you cross
-// the corner, and a panel appears over what you were aiming at. `dwellMs` is the
+// trap rather than a shortcut: you reach for something, you cross the corner,
+// and a panel appears over what you were aiming at. `hotCornerDwellMs` is the
 // whole difference between the two, and it is a setting rather than a constant
 // because how long feels right is not something anyone can decide for somebody
 // else.
 //
-// ⚠️ THE SURFACE IS TINY AND HAS NO INPUT REGION BEYOND ITSELF. It sits on the
-// `top` layer, which is above ordinary windows — so anything bigger than a few
-// pixels would be stealing clicks from whatever is underneath it.
+// ⚠️ THE CORNER FITS INSIDE THE RESERVED BAND ON PURPOSE. The strut reserves
+// the notch's height (34) at the top, so no window ever reaches y < 34 — a
+// 24 px corner therefore steals nothing from anybody. Growing it past the
+// strut would start eating clicks meant for whatever is underneath.
 //
-// ⚠️⚠️ THIS DOES NOT WORK YET, AND `surfaces.hotCorners` DEFAULTS TO "off"
-// BECAUSE OF IT. What is measured, so the next attempt does not start over:
+// ─────────────────────────────────────────────────────────────────────────────
+// ⚠️ EVERYTHING THE PREVIOUS HEADER CLAIMED HERE WAS WRONG, AND IT COST TWO
+// ROUNDS. It is written down because the mistake was in the MEASUREMENT, not in
+// the code, and that is the part worth remembering:
 //
-//   * The surface EXISTS. `niri msg layers` lists `buchhwin-hotcorner` on the
-//     Top layer, alongside notch, strut and wallpaper.
-//   * It DRAWS NOTHING. A probe rectangle in a screaming colour filling the
-//     whole item produced ZERO pixels anywhere on screen — checked in both top
-//     corners. So this is not "the hover is not firing", it is "the window has
-//     no size or is not mapped", and chasing the handler was the wrong end.
-//   * No QML warning of any kind in the shell's log.
-//   * `Theme.space2` is 16, so `implicitWidth`/`implicitHeight` are not zero
-//     from the token side.
-//   * Hover was tried at (1912,8), (1915,4), (1919,0) and (1904,0) — all
-//     silent, which is consistent with an unmapped window.
+//   * "It draws nothing." It draws. Measured by diffing a screenshot with the
+//     corner on against one with it off: 576 changed pixels, x 1896..1919,
+//     y 0..23 — exactly 24×24 in the corner, at y=0, not pushed down by the
+//     strut. The earlier "zero pixels" came from hunting a colour in a single
+//     screenshot; the wallpaper here is orange and the probe was yellow.
+//   * "No QML warning of any kind in the shell's log." There were two, on every
+//     single start: `Setting 'width' is deprecated. Set 'implicitWidth'
+//     instead.` They were in the journal the whole time, saying that the pair
+//     the header recommended is the wrong one.
+//   * "The hover never fires." It fires: `hover true at 9 12`, and 250 ms later
+//     `dwell fired`. What made it look dead is the loop below.
 //
-// WHAT HAS BEEN RULED OUT, each with one variable changed at a time:
-//
-//   * `implicitWidth`/`implicitHeight` vs explicit `width`/`height`
-//                                       — explicit 40 DREW, implicit did not
-//   * literal `width: 24`               — drew NOTHING
-//   * literal `width: 40`               — DREW, at x 1880..1918
-//   * `exclusiveZone: -1` vs `ExclusionMode.Ignore`  — no difference
-//   * `mask: Region { item: … }` present vs absent   — no difference
-//   * HoverHandler on a bare PanelWindow vs on an Item — no difference
-//   * `Rectangle { opacity: 0.004 }` instead of an empty Item — the trick
-//     ClickCatcher.qml uses and documents ("Not zero — anything that reads this
-//     as 'why not just 0' will spend an afternoon on it") — NO DIFFERENCE here
-//   * hover tried at y = 2, 20, 36, 40 and 50, i.e. also where the probe
-//     actually appeared — all silent
-//   * the Strut is NOT swallowing it: `Strut.qml` has `mask: Region {}`, an
-//     empty input region
-//   * `anchors { top: true; right: true }` is NOT the problem: ToastWindow uses
-//     exactly the same two adjacent edges and works
-//
-// ⚠️ WHAT IS ACTUALLY KNOWN ABOUT THE GEOMETRY, and it is the crack to work at:
-// with `width: 40; height: 40` the probe came out **40 wide and about 6 tall**,
-// at y 34..40. So the window takes the WIDTH it is given and NOT the height,
-// and it sits at the strut's height rather than at the screen edge.
-//
-// That points at PanelWindow sizing rather than at input: something is deciding
-// this window's height, and 6 is not a number that appears anywhere in this
-// file. Next attempt should ask what a PanelWindow anchored to `top` does with
-// height when it is not also anchored to `bottom` — and try the shape that is
-// proven to work here instead: a full-width strip (`top`+`left`+`right`, as
-// ShellSurface uses for the bar) with the two corners as masked sub-items.
-//
-// Do NOT go back to the input region or the handler. Two rounds went there on
-// the assumption that the window existed and was merely deaf; the probe
-// rectangle took thirty seconds and showed the window was not being drawn at
-// all. Colour it in FIRST.
+// The lesson is not "colour it in first" — that part was done. It is that a
+// probe needs a CONTROL: the same screenshot without the thing in it. A colour
+// picked by eye out of a photograph is a guess wearing a measurement's clothes.
+// ─────────────────────────────────────────────────────────────────────────────
 
 import QtQuick
 import Quickshell
@@ -91,7 +61,19 @@ PanelWindow {
     signal triggered()
 
     WlrLayershell.namespace: "buchhwin-hotcorner"
-    WlrLayershell.layer: WlrLayer.Top
+
+    // ⚠️ `Overlay`, NOT `Top`, and this is what turned a resting pointer into a
+    // strobe. ClickCatcher — the full-screen surface that closes an open panel
+    // when you click beside it — also sits on `Top` and is created later, so it
+    // covered the corner the moment the corner had done its job. The pointer
+    // never moved and the corner saw: hover, fire, LEAVE (the catcher), enter
+    // again, fire again. Measured at 2 s a cycle, opening and closing the
+    // notifications for as long as the pointer rested there.
+    //
+    // Above the catcher, `hovered` means what it says: the pointer is in the
+    // corner. That is what `armed` below is allowed to rely on, and it is why
+    // there is no timer here trying to guess the difference.
+    WlrLayershell.layer: WlrLayer.Overlay
     WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
 
     anchors {
@@ -100,34 +82,34 @@ PanelWindow {
         right: root.corner === "right"
     }
 
-    // ⚠️ `exclusiveZone: -1`, NOT just `ExclusionMode.Ignore`, and the
-    // difference is the whole feature. This project's own Strut.qml says it:
-    // "-1 does not mean 'reserve nothing' — it additionally means DO NOT MOVE
-    // ME". Without it the compositor honours the notch's strut and places this
-    // 34 px down the screen — measured with a probe rectangle, which came out
-    // at y=34 instead of y=0. A hot corner that is not in the corner is not a
-    // hot corner.
+    // Reserves nothing, and — the part that matters — is not moved by anything
+    // else that does. Strut.qml says it in full: -1 "does not mean 'reserve
+    // nothing', it additionally means DO NOT MOVE ME". Without it the notch's
+    // own strut would push this 34 px down the screen, and a hot corner that is
+    // not in the corner is not a hot corner.
     exclusionMode: ExclusionMode.Ignore
     color: "transparent"          // literal-ok: absence of colour
 
-    // ⚠️ `width`/`height`, NOT `implicitWidth`/`implicitHeight`. With the
-    // implicit pair the surface was created — niri listed it — and drew NOTHING,
-    // anywhere on a 1920×976 screen. A probe rectangle in a screaming colour
-    // found zero pixels. With explicit sizes it appears immediately. Two rounds
-    // went into the input region and the handler before the probe moved the
-    // search here.
-    width: Theme.space2 * 3
-    height: Theme.space2 * 3
+    // ⚠️ `implicitWidth`/`implicitHeight`. quickshell 0.2.1 warns on every start
+    // that `width`/`height` are deprecated on a layer surface, and the old note
+    // here recommended exactly the deprecated pair on the strength of a
+    // measurement that was itself wrong. Verified after the change: still 24×24
+    // in the corner, still hovering, and the two warnings are gone.
+    implicitWidth: Theme.space2 * 3
+    implicitHeight: Theme.space2 * 3
+
+    // Fires once per visit. Without it, `hovered` staying true would keep
+    // restarting the dwell every time anything else on screen changed, and a
+    // corner that keeps re-triggering while you rest in it is the strobe
+    // described above wearing a different hat. Re-armed by LEAVING, which is
+    // the one thing that unambiguously means "this visit is over".
+    property bool armed: true
 
     // ⚠️ A RECTANGLE WITH `opacity: 0.004`, NOT AN EMPTY ITEM — and the answer
     // was already in this repository. ui/surface/ClickCatcher.qml does exactly
     // this and says why: "Not zero — anything that reads this as 'why not just
     // 0' will spend an afternoon on it." A surface that draws nothing at all
-    // gets nothing to receive a pointer, which is precisely what the probe
-    // showed: the window existed in `niri msg layers` and painted no pixels.
-    //
-    // I spent that afternoon anyway, on the input region and the handler, and
-    // the file that already knew was two directories away.
+    // has nothing to receive a pointer.
     Rectangle {
         id: hitArea
         anchors.fill: parent
@@ -136,7 +118,14 @@ PanelWindow {
 
         HoverHandler {
             id: hover
-            onHoveredChanged: hovered ? dwell.restart() : dwell.stop()
+            onHoveredChanged: {
+                if (!hovered) {
+                    dwell.stop()
+                    root.armed = true
+                } else if (root.armed) {
+                    dwell.restart()
+                }
+            }
         }
     }
 
@@ -146,7 +135,9 @@ PanelWindow {
     Timer {
         id: dwell
         interval: Config.surfaces.hotCornerDwellMs
-        onTriggered: root.triggered()
+        onTriggered: {
+            root.armed = false
+            root.triggered()
+        }
     }
-
 }

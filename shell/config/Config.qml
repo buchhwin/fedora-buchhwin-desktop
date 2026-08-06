@@ -231,6 +231,18 @@ Singleton {
                     { key: "Mod+C", action: "spawn-sh",
                       arg: "qs -c buchhwin ipc call notch calendar",
                       desc: "Calendar" },
+                    // ⚠️ THE WORKSPACE MAP HAD NO WAY IN. It was reachable only
+                    // by the top-LEFT hot corner, and that corner is niri's —
+                    // with the default now "right", the page existed and
+                    // nothing could open it. A surface with no way in is the
+                    // same fault as a key with no reader, from the other end.
+                    //
+                    // Mod+Tab, because that is the key this gesture has on every
+                    // other desktop. Checked against the whole list and free;
+                    // the duplicate-key check in tools/smoke.qml is the net.
+                    { key: "Mod+Tab", action: "spawn-sh",
+                      arg: "qs -c buchhwin ipc call notch workspaces",
+                      desc: "Workspace map" },
                     // ⚠️ TWO KEYS FOR ONE SURFACE, on purpose. Mod+D is what
                     // niri's own default config binds a launcher to, so it is
                     // the key somebody coming from any other setup will press
@@ -485,7 +497,7 @@ Singleton {
             return
         }
 
-        var res = Migrations.migrate(cfg)
+        var res = Migrations.migrate(cfg, { defaultBinds: root.defaultBinds })
         if (!res.ok) {
             root.migrationError = res.error
             return
@@ -543,7 +555,7 @@ Singleton {
             // only the migration chain quietly papering over it. Both now write
             // no version at all: a file without one reads as 0 and is migrated
             // forward, which is exactly the path a genuinely old file takes.
-            property int version: 7
+            property int version: 8
 
             property JsonObject theme: JsonObject {
                 property string palette: "everforest-dark"
@@ -826,14 +838,11 @@ Singleton {
                 // Choosing "left" or "both" is therefore also a decision to turn
                 // niri's off, and the generator says so rather than letting the
                 // two fight.
-                // ⚠️ "off" UNTIL THE SURFACE ACTUALLY APPEARS. The corner
-                // window is created — niri lists it — but it draws nothing and
-                // never answers a hover; see the measurements at the top of
-                // ui/surface/HotCorner.qml. Shipping it as "right" would be a
-                // gesture that does nothing, which is exactly what this project
-                // does not do. The intended default is "right" once it works,
-                // and "both" would also switch niri's own left corner off.
-                property string hotCorners: "off"
+                // It shipped as "off" for a round because the corner was
+                // believed to draw nothing and answer nothing. It did both; the
+                // measurement that said otherwise was the broken part, and what
+                // was actually wrong is written down in HotCorner.qml.
+                property string hotCorners: "right"
                 // How long the pointer has to REST there. A corner that fires on
                 // contact is a trap: you reach for a window's close button, you
                 // cross the corner, and a panel lands on what you were aiming

@@ -186,10 +186,19 @@ Scope {
             LazyLoader {
                 activeAsync: Config.surfaces.hotCorners === "right"
                              || Config.surfaces.hotCorners === "both"
+                // ⚠️ THE PANEL'S NOTIFICATION TAB, NOT the `notifications`
+                // page — and the difference is 1.6 seconds. That page is in
+                // Ipc's `autoClosing` list because it is a REPORT: it appears
+                // when something arrives and takes itself away again. Measured
+                // with the corner working: rest the pointer, the page opens,
+                // and it is gone before you have read it. What he asked for is
+                // a notification CENTRE, which is somewhere you look — so the
+                // corner opens the panel on that tab, and it stays until you
+                // close it.
                 component: HotCorner {
                     modelData: perScreen.modelData
                     corner: "right"
-                    onTriggered: Ipc.toggle("notifications")
+                    onTriggered: Ipc.showQuick(Ipc.quickNotifications)
                 }
             }
 
