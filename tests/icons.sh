@@ -43,7 +43,7 @@ awk '
 
   # Everything between `icon:` and the next `word:` on the same line. Taking
   # every quoted word instead swept up the neighbouring id: and label: values
-  # from the session menu, and duly reported that "Ausschalten" is not a glyph.
+  # from the session menu, and duly reported that "Ausschalten" is not a glyph.  # english-ok: the label that caused it, quoted
   function emit(line,   rest) {
       rest = line
       # Stop at the next property name, if there is one.

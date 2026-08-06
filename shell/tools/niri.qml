@@ -321,6 +321,21 @@ Scope {
         s += "    geometry-corner-radius " + L.rounding + "\n"
         s += "    clip-to-geometry true\n"
         s += "}\n"
+        // ⚠️ `opacityActive` HAD NO READER. Only the inactive rule was ever
+        // written, so the key sat in shell.json doing nothing and every focused
+        // window was fully opaque — reported as "the slight transparency is
+        // missing in all the windows". A key with no reader is the same fault
+        // this project has now found five times.
+        //
+        // ⚠️ And the honest part: compositor opacity fades the TEXT as well,
+        // unlike kitty's own background_opacity, which only opens the
+        // background. That is why the default is 0.95 and not lower.
+        if (L.opacityActive < 1.0) {
+            s += "\nwindow-rule {\n"
+            s += "    match is-active=true\n"
+            s += "    opacity " + L.opacityActive + "\n"
+            s += "}\n"
+        }
         if (L.opacityInactive < 1.0) {
             s += "\nwindow-rule {\n"
             s += "    match is-active=false\n"

@@ -306,8 +306,12 @@ Singleton {
                 // plus `rounding` plus `shadows`, and it is the one of the
                 // three you actually feel.
                 property int gapsOut: 16
-                property real opacityActive: 1.0
-                property real opacityInactive: 0.98
+                // 0.95 / 0.90, chosen deliberately: enough to see the blur
+                // behind a window and not enough to grey the text out. The
+                // inactive one is a step further so the window you are NOT in
+                // recedes — that is what makes a screenful of windows readable.
+                property real opacityActive: 0.95
+                property real opacityInactive: 0.90
                 // Translucency the blur sits behind. Lower than it looks like it
                 // should be: a panel is read, not looked through, so this is the
                 // one place where legibility outranks the effect — but at 0.88

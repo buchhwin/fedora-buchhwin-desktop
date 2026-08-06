@@ -858,6 +858,46 @@ Scope {
     // idle work this project measures itself against. And the process is waited
     // for rather than fired off: the renderer quits in the next event loop
     // step, which would kill it.
+    // ------------------------------------------------- the settings GTK 4 reads
+    //
+    // ⚠️ settings.ini IS NOT WHERE GTK 4 LOOKS FOR THESE. Measured on the
+    // machine: with `gtk-icon-theme-name=Papirus-Dark` written into both
+    // gtk-3.0/settings.ini and gtk-4.0/settings.ini, `gsettings get
+    // org.gnome.desktop.interface icon-theme` still answered 'Adwaita' — and
+    // Nautilus duly drew Adwaita's blue folders on a warm dark palette. Same
+    // for `color-scheme`, which answered 'default'.
+    //
+    // libadwaita and GTK 4 take these from the settings portal, which reads
+    // dconf. So they are written there as well as into the files: the files
+    // still matter for GTK 3 and for anything that reads them directly, and
+    // this is what the toolkit the file manager is built on actually consults.
+    //
+    // ⚠️ `reset`, not "write the old value back", when theming is off. We never
+    // knew what was there before — reset returns the key to the system default,
+    // which is the honest meaning of "we are not touching this any more".
+    //
+    // ⚠️ Through `sh` for the same reason as bat below: a Process whose binary
+    // is missing never reports back, and a machine without gsettings would hang
+    // the renderer on its guard timer.
+    function gsettingsScript(mode) {
+        var iface = "org.gnome.desktop.interface"
+        if (mode === "off")
+            return "command -v gsettings >/dev/null || exit 0; "
+                 + "for k in icon-theme gtk-theme color-scheme font-name; do "
+                 + "gsettings reset " + iface + " $k; done"
+        var icons = Theme.dark ? "Papirus-Dark" : "Papirus-Light"
+        var gtk = Theme.dark ? "adw-gtk3-dark" : "adw-gtk3"
+        var scheme = Theme.dark ? "prefer-dark" : "prefer-light"
+        var font = Theme.fontUi + " " + Theme.fontSizePt
+        return "command -v gsettings >/dev/null || exit 0; "
+             + "gsettings set " + iface + " icon-theme '" + icons + "'; "
+             + "gsettings set " + iface + " gtk-theme '" + gtk + "'; "
+             + "gsettings set " + iface + " color-scheme '" + scheme + "'; "
+             + "gsettings set " + iface + " font-name '" + font + "'"
+    }
+
+    Process { id: gsettingsApply }
+
     property bool batPending: false
     Process {
         id: batCache
@@ -945,6 +985,10 @@ Scope {
                      gtkSettings, offText("#", "gtk"), "gtk3 settings", "gtk")
             emitFile(mGtk, f3, root.cfg + "/gtk-4.0/gtk.css",
                      gtk4Css, offCss("gtk"), "gtk4 colours", "gtk")
+            gsettingsApply.command = ["sh", "-c", root.gsettingsScript(mGtk)]
+            gsettingsApply.running = true
+            note("  set    gtk desktop settings via gsettings (" + mGtk + ")")
+
             emitFile(mGtk, f4, root.cfg + "/gtk-4.0/settings.ini",
                      gtkSettings, offText("#", "gtk"), "gtk4 settings", "gtk")
             emitFile(mKitty, f5, root.cfg + "/kitty/theme.conf",

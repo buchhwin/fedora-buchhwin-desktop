@@ -60,6 +60,10 @@ words+='|stimmt|stimmen|sucht|suchen|gefunden|Ton|Netz|Gerät|Geraet|Geräte|Ger
 # sentence. Nouns a user-facing string is likely to be made of therefore go in
 # too, even though each one is a guess about the future rather than a rule.
 words+='|klar|bedeckt|Nebel|Niesel|Regen|Schnee|Schauer|Gewitter|Wolken|Sonne'
+# And one more that sat in the session menu, in the one place where a wrong
+# word is pressed by somebody in a hurry: "Ausschalten" beside four English
+# labels. Nouns again — the method catches sentences, not labels.
+words+='|Ausschalten|Neustart|Abmelden|Sperren|Ruhezustand'
 words+='|Anmeldung|abgelehnt|Konto|Stadt|eingeben|Ortssuche|Unsinn|Uhrzeit|Datum'
 words+='|Lautstärke|Lautstaerke|Helligkeit|Verbindung|verbunden|getrennt|Passwort'
 

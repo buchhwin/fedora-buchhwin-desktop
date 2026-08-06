@@ -44,7 +44,7 @@ ColumnLayout {
           cmd: ["niri", "msg", "action", "quit", "--skip-confirmation"] },
         { id: "reboot",   icon: "refresh",        label: "Restart",  ask: true,
           cmd: ["systemctl", "reboot"] },
-        { id: "poweroff", icon: "power_settings_new", label: "Ausschalten", ask: true,
+        { id: "poweroff", icon: "power_settings_new", label: "Power off", ask: true,
           cmd: ["systemctl", "poweroff"] }
     ]
 
