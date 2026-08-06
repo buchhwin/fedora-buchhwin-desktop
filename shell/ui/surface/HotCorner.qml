@@ -36,15 +36,29 @@
 //   * Hover was tried at (1912,8), (1915,4), (1919,0) and (1904,0) — all
 //     silent, which is consistent with an unmapped window.
 //
-// WHAT TO TRY NEXT, in order:
-//   1. `anchors { top: true; right: true }` — two ADJACENT edges. Every other
-//      surface in this shell anchors to one edge or to three. It is the one
-//      thing here that has no precedent in the project, and a PanelWindow that
-//      does not know how wide it should be is a plausible zero.
-//      Test it by giving the window explicit `width`/`height` instead.
-//   2. `mask: Region { item: hitArea }` evaluated before `hitArea` has a size.
-//      Try without the mask at all.
-//   3. Only then look at the handler.
+// WHAT HAS BEEN RULED OUT, each with one variable changed at a time:
+//
+//   * `implicitWidth`/`implicitHeight` vs explicit `width`/`height`
+//                                       — explicit 40 DREW, implicit did not
+//   * literal `width: 24`               — drew NOTHING
+//   * literal `width: 40`               — DREW, at x 1880..1918
+//   * `exclusiveZone: -1` vs `ExclusionMode.Ignore`  — no difference
+//   * `mask: Region { item: … }` present vs absent   — no difference
+//   * HoverHandler on a bare PanelWindow vs on an Item — no difference
+//   * `anchors { top: true; right: true }` is NOT the problem: ToastWindow uses
+//     exactly the same two adjacent edges and works
+//
+// ⚠️ AND THE ONE RESULT THAT MAKES NO SENSE YET, which is where the next
+// attempt should start: when it DID draw at 40, only about SIX of the forty
+// rows appeared, at y 34..38 — and 34 is exactly the notch strut's height. So
+// either something clips it to a few rows, or that magenta was not this surface
+// at all and the real one has never been visible. Find out which before
+// changing anything else.
+//
+// Do NOT go back to the input region or the handler. Two rounds went there on
+// the assumption that the window existed and was merely deaf; the probe
+// rectangle took thirty seconds and showed the window was not being drawn at
+// all. Colour it in FIRST.
 
 import QtQuick
 import Quickshell
@@ -74,23 +88,25 @@ PanelWindow {
         right: root.corner === "right"
     }
 
+    // ⚠️ `exclusiveZone: -1`, NOT just `ExclusionMode.Ignore`, and the
+    // difference is the whole feature. This project's own Strut.qml says it:
+    // "-1 does not mean 'reserve nothing' — it additionally means DO NOT MOVE
+    // ME". Without it the compositor honours the notch's strut and places this
+    // 34 px down the screen — measured with a probe rectangle, which came out
+    // at y=34 instead of y=0. A hot corner that is not in the corner is not a
+    // hot corner.
     exclusionMode: ExclusionMode.Ignore
     color: "transparent"          // literal-ok: absence of colour
 
-    // Big enough to hit without looking, small enough to be out of the way.
-    // The pointer is a single pixel; this is the target around it.
-    implicitWidth: Theme.space2 * 2
-    implicitHeight: Theme.space2 * 2
+    // ⚠️ `width`/`height`, NOT `implicitWidth`/`implicitHeight`. With the
+    // implicit pair the surface was created — niri listed it — and drew NOTHING,
+    // anywhere on a 1920×976 screen. A probe rectangle in a screaming colour
+    // found zero pixels. With explicit sizes it appears immediately. Two rounds
+    // went into the input region and the handler before the probe moved the
+    // search here.
+    width: Theme.space2 * 3
+    height: Theme.space2 * 3
 
-    // ⚠️ AN ITEM, AND AN EXPLICIT INPUT REGION. A HoverHandler written straight
-    // into the PanelWindow of a surface that draws NOTHING never fired —
-    // measured at four positions inside the corner, all silent. ShellSurface
-    // gets away with the bare handler because it paints a silhouette and sets
-    // `mask: Region { item: … }`; an empty, fully transparent window has
-    // nothing for the compositor to hand a pointer to.
-    //
-    // So there is a real (if invisible) Item here, the mask names it, and the
-    // handler lives on it.
     Item {
         id: hitArea
         anchors.fill: parent
@@ -99,8 +115,6 @@ PanelWindow {
             onHoveredChanged: hovered ? dwell.restart() : dwell.stop()
         }
     }
-
-    mask: Region { item: hitArea }
 
     // ⚠️ The timer is what makes this usable rather than hostile. It restarts on
     // entry and stops on exit, so crossing the corner does nothing at all and
