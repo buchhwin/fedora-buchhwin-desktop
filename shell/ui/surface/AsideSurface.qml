@@ -6,10 +6,9 @@
 // move away, it goes.
 //
 // ⚠️ IT ONLY EXISTS WHEN THERE IS SOMETHING TO SAY. Nothing running means no
-// surface at all, not an empty one — "leere Zustände sind ein Satz Text, kein
-// leerer Kasten" (english-ok: the brief, in the words it was given in), and here
-// even the sentence would be noise. The LazyLoader in Shell.qml carries that
-// condition, so the window is not merely hidden: it is never created.
+// surface at all, not an empty one — "leere Zustände sind ein Satz Text, kein leerer Kasten"  // english-ok: the brief, quoted in the words it was given in
+// — and here even the sentence would be noise. The LazyLoader in Shell.qml
+// carries that condition, so the window is not merely hidden: it is never created.
 //
 // ⚠️ NO INPUT REGION, ON PURPOSE. `mask: Region {}` leaves it click-through, so
 // it can never take a click meant for a window behind it and can never take
