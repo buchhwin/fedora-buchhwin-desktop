@@ -41,6 +41,22 @@ Singleton {
     // ⚠️ Critical never expires on its own. That is what the urgency level
     // means, and a disk-full warning that vanishes while you are looking at
     // another window is worse than no warning.
+    // ⚠️ THE ENUM LIVES IN Quickshell.Services.Notifications, AND ui/ MAY NOT
+    // IMPORT THAT. NotificationsPage used `NotificationUrgency` anyway — without
+    // importing it — so every urgency comparison in that file threw a
+    // ReferenceError, the colour binding never evaluated, and the dot fell back
+    // to Rectangle's own default. Measured off a screenshot: 254,254,254, a
+    // white square beside every notification on a dark panel, shipped.
+    //
+    // A string is the right shape for the answer anyway: the ui wants to know
+    // which of three cases it is, not what number the specification gave it.
+    function urgencyOf(n) {
+        if (!n) return "normal"
+        if (n.urgency === NotificationUrgency.Critical) return "critical"
+        if (n.urgency === NotificationUrgency.Low) return "low"
+        return "normal"
+    }
+
     function toastDuration(n) {
         if (!n) return 0
         if (n.urgency === NotificationUrgency.Critical) return 0
@@ -119,7 +135,14 @@ Singleton {
                 // A notification the sender marks transient is one it says is
                 // not worth keeping — another program's volume popup, usually.
                 // It still arrives, it just does not deserve to interrupt.
-                if (!n.transient) {
+                // ⚠️ CRITICAL COMES THROUGH ANYWAY, dnd or not. Silencing a
+                // disk-full warning because the switch is on is the failure
+                // mode that makes people stop trusting the switch. Everything
+                // else is merely not shown — it is still in the list.
+                var loud = !n.transient
+                    && (!Config.notifications.dnd
+                        || n.urgency === NotificationUrgency.Critical)
+                if (loud) {
                     root._showToast(n)
                     root.arrived(n)
                 }

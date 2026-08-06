@@ -7,10 +7,19 @@ pragma ComponentBehavior: Bound
 // handful of sliders worth reaching for, and the way into the settings. Every
 // other page is a single answer to a single question.
 //
-// TABS, and that was a decision rather than a default. Media could have been a
-// third column, but the panel already carries a month, the weather, the sliders
-// and the way into the settings — a fourth thing beside them stops being a
-// glance and starts being a window. Two tabs keep each view as sparse as it was.
+// FOUR TABS. It started with two, on the argument that a third column would
+// stop the panel being a glance — and that argument was about COLUMNS, which is
+// still right and is why none of this sits side by side. As tabs they cost
+// nothing: only one is built at a time, and each stays as sparse as it was.
+//
+// Overview and Media were already here. Notifications is the same page Mod+N
+// opens, and Settings is the switches — network, bluetooth, night light, do not
+// disturb, microphone, the bar — with sound and brightness under them.
+//
+// ⚠️ NOT ONE COPY MORE. The month, the media transport and the notification
+// list are the SAME components the standalone pages use, never a second one
+// built to fit here. Two month grids would drift — different weekday order,
+// different today marker — and disagree on one screen.
 //
 // Two columns inside the overview, because the island is wide and short. The
 // calendar is the tall thing, so it takes the left side and sets the height;
@@ -26,6 +35,7 @@ import "../../../config"
 import "../../../ipc"
 import "../../../services" as Services
 import "../../common"
+import "../../quick"
 
 ColumnLayout {
     id: root
@@ -43,7 +53,7 @@ ColumnLayout {
         spacing: Theme.space2
 
         Repeater {
-            model: ["Overview", "Media"]
+            model: ["Overview", "Media", "Notifications", "Settings"]
 
             Pill {
                 id: tabPill
@@ -63,11 +73,13 @@ ColumnLayout {
 
         Item { Layout.fillWidth: true }
 
-        // The gear sits on the tab row rather than inside a tab: it leaves the
-        // panel entirely, so it does not belong to either view.
+        // Still on the tab row rather than inside a tab, because it leaves the
+        // panel entirely — it is the way to the full settings WINDOW, which is
+        // M8 and does not exist yet. The everyday switches are the fourth tab
+        // beside it now, so this is no longer the only thing it could have been.
         Pill {
             interactive: true
-            Icon { text: "settings"; size: Theme.fontSizeLg }
+            Icon { text: "open_in_new"; size: Theme.fontSizeLg }
             onClicked: root.openSettings()
         }
     }
@@ -77,12 +89,31 @@ ColumnLayout {
     // A second one would drift, exactly as a second calendar would.
     MediaPage {
         Layout.fillWidth: true
-        visible: root.tab === 1
+        visible: root.tab === Ipc.quickMedia
+    }
+
+    // ⚠️ `Loader`, not `visible: false`, for these two. The month and the media
+    // transport are cheap and already built; a notification list and a settings
+    // view that starts wifi scans are not, and building them to leave them
+    // hidden is exactly the idle work this desktop is not allowed to do. Each
+    // exists only while its tab is the one showing.
+    Loader {
+        Layout.fillWidth: true
+        active: root.tab === Ipc.quickNotifications
+        asynchronous: true
+        sourceComponent: NotificationsPage {}
+    }
+
+    Loader {
+        Layout.fillWidth: true
+        active: root.tab === Ipc.quickSettings
+        asynchronous: true
+        sourceComponent: QuickSettings {}
     }
 
     // --------------------------------------------------------------- overview
     RowLayout {
-        visible: root.tab === 0
+        visible: root.tab === Ipc.quickOverview
         spacing: Theme.space5
 
         CalendarPage {
@@ -198,11 +229,12 @@ ColumnLayout {
         wrapMode: Text.WordWrap
     }
 
-    // The gear will open the settings window. It does not exist yet (M8), and
-    // a button that opens nothing is worse than one that says so.
+    // The full settings window is still M8. The difference now is that the
+    // everyday switches are one tab away rather than nowhere, so this says what
+    // is missing instead of standing in for it.
     property string note: ""
     function openSettings() {
-        root.note = "Settings are M8 — until then, shell.json"
+        root.note = "The settings window is still to come — the switches are under Settings"
         forget.restart()
     }
     Timer { id: forget; interval: 4000; onTriggered: root.note = "" }

@@ -91,6 +91,7 @@ Item {
                        : root.page === "wallpaper" ? wallpaperPage
                        : root.page === "event" ? eventPage
                        : root.page === "brightness" ? brightnessPage
+                       : root.page === "mic" ? micPage
                        : root.page === "session" ? sessionPage
                        : root.page === "clipboard" ? clipboardPage
                        : null
@@ -137,6 +138,7 @@ Item {
     Component { id: wallpaperPage; WallpaperPage {} }
     Component { id: eventPage; EventPage {} }
     Component { id: brightnessPage; BrightnessPage {} }
+    Component { id: micPage; MicPage {} }
     Component { id: sessionPage; SessionPage {} }
     Component { id: clipboardPage; ClipboardPage {} }
 }

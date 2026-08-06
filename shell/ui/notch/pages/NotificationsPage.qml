@@ -36,10 +36,12 @@ ColumnLayout {
                 radius: Theme.radiusSm
                 // Urgency is information, so it gets colour; everything else
                 // lives on surface and spacing.
-                color: row.modelData.urgency === NotificationUrgency.Critical
-                       ? Theme.error
-                       : row.modelData.urgency === NotificationUrgency.Low
-                         ? Theme.surfaceHigh : Theme.accent
+                color: {
+                    var u = Services.Notifications.urgencyOf(row.modelData)
+                    return u === "critical" ? Theme.error
+                         : u === "low" ? Theme.surfaceHigh
+                         : Theme.accent
+                }
             }
 
             ColumnLayout {

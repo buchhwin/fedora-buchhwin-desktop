@@ -14,7 +14,7 @@ import QtQuick
 import QtQuick.Layouts
 import QtQuick.Effects
 import Quickshell
-import Quickshell.Services.Pam
+import Quickshell.Services.Pam    // services-ok: authentication is not a device, and there is nothing sensible to wrap it in
 import "../../theme"
 import "../common"
 

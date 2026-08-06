@@ -29,6 +29,7 @@ Singleton {
     readonly property alias theming: adapter.theming
     readonly property alias surfaces: adapter.surfaces
     readonly property alias notifications: adapter.notifications
+    readonly property alias nightlight: adapter.nightlight
     readonly property alias clipboard: adapter.clipboard
     readonly property alias notch: adapter.notch
     readonly property alias bar: adapter.bar
@@ -250,6 +251,16 @@ Singleton {
                 property string lazygit: "inherit"
             }
 
+            // Night light, over gammastep — quickshell has no gamma API, and
+            // this is one of the five programs the plan names as staying
+            // external for that reason.
+            property JsonObject nightlight: JsonObject {
+                property bool on: false
+                // 6500 K is neutral by definition; below it goes warm. 4000 is
+                // a clear change without turning the screen orange.
+                property int temperature: 4000
+            }
+
             property JsonObject look: JsonObject {
                 property int rounding: 16          // every radius derives from this
                 property int borderWidth: 0        // 0: no window borders anywhere
@@ -350,6 +361,13 @@ Singleton {
             // was showing and then vanished after 1.6 s, whether it had been
             // read or not.
             property JsonObject notifications: JsonObject {
+                // ⚠️ IT PERSISTS, on purpose. "Do not disturb" that forgets
+                // itself at the next login is a switch you have to remember to
+                // press again, which is the opposite of what it is for. It
+                // silences the toasts only: everything still arrives and is
+                // still in the list on Mod+N, and critical messages still come
+                // through — the urgency level exists to say "this one anyway".
+                property bool dnd: false
                 // How long an ordinary toast stays. Senders may ask for their
                 // own duration via `expireTimeout`, and that is honoured; this
                 // is the answer when they do not.
@@ -623,8 +641,13 @@ Singleton {
                     { key: "XF86AudioMute", action: "spawn-sh",
                       arg: "wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle",
                       desc: "Mute", allowWhenLocked: true },
+                    // ⚠️ `wpctl` FIRST, the shell second, joined with `;` — the
+                    // same shape as the brightness keys below and for the same
+                    // reason: muting the microphone has to work when the shell
+                    // is dead. The second half only adds the readout, which is
+                    // what this key never had.
                     { key: "XF86AudioMicMute", action: "spawn-sh",
-                      arg: "wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle",
+                      arg: "wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle ; qs -c buchhwin ipc call notch mic",
                       desc: "Mute the microphone", allowWhenLocked: true },
                     // ⚠️ brightnessctl FIRST, the shell second, joined with `;`
                     // rather than `&&`. The screen has to brighten even when the

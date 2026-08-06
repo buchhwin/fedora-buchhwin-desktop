@@ -34,6 +34,13 @@ mapfile -t qml < <(find shell/ui shell/services -name '*.qml')
 (( ${#qml[@]} )) || { echo '  no QML files found'; exit 1; }
 
 awk '
+  # ⚠️ A COMMENT IS DOCUMENTATION, NOT A VALUE — the same exemption
+  # tests/no-literals.sh makes, and it is here because this check tripped over a
+  # comment explaining this check. QuickSettings.qml warns the next reader that
+  # `Icon { text: … }` lines are scraped, and quoting the pattern in order to
+  # warn about it made the scraper ask the font for a glyph called "sound".
+  /^[[:space:]]*\/\// { next }
+
   # Everything between `icon:` and the next `word:` on the same line. Taking
   # every quoted word instead swept up the neighbouring id: and label: values
   # from the session menu, and duly reported that "Ausschalten" is not a glyph.

@@ -202,7 +202,7 @@ Scope {
             var verbs = ({
                 "notch": ["media", "volume", "quick", "notifications", "calendar",
                           "tray", "wallpaper", "event", "brightness", "session",
-                          "clipboard", "settings", "collapse", "state"],
+                          "clipboard", "settings", "mic", "collapse", "state"],
                 "launcher": ["toggle", "show", "hide", "state"],
                 "bar": ["toggle", "state"]
             })
@@ -230,6 +230,7 @@ Scope {
             root.service("Media", Services.Media)
             root.service("Notifications", Services.Notifications)
             root.service("Brightness", Services.Brightness)
+            root.service("Nightlight", Services.Nightlight)
             root.service("Wallpaper", Services.Wallpaper)
             root.service("Calendar", Services.Calendar)
             root.service("Weather", Services.Weather)

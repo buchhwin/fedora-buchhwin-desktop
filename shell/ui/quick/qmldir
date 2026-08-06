@@ -1,0 +1,14 @@
+# The quick panel's settings view and the lists that open inside it.
+#
+# Its own folder rather than ui/notch/pages/, because none of these is a page:
+# they are parts of one page, and a file in pages/ that is not in the notch's
+# component table would read as a page somebody forgot to wire up.
+#
+# Registered here for the same reason as everywhere else — quickshell loads
+# through a virtual filesystem, where QML's implicit same-folder rule does not
+# apply. See common/qmldir.
+QuickSettings 1.0 QuickSettings.qml
+Tile 1.0 Tile.qml
+NetworkList 1.0 NetworkList.qml
+BluetoothList 1.0 BluetoothList.qml
+SoundList 1.0 SoundList.qml

@@ -24,6 +24,12 @@ jobs:
       # shipped that way in every Pill in the shell before it was measured.
       - name: no tap handlers hidden inside a Pill
         run: bash tests/tap-targets.sh
+      # Fourth. A surface that names something from Quickshell.Services without
+      # importing it does not fail — the binding throws and the property keeps
+      # its default, which is how a white square shipped beside every
+      # notification.
+      - name: no surface imports Quickshell.Services directly
+        run: bash tests/ui-imports.sh
 
   shell:
     runs-on: ubuntu-latest

@@ -9,5 +9,6 @@ TrayPage 1.0 TrayPage.qml
 WallpaperPage 1.0 WallpaperPage.qml
 EventPage 1.0 EventPage.qml
 BrightnessPage 1.0 BrightnessPage.qml
+MicPage 1.0 MicPage.qml
 SessionPage 1.0 SessionPage.qml
 ClipboardPage 1.0 ClipboardPage.qml

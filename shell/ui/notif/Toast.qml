@@ -14,7 +14,6 @@
 // you are reading it.
 import QtQuick
 import QtQuick.Layouts
-import Quickshell.Services.Notifications
 import "../../theme"
 import "../../config"
 import "../../services" as Services
@@ -83,8 +82,8 @@ Item {
         }
         width: Theme.hairline * 3
         radius: Theme.radiusXs
-        visible: root.notification.urgency !== NotificationUrgency.Low
-        color: root.notification.urgency === NotificationUrgency.Critical
+        visible: Services.Notifications.urgencyOf(root.notification) !== "low"
+        color: Services.Notifications.urgencyOf(root.notification) === "critical"
                ? Theme.error : Theme.accent
     }
 

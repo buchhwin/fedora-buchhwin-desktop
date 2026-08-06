@@ -29,13 +29,13 @@ Singleton {
     // Not called "transient": that is a reserved word in QML, and the error it
     // produces names this file but surfaces two levels up as the useless
     // "Type ShellSurface unavailable".
-    readonly property var autoClosing: ["volume", "brightness", "notifications"]
+    readonly property var autoClosing: ["volume", "brightness", "mic", "notifications"]
 
     // The two that are readouts rather than places: they appear on their own
     // when something changes, and `surfaces.osd` is what stops them doing that.
     // The setting existed with nothing reading it, so switching it off changed
     // nothing at all — which is worse than not having it.
-    readonly property var osdPages: ["volume", "brightness"]
+    readonly property var osdPages: ["volume", "brightness", "mic"]
 
     function show(name) {
         if (root.osdPages.indexOf(name) >= 0 && !Config.surfaces.osd)
@@ -128,6 +128,11 @@ Singleton {
         function wallpaper(): void { root.toggle("wallpaper") }
         function event(): void { root.toggle("event") }
         function brightness(): void { root.toggle("brightness") }
+        // ⚠️ `show`, not `toggle`. It is fired by the mute key right after the
+        // state changed, so pressing the key twice in a row must show the new
+        // state twice — a toggle would close the readout on the second press,
+        // exactly when there is something new to read.
+        function mic(): void { root.show("mic") }
         function session(): void { root.toggle("session") }
         function clipboard(): void { root.toggle("clipboard") }
         // The quick panel, opened straight onto its settings view. This is what
