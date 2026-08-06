@@ -30,6 +30,12 @@ jobs:
       # notification.
       - name: no surface imports Quickshell.Services directly
         run: bash tests/ui-imports.sh
+      # Fifth, and it is here rather than in the qml job because it reads
+      # instead of running: a name the lock screen uses that exists nowhere in
+      # the lock screen. `field` instead of `input` threw on every keystroke and
+      # left the password box empty for four rounds, in a file nothing built.
+      - name: every name the lock screen uses exists
+        run: bash tests/lock-idents.sh
 
   shell:
     runs-on: ubuntu-latest
@@ -91,6 +97,15 @@ jobs:
       # It found a real binding loop in its own first run.
       - name: the shell actually builds, headless
         run: bash tests/smoke.sh
+
+      # ⚠️ AND THE LOCK SCREEN, WHICH THE LINE ABOVE DOES NOT COVER. It is a
+      # separate process (BUCHHWIN_MODE=lock), so every suite could be green
+      # with a lock screen that does not come up — and twice it nearly was.
+      # tests/unit-drift.sh is deliberately NOT here: it compares the units
+      # installed on a machine against what the installer would write, and a
+      # build container has no installed desktop for it to ask.
+      - name: the lock screen builds, and without complaints
+        run: bash tests/lock.sh
 
       # ⚠️ ALL of them. Eight suites existed and CI ran two, so six were only
       # ever run by hand — which means they were green whenever somebody
