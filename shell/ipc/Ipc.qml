@@ -135,6 +135,8 @@ Singleton {
         function mic(): void { root.show("mic") }
         function session(): void { root.toggle("session") }
         function clipboard(): void { root.toggle("clipboard") }
+        function calculator(): void { root.toggle("calculator") }
+        function timer(): void { root.toggle("timer") }
         // The quick panel, opened straight onto its settings view. This is what
         // the gear on the bar calls, and what the settings key is bound to —
         // the bar's gear used to have no handler at all and was, in the words of

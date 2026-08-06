@@ -17,6 +17,9 @@ desktop — which is what makes it safe to add settings without a migration.
 | `theming` | which programs we colour, and how — one state each, see below |
 | `look` | `rounding`, `borderWidth`, `gapsIn/Out`, opacities, `blur`, `blurPasses`, `shadows`, fonts, `fontSize`, `profile` |
 | `surfaces` | `notifications`, `osd`, `wallpaper` — each on its own |
+| `notifications` | `dnd` (silences toasts, never critical ones), `timeoutMs`, `maxVisible`, `monitors` |
+| `nightlight` | `on` and `temperature` in kelvin — 6500 is neutral, lower is warmer |
+| `timer` | `presets` in minutes, `sound`, `soundFile` — the work timer on Mod+Shift+T |
 | `bar` / `notch` / `launcher` | geometry, and a monitor list (empty = all) |
 | `programs` | argument **lists**: `terminal`, `browser`, `fileManager`, `editor`, `imageViewer`, `video` |
 | `keys` | `mod` plus `binds`: `{ key, action, arg, desc }` |

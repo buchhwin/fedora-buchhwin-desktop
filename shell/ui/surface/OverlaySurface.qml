@@ -47,7 +47,7 @@ PanelWindow {
     readonly property bool wantsKeys:
         Ipc.page === "event" || Ipc.page === "wallpaper" || Ipc.page === "session"
         || Ipc.page === "calendar" || Ipc.page === "quick"
-        || Ipc.page === "clipboard"
+        || Ipc.page === "clipboard" || Ipc.page === "calculator"
 
     anchors { top: true }
     exclusionMode: ExclusionMode.Ignore

@@ -111,6 +111,8 @@ jobs:
         run: bash tests/wallpaper.sh
       - name: which column a program lands in, and what never reaches the list
         run: bash tests/launcher.sh
+      - name: the calculator's answers, and what it refuses to answer
+        run: bash tests/calculator.sh
 
   secrets:
     runs-on: ubuntu-latest

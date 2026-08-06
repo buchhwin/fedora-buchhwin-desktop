@@ -202,7 +202,8 @@ Scope {
             var verbs = ({
                 "notch": ["media", "volume", "quick", "notifications", "calendar",
                           "tray", "wallpaper", "event", "brightness", "session",
-                          "clipboard", "settings", "mic", "collapse", "state"],
+                          "clipboard", "settings", "mic", "calculator", "timer",
+                          "collapse", "state"],
                 "launcher": ["toggle", "show", "hide", "state"],
                 "bar": ["toggle", "state"]
             })
@@ -216,6 +217,27 @@ Scope {
                 if (!verbs[m[1]] || verbs[m[1]].indexOf(m[2]) < 0)
                     orphans.push(binds[b].key + " → " + m[1] + " " + m[2])
             }
+            // ⚠️ THE DUPLICATE CHECK BELONGS HERE, NOT IN tests/niri-config.sh.
+            // That one reads the GENERATED config — and the generator drops a
+            // duplicate key before writing, with a note in a log the test does
+            // not read. So it could never go red: it was passing because the
+            // duplicate had already been removed, not because there was none.
+            // Measured by adding a second Mod+K and watching it stay green
+            // while the binding silently did not exist.
+            var byKey = ({})
+            var twice = []
+            for (var d = 0; d < binds.length; d++) {
+                var k = String(binds[d].key || "")
+                if (byKey[k]) {
+                    if (twice.indexOf(k) < 0) twice.push(k)
+                } else {
+                    byKey[k] = true
+                }
+            }
+            root.ok("no key is bound twice" +
+                    (twice.length ? " (" + twice.join(", ") + ")" : ""),
+                    twice.length === 0)
+
             root.ok("no keybinding calls an ipc target or verb that does not exist" +
                     (orphans.length ? " (" + orphans.join(", ") + ")" : ""),
                     orphans.length === 0)
@@ -245,6 +267,8 @@ Scope {
             // was wrong, and it was cheaper to give the parser an honest flag
             // than to keep a rule with a hole in it.
             root.service("Ical", Services.Ical)
+            root.service("Calculator", Services.Calculator)
+            root.service("Countdown", Services.Countdown)
 
             note(root.failures === 0
                  ? "smoke: all good"

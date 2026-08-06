@@ -40,7 +40,14 @@ words+='|schliessen|schließen|öffnen|oeffnen|Fenster|Farbe|Datei|Ordner'
 # shell.json" contains not one word from the list above. A word list is only
 # ever as good as its last miss, so a miss earns an entry rather than a shrug.
 words+='|Einstellung|Einstellungen|kommen|kommt|bis|dahin|bisher|jetzt|heute'
-words+='|Programm|Programme|Taste[nr]|Starter|Leiste|Suche|Sitzung|Bildschirm'
+# ⚠️ `Programme` CAME BACK OUT, on the rule this file already states about
+# `die`, `was`, `man` and `Taste`: a word that is also correct English does not
+# belong in the list. "programme" is the British spelling this repository writes
+# elsewhere ("colour", "behaviour"), and forbidding it turns the tripwire into a
+# trap for somebody writing correct prose. `Programm` alone has no English
+# collision and stays — \b sees the trailing "e" as part of the word, so it does
+# not match the English one.
+words+='|Programm|Taste[nr]|Starter|Leiste|Suche|Sitzung|Bildschirm'
 # Two more that slipped through into the location picker and shipped: a button
 # labelled "stimmt" and a status reading "sucht …". Neither contains a word from
 # the lists above, and neither is a function word — which is the limit of the

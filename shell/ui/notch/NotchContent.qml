@@ -6,6 +6,7 @@ import QtQuick
 import Quickshell
 import "../../theme"
 import "../../config"
+import "../../services" as Services
 import "../common"
 import "pages"
 
@@ -60,17 +61,35 @@ Item {
         : Config.notch.collapsedHeight
 
     // Collapsed: the clock — but only when the bar is not already showing one.
+    //
+    // ⚠️ A RUNNING TIMER TAKES THE CLOCK'S PLACE, and that is the whole reason
+    // the timer is worth having. A countdown you can only see by opening the
+    // page it lives on is an alarm you will forget you set; the time of day is
+    // the one thing on this desktop that is always available elsewhere.
+    // It goes back to the clock the moment the timer is stopped or acknowledged.
     BarText {
         anchors.centerIn: parent
         visible: !root.expanded && root.showClock
         opacity: root.expanded ? 0 : 1
+        font.family: Services.Countdown.active ? Theme.fontMono : Theme.fontUi
+        // Amber while it is up, so a glance says "still ringing" without
+        // reading anything. Accent while it runs; ordinary for the time of day.
+        color: Services.Countdown.rang ? Theme.warn
+             : Services.Countdown.active ? Theme.accent
+             : Theme.fg
         text: {
+            if (Services.Countdown.active || Services.Countdown.rang)
+                return Services.Countdown.label
             function p(n) { return n < 10 ? "0" + n : "" + n }
             return p(clock.hours) + ":" + p(clock.minutes)
         }
         Behavior on opacity {
             enabled: Theme.animate
             NumberAnimation { duration: Theme.durFast; easing.type: Theme.easing }
+        }
+        Behavior on color {
+            enabled: Theme.animate
+            ColorAnimation { duration: Theme.durBase; easing.type: Theme.easing }
         }
     }
 
@@ -92,6 +111,8 @@ Item {
                        : root.page === "event" ? eventPage
                        : root.page === "brightness" ? brightnessPage
                        : root.page === "mic" ? micPage
+                       : root.page === "calculator" ? calculatorPage
+                       : root.page === "timer" ? timerPage
                        : root.page === "session" ? sessionPage
                        : root.page === "clipboard" ? clipboardPage
                        : null
@@ -139,6 +160,8 @@ Item {
     Component { id: eventPage; EventPage {} }
     Component { id: brightnessPage; BrightnessPage {} }
     Component { id: micPage; MicPage {} }
+    Component { id: calculatorPage; CalculatorPage {} }
+    Component { id: timerPage; TimerPage {} }
     Component { id: sessionPage; SessionPage {} }
     Component { id: clipboardPage; ClipboardPage {} }
 }

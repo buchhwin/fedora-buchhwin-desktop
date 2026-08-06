@@ -105,6 +105,14 @@ rm -rf "$tmp"
 # predecessor accumulated several of these — a duplicated Super+Tab is in the
 # list of things deliberately left behind — and it happened again the moment a
 # conventional Super+L was added on top of the vim navigation group.
+#
+# ⚠️ THIS CHECK CANNOT ACTUALLY FAIL, and that was measured rather than
+# suspected: the generator (tools/niri.qml, bindsSection) drops a duplicate
+# before writing the file, so the output is deduplicated by construction. A
+# second Mod+K was added on purpose and this stayed green while the binding
+# quietly did not exist. The real check is in tools/smoke.qml, against
+# Config.keys.binds. This one is kept as the second net — it would catch a
+# duplicate the generator itself introduced, which the other cannot see.
 printf '  %-34s ' "no key is bound twice"
 tmp="$(mktemp -d)"; mkdir -p "$tmp/buchhwin" "$tmp/niri" "$tmp/environment.d"
 printf '{"version":2}\n' > "$tmp/buchhwin/shell.json"

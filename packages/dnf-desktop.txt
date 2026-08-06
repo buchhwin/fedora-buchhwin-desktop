@@ -33,6 +33,12 @@ ddcutil                     # external monitor brightness
 cliphist                    # no clipboard-history API
 wl-clipboard
 gammastep                   # no gamma/night-light API
+# ⚠️ pw-play, for the work timer, and NOT canberra-gtk-play — that one is a GTK
+# program and exits with "Cannot open display" when it has no toolkit
+# connection, which is an odd thing to need in order to make a noise. pw-dump
+# and pw-cat come with it and are worth having on this machine anyway.
+pipewire-utils              # pw-play: quickshell has no audio playback API
+sound-theme-freedesktop     # where alarm-clock-elapsed.oga comes from
 wf-recorder                 # no screen-recording API (niri has none either)
 grim                        # screenshots for scripting; niri has its own UI
 

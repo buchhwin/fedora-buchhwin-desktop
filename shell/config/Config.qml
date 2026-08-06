@@ -30,6 +30,7 @@ Singleton {
     readonly property alias surfaces: adapter.surfaces
     readonly property alias notifications: adapter.notifications
     readonly property alias nightlight: adapter.nightlight
+    readonly property alias timer: adapter.timer
     readonly property alias clipboard: adapter.clipboard
     readonly property alias notch: adapter.notch
     readonly property alias bar: adapter.bar
@@ -249,6 +250,22 @@ Singleton {
                 property string tmux: "inherit"
                 property string starship: "inherit"
                 property string lazygit: "inherit"
+            }
+
+            // The work timer's presets, in minutes. A working day is made of
+            // particular lengths rather than round numbers, and anybody whose
+            // are different says so once, here.
+            property JsonObject timer: JsonObject {
+                property list<int> presets: [5, 15, 25, 60]
+                // ⚠️ A timer that ends silently is a timer you miss, which is
+                // the only thing it had to do. Off is still a setting, because
+                // a shared office is a real place.
+                property bool sound: true
+                // The freedesktop sound theme's own name for this, so it
+                // follows whatever theme is installed rather than pointing at
+                // one file that a later package might move.
+                property string soundFile:
+                    "/usr/share/sounds/freedesktop/stereo/alarm-clock-elapsed.oga"
             }
 
             // Night light, over gammastep — quickshell has no gamma API, and
@@ -601,6 +618,20 @@ Singleton {
                     { key: "Mod+V", action: "spawn-sh",
                       arg: "qs -c buchhwin ipc call notch clipboard",
                       desc: "Clipboard history" },
+                    // ⚠️ NOT Mod+K — that is `focus-window-up` in the vim
+                    // navigation group, and a second binding for it would have
+                    // been dropped by the generator with a note in a log
+                    // nobody reads. Mod+R is free, and so is the dedicated
+                    // calculator key that many keyboards actually have.
+                    { key: "Mod+R", action: "spawn-sh",
+                      arg: "qs -c buchhwin ipc call notch calculator",
+                      desc: "Calculator" },
+                    { key: "XF86Calculator", action: "spawn-sh",
+                      arg: "qs -c buchhwin ipc call notch calculator",
+                      desc: "Calculator" },
+                    { key: "Mod+Shift+T", action: "spawn-sh",
+                      arg: "qs -c buchhwin ipc call notch timer",
+                      desc: "Work timer" },
                     { key: "Mod+Shift+N", action: "spawn-sh",
                       arg: "qs -c buchhwin ipc call notch event",
                       desc: "New event" },
