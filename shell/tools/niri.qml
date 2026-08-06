@@ -172,9 +172,15 @@ Scope {
             s += "        softness " + L.shadowSoftness + "\n"
             s += "        spread " + L.shadowSpread + "\n"
             s += "        offset x=0 y=" + L.shadowOffsetY + "\n"
-            // niri cannot know a client's own corner radius, so without this
-            // the shadow shows through the rounded corners as square artefacts.
-            s += "        draw-behind-window true\n"
+            // ⚠️ A SETTING NOW, AND IT DEFAULTS TO FALSE. niri's own reason for
+            // true is that it cannot know a client's corner radius — but the
+            // window rule below sets `clip-to-geometry true` with a radius, so
+            // it does. And with `look.opacityApp` opening GTK windows up, true
+            // means the shadow shows THROUGH them: measured on Nautilus, the
+            // interior went from (66,50,35) to (40,32,25) while the shadow
+            // beside the window stayed identical.
+            s += "        draw-behind-window "
+                 + (L.shadowBehindWindow ? "true" : "false") + "\n"
         } else {
             s += "        off\n"
         }

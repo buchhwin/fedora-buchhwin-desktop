@@ -89,10 +89,38 @@ Singleton {
             return ""
         return [t.palette, t.accent, t.customColor,
                 l.rounding, l.borderWidth, l.opacityPanel, l.opacityTerminal,
+                // ⚠️ The renderer reads this one and the watcher did not
+                // know it existed — so opening up GTK windows changed
+                // nothing until something ELSE happened to move the
+                // fingerprint. Every value render.qml reads belongs here;
+                // that is the whole contract of this string.
+                l.opacityApp,
                 l.fontUi, l.fontMono, l.fontSize, l.profile,
                 g.enabled, g.mode,
                 g.gtk, g.qt, g.kitty, g.alacritty, g.niri, g.btop, g.bat,
                 g.fastfetch, g.delta, g.tmux, g.starship, g.lazygit,
+                // ⚠️ AND THE KEYS THE NIRI GENERATOR READS. Until now this
+                // watcher only ran the RENDERER, so every niri-side setting had
+                // no watcher at all: adding an app to `windows.blurred` wrote
+                // nothing, and the window rule appeared only when somebody
+                // happened to run `bhctl niri apply`. Measured — Nautilus got
+                // its translucent CSS and no blur rule, which is a worse look
+                // than leaving it opaque.
+                //
+                // Only the ones that are cheap to stringify and actually change
+                // at runtime; the key bindings are not among them, because a
+                // settings window rewriting a 63-entry list on every keystroke
+                // is exactly what the debounce below exists to avoid.
+                JSON.stringify(Config.windows.blurred),
+                JSON.stringify(Config.windows.floating),
+                JSON.stringify(Config.windows.blockFromScreencast),
+                Config.windows.noCsd,
+                l.gapsIn, l.gapsOut, l.blur, l.blurPasses, l.blurOffset,
+                l.blurNoise, l.blurSaturation, l.shadows, l.shadowSoftness,
+                l.shadowSpread, l.shadowOffsetY, l.shadowBehindWindow,
+                l.opacityActive,
+                l.opacityInactive, l.panelBorderWidth, Config.notch.cornerRadius,
+                Config.notch.hoverCornerRadius,
                 // ⚠️ THE COLOURS THEMSELVES, not the palette's NAME. The first
                 // version watched `Scheme.name` and `theme.palette`, and the
                 // acceptance test failed on the very case this service exists
@@ -209,12 +237,45 @@ Singleton {
                   "qs", "-p", Quickshell.shellPath("")]
 
         onExited: function (code) {
-            root.busy = false
             // ⚠️ The tool exits 0 even when it refuses to write — it says so in
             // its log instead. Silence here would mean a palette that never
             // reached anything, reported as success.
             root.lastError = code === 0 ? "" : "render exited " + code
             root.log(code === 0 ? "render finished" : "RENDER FAILED, exit " + code)
+            // ⚠️ `busy` STAYS TRUE until the niri pass is done too, or a second
+            // change arriving in between would start a render while this one is
+            // still finishing its other half.
+            niriProc.running = true
+        }
+    }
+
+    // The second half, and it is not optional.
+    //
+    // ⚠️ THE RENDERER DOES NOT WRITE config.kdl. It writes colours, including
+    // niri's `colors.kdl`, and config.kdl is a separate generator — so every
+    // niri-side setting (blur rules, window rules, gaps, shadows, corner radii)
+    // had NO watcher at all and only reached the machine when somebody typed
+    // `bhctl niri apply`. That is the same "a key with no reader" fault this
+    // project has now found six times, one level up: a key with a reader that
+    // nothing calls.
+    //
+    // Running it unconditionally after every render is affordable because
+    // tools/niri.qml compares before writing — tests/niri-config.sh has a check
+    // named "second run writes nothing" for exactly this — so an unchanged
+    // config costs one process and no compositor reload.
+    Process {
+        id: niriProc
+        command: ["env", "BUCHHWIN_TOOL=niri", "QT_QPA_PLATFORM=offscreen",
+                  "qs", "-p", Quickshell.shellPath("")]
+
+        onExited: function (code) {
+            root.busy = false
+            if (code !== 0) {
+                root.lastError = "niri generator exited " + code
+                root.log("NIRI GENERATOR FAILED, exit " + code)
+            } else {
+                root.log("niri config regenerated")
+            }
         }
     }
 }

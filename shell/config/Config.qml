@@ -677,6 +677,20 @@ Singleton {
                 // the blur behind it was being computed and then covered, the
                 // same waste as the terminal at 0.90.
                 property real opacityPanel: 0.78
+                // The background of GTK applications, written into their own
+                // CSS rather than applied by the compositor.
+                //
+                // ⚠️ NOT `opacityActive`. Compositor opacity fades the TEXT with
+                // the background — the same reason the terminal uses kitty's own
+                // `background_opacity`. This is the file manager on the
+                // reference screenshot: near-black with the wallpaper showing
+                // through, and the file names still sharp.
+                //
+                // ⚠️ It only shows where the compositor also blurs behind the
+                // window; see `windows.blurred`. Without that, a translucent
+                // window is a window with the raw wallpaper behind it, which is
+                // worse than an opaque one.
+                property real opacityApp: 0.80
                 // The terminal's own background, through kitty rather than
                 // through the compositor — see tools/render.qml for why.
                 //
@@ -735,6 +749,25 @@ Singleton {
                 property int shadowSoftness: 28
                 property int shadowSpread: 2
                 property int shadowOffsetY: 6
+                // Whether niri draws the shadow BEHIND the window as well as
+                // around it.
+                //
+                // ⚠️ false, and it is a measurement rather than a preference.
+                // niri's reason for the other setting is real — without it a
+                // client's own rounded corners can show square shadow
+                // artefacts — but it costs everything the translucency buys:
+                // the shadow shows THROUGH an open window and darkens it.
+                // Measured on Nautilus at opacityApp 0.80, same pixels:
+                //
+                //   inside the window   true (40,32,25)   false (66,50,35)
+                //   beside the window   identical in both
+                //
+                // So the shadow around the window is unaffected and only the
+                // show-through changes. Our window rule already sets
+                // `clip-to-geometry true` with a corner radius, so niri does
+                // know the shape and the artefact it guards against does not
+                // arise. Anyone running fully opaque windows can set it back.
+                property bool shadowBehindWindow: false
                 property string fontUi: "Inter"
                 property string fontMono: "JetBrainsMono Nerd Font"
                 // ⚠️ "Material Symbols Rounded" is NOT what Fedora ships.
@@ -965,7 +998,13 @@ Singleton {
                 // blurs the wallpaper ONCE and reuses it for every window
                 // instead of recomputing per window per frame. That is the
                 // cheap path and the reason this is affordable on a laptop.
-                property list<string> blurred: ["kitty"]
+                //
+                // ⚠️ Nautilus is here because `look.opacityApp` opens every GTK
+                // window's background — without a blur behind it you get raw
+                // wallpaper through a file list, which is worse than opaque.
+                // The two settings belong together and neither is worth having
+                // alone.
+                property list<string> blurred: ["kitty", "org.gnome.Nautilus"]
                 // app-ids that should open floating.
                 property list<string> floating: []
             }

@@ -283,19 +283,37 @@ Scope {
     }
 
     // ------------------------------------------------------------------ GTK 4
+    // The same colour, opened up. `look.opacityApp` is what makes a GTK window
+    // read as the one on the reference screenshot — near-black with the
+    // wallpaper coming through, and the text still sharp.
+    //
+    // ⚠️ `rgba()` WITH A DECIMAL ALPHA, not an eight-digit hex. GTK's CSS parser
+    // takes `rgba(r,g,b,a)` and does NOT take `#rrggbbaa`; the wrong one is not
+    // an error, it is a colour that silently stays opaque.
+    //
+    // ⚠️ And it is written per COLOUR, not as one blanket rule on `window`.
+    // libadwaita paints several surfaces — the window, the view, the sidebar —
+    // and a single translucent rule underneath opaque ones changes nothing.
+    function alphaOf(hex, a) {
+        var c = Qt.color(hex)
+        return "rgba(" + Math.round(c.r * 255) + ", " + Math.round(c.g * 255)
+             + ", " + Math.round(c.b * 255) + ", " + a.toFixed(2) + ")"
+    }
+
     function gtk4Css(m) {
+        var a = Config.look.opacityApp
         return head(false, m) +
-            "@define-color window_bg_color " + col(m, "base") + ";\n" +
+            "@define-color window_bg_color " + alphaOf(col(m, "base"), a) + ";\n" +
             "@define-color window_fg_color " + col(m, "text") + ";\n" +
-            "@define-color view_bg_color " + col(m, "mantle") + ";\n" +
+            "@define-color view_bg_color " + alphaOf(col(m, "mantle"), a) + ";\n" +
             "@define-color view_fg_color " + col(m, "text") + ";\n" +
-            "@define-color headerbar_bg_color " + col(m, "surface0") + ";\n" +
+            "@define-color headerbar_bg_color " + alphaOf(col(m, "surface0"), a) + ";\n" +
             "@define-color headerbar_fg_color " + col(m, "text") + ";\n" +
             "@define-color popover_bg_color " + col(m, "surface0") + ";\n" +
             "@define-color popover_fg_color " + col(m, "text") + ";\n" +
             "@define-color card_bg_color " + col(m, "surface0") + ";\n" +
             "@define-color card_fg_color " + col(m, "text") + ";\n" +
-            "@define-color sidebar_bg_color " + col(m, "mantle") + ";\n" +
+            "@define-color sidebar_bg_color " + alphaOf(col(m, "mantle"), a) + ";\n" +
             "@define-color sidebar_fg_color " + col(m, "text") + ";\n" +
             "@define-color dialog_bg_color " + col(m, "surface0") + ";\n" +
             "@define-color dialog_fg_color " + col(m, "text") + ";\n" +
