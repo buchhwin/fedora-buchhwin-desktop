@@ -1042,7 +1042,17 @@ Singleton {
             // Extra programs for the session. NOT the shell and NOT the
             // clipboard watcher — those are systemd user units already, and
             // listing them here too would start a second copy of each.
-            property list<string> autostart: []
+            //
+            // ⚠️ The polkit agent IS here, and it has to be. It ships an XDG
+            // autostart file (/etc/xdg/autostart/), and niri does not process
+            // those — so on this desktop nothing would ever start it and the
+            // wifi radio switch would keep being refused. The path is the
+            // package's own, checked with `dnf repoquery -l` rather than
+            // guessed; see packages/dnf-desktop.txt for why a foreign program
+            // is here at all.
+            property list<string> autostart: [
+                "/usr/libexec/polkit-mate-authentication-agent-1"
+            ]
 
             property list<string> workspaces: ["scratch"]
 

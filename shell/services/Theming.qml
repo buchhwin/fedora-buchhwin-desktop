@@ -111,6 +111,15 @@ Singleton {
                 // at runtime; the key bindings are not among them, because a
                 // settings window rewriting a 63-entry list on every keystroke
                 // is exactly what the debounce below exists to avoid.
+                // ⚠️ THE NIRI-SIDE LISTS, and they were added ONE AT A TIME
+                // rather than completely — `autostart` was still missing, so the
+                // polkit agent only appeared when something ELSE happened to move
+                // the fingerprint. Whoever adds a key that tools/niri.qml reads
+                // adds it here as well; that is the whole contract of this string
+                // and it has now been broken twice in one day.
+                JSON.stringify(Config.autostart),
+                JSON.stringify(Config.workspaces),
+                JSON.stringify(Config.outputs),
                 JSON.stringify(Config.windows.blurred),
                 JSON.stringify(Config.windows.floating),
                 JSON.stringify(Config.windows.blockFromScreencast),

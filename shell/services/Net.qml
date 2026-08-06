@@ -330,22 +330,29 @@ Singleton {
     Component.onCompleted: if (!root.fake) deviceRead.running = true
 
     // ⚠️ DID THE SWITCH ACTUALLY DO ANYTHING? Changing the wifi radio goes
-    // through NetworkManager's D-Bus interface and is subject to polkit. There
-    // is no polkit AGENT in this desktop yet — the plan has one built on
-    // Quickshell.Services.Polkit and it is not written — so on a session that
-    // does not get the permission by default the call is refused and nothing
-    // happens at all. Measured over ssh, where a session is never active:
-    // "Not authorized to perform this operation".
+    // through NetworkManager's D-Bus interface and is subject to polkit, so the
+    // call can be refused and nothing happens at all. Measured over ssh, where a
+    // session is never active: "Not authorized to perform this operation".
     //
-    // Rather than ship a switch that might quietly do nothing, the switch
-    // checks. If the radio has not moved a second later, it says so.
+    // ⚠️ THE OLD NOTE HERE WAS OUT OF DATE and said the plan had an agent "built
+    // on Quickshell.Services.Polkit". There is no such module — a polkit agent
+    // has to REGISTER with org.freedesktop.PolicyKit1.Authority over D-Bus, and
+    // quickshell cannot. `mate-polkit` is installed and started with the session
+    // instead; see packages/dnf-desktop.txt for why a foreign program is there.
+    //
+    // The check stays regardless, and that is deliberate: an agent can be
+    // missing, dead, or the policy can simply say no. Rather than ship a switch
+    // that might quietly do nothing, the switch looks.
     Timer {
         id: verify
         interval: 1000
         property bool want: false
         onTriggered: {
             if (Networking.wifiEnabled !== verify.want)
-                root.status = "Not allowed to change the radio — no authorisation agent"
+                // Says what happened, not what we guess the cause is: with
+                // an agent installed, a refusal now means the policy said no or
+                // the agent is not running — and "no agent" would be a lie.
+                root.status = "The radio would not change — the request was refused"
         }
     }
 

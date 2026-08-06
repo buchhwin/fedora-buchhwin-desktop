@@ -47,6 +47,27 @@ xdg-desktop-portal
 xdg-desktop-portal-gtk
 xdg-desktop-portal-gnome
 
+# The authorisation dialog, and the one place this desktop uses somebody else's
+# window on purpose.
+#
+# ⚠️ IT CANNOT BE BUILT IN QUICKSHELL. A polkit agent has to REGISTER itself
+# with org.freedesktop.PolicyKit1.Authority over D-Bus and answer challenges;
+# quickshell has no interface for that. Without one, "turn the wifi radio off"
+# is refused with "Not authorized" and nothing happens — a switch that does
+# nothing, which is exactly what this project is not allowed to ship.
+#
+# Chosen and approved on 6 August 2026 after asking, because the rules say to
+# ask before taking on a foreign program rather than doing it quietly. It is a
+# background daemon with no window of its own; the dialog it does show is GTK,
+# so the generated GTK theme colours it like every other foreign window — no
+# second colour vocabulary enters the desktop, which is what the "no GTK" rule
+# is actually about.
+#
+# Measured before adding: `mate-polkit-1.28.1`, in the `fedora` repo (no COPR),
+# and `dnf repoquery --requires --resolve` returns nothing extra to install.
+# One file: /usr/libexec/polkit-mate-authentication-agent-1.
+mate-polkit
+
 # Secrets.
 gnome-keyring
 libsecret
