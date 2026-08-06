@@ -1,7 +1,6 @@
 # Applications. Skipped with --minimal.
 brave-browser       # launched Wayland-native; see lib/60-shell.sh for the flags
 code
-keepassxc
 
 # Chosen deliberately rather than arriving later as somebody's dependency.
 # Qt was measured and rejected for these: qimgv 29 packages/89 MiB against

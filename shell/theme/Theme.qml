@@ -165,12 +165,18 @@ Singleton {
 
     // ---------------------------------------------------------------- spacing
     // One 4px grid. No "about ten pixels" anywhere.
-    readonly property int space1: 4
-    readonly property int space2: 8
-    readonly property int space3: 12
-    readonly property int space4: 16
-    readonly property int space5: 24
-    readonly property int space6: 32
+    //
+    // ⚠️ `look.uiScale` multiplies the grid and the type together, and nothing
+    // else — see the note on the key. Rounded to whole pixels at every step, or
+    // a scale of 0.9 turns the 4 px grid into 3.6 and every gap in the shell
+    // stops landing on a pixel boundary.
+    readonly property real scale: Config.look.uiScale
+    readonly property int space1: Math.round(4 * scale)
+    readonly property int space2: Math.round(8 * scale)
+    readonly property int space3: Math.round(12 * scale)
+    readonly property int space4: Math.round(16 * scale)
+    readonly property int space5: Math.round(24 * scale)
+    readonly property int space6: Math.round(32 * scale)
 
     // ------------------------------------------------------------- typography
 
@@ -179,7 +185,7 @@ Singleton {
     readonly property string fontIcon: Config.look.fontIcon
     readonly property int fontSizePt:  Config.look.fontSize
     // pt -> px at the 96dpi Qt assumes; the compositor handles real scaling.
-    readonly property int fontSize:    Math.round(fontSizePt * 4 / 3)
+    readonly property int fontSize:    Math.round(fontSizePt * 4 / 3 * root.scale)
     readonly property int fontSizeSm:  Math.round(fontSize * 0.86)
     readonly property int fontSizeLg:  Math.round(fontSize * 1.15)
     readonly property int fontSizeXl:  Math.round(fontSize * 1.45)

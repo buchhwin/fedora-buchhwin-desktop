@@ -101,7 +101,7 @@ ColumnLayout {
         Layout.fillWidth: true
         active: root.tab === Ipc.quickNotifications
         asynchronous: true
-        sourceComponent: NotificationsPage {}
+        sourceComponent: notificationsTab
     }
 
     // The same TimerPage that Mod+Shift+T opens, not a second one. A countdown
@@ -119,8 +119,20 @@ ColumnLayout {
         Layout.fillWidth: true
         active: root.tab === Ipc.quickSettings
         asynchronous: true
-        sourceComponent: QuickSettings {}
+        sourceComponent: settingsTab
     }
+
+    // ⚠️ COMPONENTS, NOT INSTANCES — the same trap NotchContent.qml already
+    // names, and it was walked into here anyway. `sourceComponent: QuickSettings
+    // {}` writes an OBJECT into a property that wants a recipe: the object is
+    // built at once and stays built, so the settings view and the notification
+    // list existed the whole time the panel was open on some other tab. That is
+    // the opposite of what the Loader is for — "a closed list does not exist" —
+    // and it is the likeliest reason the panel sometimes came up far too tall,
+    // reported as "sometimes the gap gets too big, down to the bottom of the
+    // screen, but only sometimes".
+    Component { id: notificationsTab; NotificationsPage {} }
+    Component { id: settingsTab; QuickSettings {} }
 
     // --------------------------------------------------------------- overview
     RowLayout {

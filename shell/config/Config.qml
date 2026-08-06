@@ -283,6 +283,20 @@ Singleton {
             }
 
             property JsonObject look: JsonObject {
+                // ⚠️ ONE NUMBER FOR THE SIZE OF EVERYTHING. The reference
+                // measurements in this file come from a 1920-wide screen; on a
+                // 1280 one the same pixels are half again as much of the
+                // display, and it reads as "everything is a bit too big by
+                // default". Rather than a second set of numbers, this scales
+                // the font sizes and the 4 px grid together — 0.9 is a notch
+                // smaller everywhere, 1.1 a notch larger, and everything stays
+                // in proportion because it all derives from these two.
+                //
+                // It does NOT touch the notch's own geometry: those are exact
+                // measurements from the reference screenshot and have their own
+                // keys, so shrinking the interface must not silently change the
+                // shape that was specified.
+                property real uiScale: 1.0
                 property int rounding: 16          // every radius derives from this
                 property int borderWidth: 0        // 0: no window borders anywhere
                 property int gapsIn: 8
@@ -528,7 +542,8 @@ Singleton {
                     { key: "Mod+Up",    action: "focus-window-up",    desc: "Focus up" },
                     { key: "Mod+Down",  action: "focus-window-down",  desc: "Focus down" },
                     { key: "Mod+H",     action: "focus-column-left",  desc: "Focus left" },
-                    { key: "Mod+L",     action: "focus-column-right", desc: "Focus right" },
+                    // Mod+L is the lock key now — see the note further down. Mod+Right
+                    // still goes right, and h/j/k are untouched.
                     { key: "Mod+K",     action: "focus-window-up",    desc: "Focus up" },
                     { key: "Mod+J",     action: "focus-window-down",  desc: "Focus down" },
 
@@ -566,7 +581,25 @@ Singleton {
                     // Fullscreen is the one people reach for, so it gets the
                     // short key. `fullscreen-window` is already a toggle, so the
                     // same press brings the window back.
-                    { key: "Mod+F",       action: "fullscreen-window", desc: "Fullscreen" },
+                    // ⚠️ WINDOWED fullscreen, and that is a bug fix rather than
+                    // a preference. From niri's own documentation,
+                    // Fullscreen-and-Maximize.md:39: "Niri renders a solid
+                    // black backdrop behind fullscreen windows." So a
+                    // translucent terminal blended with BLACK instead of the
+                    // wallpaper the moment it went fullscreen — reported as
+                    // "the colour changes and you cannot see the background any
+                    // more", and that is exactly what it was.
+                    //
+                    // `toggle-windowed-fullscreen` fills the working area
+                    // without the real fullscreen state, so there is no
+                    // backdrop and the wallpaper stays where it was. Real
+                    // fullscreen moves to Mod+Ctrl+F, where black IS what you
+                    // want: video and games. ⚠️ NOT Mod+Shift+F — that is
+                    // `maximize-column` and has been since the vim group was
+                    // laid out; saying otherwise in this comment would be a
+                    // second thing to get wrong.
+                    { key: "Mod+F",       action: "toggle-windowed-fullscreen", desc: "Fullscreen" },
+                    { key: "Mod+Ctrl+F",  action: "fullscreen-window",  desc: "True fullscreen (black behind it)" },
                     { key: "Mod+Shift+F", action: "maximize-column",   desc: "Maximise column" },
                     { key: "Mod+W",       action: "toggle-column-tabbed-display", desc: "Column as tabs" },
                     { key: "Mod+O",       action: "toggle-overview",   desc: "Overview" },
@@ -703,11 +736,6 @@ Singleton {
                     { key: "Mod+Shift+E", action: "spawn-sh",
                       arg: "qs -c buchhwin ipc call notch session",
                       desc: "Session menu" },
-                    // ⚠️ NOT Mod+L, however conventional that is: Mod+L is
-                    // already focus-column-right in the vim group. A second
-                    // binding for the same key is the kind of leftover the
-                    // predecessor collected, and tests/niri-config.sh now fails
-                    // on one.
                     // ⚠️ Starts the locker DIRECTLY rather than asking logind
                     // to. `loginctl lock-session` only emits a signal, and
                     // nothing in this desktop was listening — so this key did
@@ -722,7 +750,12 @@ Singleton {
                     // folder of the file it is given as the config root, so
                     // starting it by path would put theme/ and config/ outside
                     // that root and the singletons would never register.
-                    { key: "Mod+Ctrl+L", action: "spawn-sh",
+                    // ⚠️ Mod+L, LIKE WINDOWS, and it costs the vim group its
+                    // `l`. Locking used to be Mod+Ctrl+L precisely because
+                    // Mod+L was `focus-column-right` — but a lock key nobody
+                    // reaches for is not a lock key, and going right is still
+                    // on Mod+Right. h, j and k are untouched.
+                    { key: "Mod+L", action: "spawn-sh",
                       arg: "BUCHHWIN_MODE=lock qs -c buchhwin", desc: "Lock" },
                     { key: "Mod+Shift+P", action: "power-off-monitors", desc: "Screens off" }
                 ]
