@@ -45,15 +45,27 @@
 //   * `exclusiveZone: -1` vs `ExclusionMode.Ignore`  — no difference
 //   * `mask: Region { item: … }` present vs absent   — no difference
 //   * HoverHandler on a bare PanelWindow vs on an Item — no difference
+//   * `Rectangle { opacity: 0.004 }` instead of an empty Item — the trick
+//     ClickCatcher.qml uses and documents ("Not zero — anything that reads this
+//     as 'why not just 0' will spend an afternoon on it") — NO DIFFERENCE here
+//   * hover tried at y = 2, 20, 36, 40 and 50, i.e. also where the probe
+//     actually appeared — all silent
+//   * the Strut is NOT swallowing it: `Strut.qml` has `mask: Region {}`, an
+//     empty input region
 //   * `anchors { top: true; right: true }` is NOT the problem: ToastWindow uses
 //     exactly the same two adjacent edges and works
 //
-// ⚠️ AND THE ONE RESULT THAT MAKES NO SENSE YET, which is where the next
-// attempt should start: when it DID draw at 40, only about SIX of the forty
-// rows appeared, at y 34..38 — and 34 is exactly the notch strut's height. So
-// either something clips it to a few rows, or that magenta was not this surface
-// at all and the real one has never been visible. Find out which before
-// changing anything else.
+// ⚠️ WHAT IS ACTUALLY KNOWN ABOUT THE GEOMETRY, and it is the crack to work at:
+// with `width: 40; height: 40` the probe came out **40 wide and about 6 tall**,
+// at y 34..40. So the window takes the WIDTH it is given and NOT the height,
+// and it sits at the strut's height rather than at the screen edge.
+//
+// That points at PanelWindow sizing rather than at input: something is deciding
+// this window's height, and 6 is not a number that appears anywhere in this
+// file. Next attempt should ask what a PanelWindow anchored to `top` does with
+// height when it is not also anchored to `bottom` — and try the shape that is
+// proven to work here instead: a full-width strip (`top`+`left`+`right`, as
+// ShellSurface uses for the bar) with the two corners as masked sub-items.
 //
 // Do NOT go back to the input region or the handler. Two rounds went there on
 // the assumption that the window existed and was merely deaf; the probe
@@ -107,9 +119,21 @@ PanelWindow {
     width: Theme.space2 * 3
     height: Theme.space2 * 3
 
-    Item {
+    // ⚠️ A RECTANGLE WITH `opacity: 0.004`, NOT AN EMPTY ITEM — and the answer
+    // was already in this repository. ui/surface/ClickCatcher.qml does exactly
+    // this and says why: "Not zero — anything that reads this as 'why not just
+    // 0' will spend an afternoon on it." A surface that draws nothing at all
+    // gets nothing to receive a pointer, which is precisely what the probe
+    // showed: the window existed in `niri msg layers` and painted no pixels.
+    //
+    // I spent that afternoon anyway, on the input region and the handler, and
+    // the file that already knew was two directories away.
+    Rectangle {
         id: hitArea
         anchors.fill: parent
+        color: Theme.scrim
+        opacity: 0.004          // literal-ok: input-region threshold, not a style
+
         HoverHandler {
             id: hover
             onHoveredChanged: hovered ? dwell.restart() : dwell.stop()
