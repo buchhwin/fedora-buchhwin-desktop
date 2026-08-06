@@ -27,6 +27,13 @@ PanelWindow {
     WlrLayershell.namespace: "buchhwin-catcher"
     // Below the island, above everything else: a click must reach this before
     // it reaches a window, but never before it reaches the island itself.
+    //
+    // ⚠️ THAT SENTENCE WAS A WISH, NOT A FACT, UNTIL THE PANEL MOVED UP. This
+    // surface and the panel were both on `Top`, where stacking follows creation
+    // order — and Shell.qml creates this one second, so it was in front of the
+    // thing it is supposed to sit behind, and the panel could not be used at
+    // all. The panel is on `Overlay` now; this one stays here, which is what
+    // makes the comment true.
     WlrLayershell.layer: WlrLayer.Top
 
     anchors { top: true; bottom: true; left: true; right: true }

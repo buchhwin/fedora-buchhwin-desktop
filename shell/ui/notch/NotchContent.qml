@@ -6,7 +6,6 @@ import QtQuick
 import Quickshell
 import "../../theme"
 import "../../config"
-import "../../services" as Services
 import "../common"
 import "pages"
 
@@ -62,34 +61,28 @@ Item {
 
     // Collapsed: the clock — but only when the bar is not already showing one.
     //
-    // ⚠️ A RUNNING TIMER TAKES THE CLOCK'S PLACE, and that is the whole reason
-    // the timer is worth having. A countdown you can only see by opening the
-    // page it lives on is an alarm you will forget you set; the time of day is
-    // the one thing on this desktop that is always available elsewhere.
-    // It goes back to the clock the moment the timer is stopped or acknowledged.
+    // ⚠️ THE CLOCK, AND ONLY THE CLOCK. A running timer used to take its place
+    // here, on the argument that a countdown you cannot see is an alarm you
+    // forget you set. That argument was mine and it was wrong twice over.
+    // The brief: "eingeklappt steht die UHR darin … eine Zeile, sonst nichts".  // english-ok: the specification, quoted
+    // The answer when it shipped: "am besten sollte die Notch immer die Uhrzeit anzeigen".  // english-ok: quoted
+    // A surface with one line has room for one meaning, and this one's meaning
+    // is the time of day.
+    //
+    // What a running timer gets instead is its own pill, which slides out
+    // beside the notch while the pointer is over it — see ui/surface/AsideSurface.
     BarText {
         anchors.centerIn: parent
         visible: !root.expanded && root.showClock
         opacity: root.expanded ? 0 : 1
-        font.family: Services.Countdown.active ? Theme.fontMono : Theme.fontUi
-        // Amber while it is up, so a glance says "still ringing" without
-        // reading anything. Accent while it runs; ordinary for the time of day.
-        color: Services.Countdown.rang ? Theme.warn
-             : Services.Countdown.active ? Theme.accent
-             : Theme.fg
+        color: Theme.fg
         text: {
-            if (Services.Countdown.active || Services.Countdown.rang)
-                return Services.Countdown.label
             function p(n) { return n < 10 ? "0" + n : "" + n }
             return p(clock.hours) + ":" + p(clock.minutes)
         }
         Behavior on opacity {
             enabled: Theme.animate
             NumberAnimation { duration: Theme.durFast; easing.type: Theme.easing }
-        }
-        Behavior on color {
-            enabled: Theme.animate
-            ColorAnimation { duration: Theme.durBase; easing.type: Theme.easing }
         }
     }
 

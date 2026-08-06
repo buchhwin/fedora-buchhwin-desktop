@@ -53,7 +53,7 @@ ColumnLayout {
         spacing: Theme.space2
 
         Repeater {
-            model: ["Overview", "Media", "Notifications", "Settings"]
+            model: ["Overview", "Media", "Notifications", "Timer", "Settings"]
 
             Pill {
                 id: tabPill
@@ -102,6 +102,17 @@ ColumnLayout {
         active: root.tab === Ipc.quickNotifications
         asynchronous: true
         sourceComponent: NotificationsPage {}
+    }
+
+    // The same TimerPage that Mod+Shift+T opens, not a second one. A countdown
+    // shown in two places that disagree about how long is left is worse than a
+    // countdown in one place — the same reason the calendar and the media
+    // transport are reused rather than rebuilt.
+    Loader {
+        Layout.fillWidth: true
+        active: root.tab === Ipc.quickTimer
+        asynchronous: true
+        sourceComponent: TimerPage {}
     }
 
     Loader {

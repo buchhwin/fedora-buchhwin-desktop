@@ -49,7 +49,26 @@ Scope {
     // So Weather is created when the quick panel first opens, exactly as it was
     // before. The cost is one second before the first temperature appears. The
     // alternative is a desktop that segfaults, which is not a trade.
+    // ⚠️ AND THE COUNTDOWN, WHICH I BROKE TODAY AND MEASURED WITHIN THE HOUR.
+    //
+    // The tick timer runs on `Countdown.running`, so the service has to exist
+    // for a timer to count at all. Until today it existed by accident: the
+    // collapsed notch read `Countdown.active` to decide whether to show the
+    // countdown instead of the clock, and that reference built the singleton.
+    // Then the notch went back to showing only the clock — correctly — and the
+    // only remaining reference was inside a `&&` chain in the aside's loader,
+    // where it is never evaluated unless the pointer is on the notch.
+    //
+    // Measured, not reasoned: a timer restored with twelve seconds left rang
+    // never, the state file still said `rang: false`, and `notify-send` by hand
+    // produced a toast a second later — so the notification path was fine and
+    // the countdown had simply never started. A timer that only runs while you
+    // are hovering the notch is worse than no timer.
+    //
+    // Two names, one line each, and a comment that is longer than both because
+    // the failure is invisible and the fix looks like nothing.
     readonly property string startServices: Services.Location.timezone
+    readonly property bool startCountdown: Services.Countdown.active
 
     // ⚠️ AND THE THEMING WATCHER IS STARTED LATE, FOR THE SAME REASON AS
     // WEATHER — but it must be started, because without it changing the palette
@@ -134,6 +153,17 @@ Scope {
             LazyLoader {
                 activeAsync: perScreen.notchHere && Ipc.expanded
                 component: OverlaySurface { modelData: perScreen.modelData }
+            }
+
+            // The pill beside the notch, while the pointer is on the notch AND
+            // there is something to put in it. Both conditions are here rather
+            // than inside the surface, so "nothing running" means no window at
+            // all instead of an empty one waiting to be filled.
+            LazyLoader {
+                activeAsync: perScreen.notchHere
+                             && Ipc.notchHover === perScreen.modelData.name
+                             && (Services.Countdown.active || Services.Countdown.rang)
+                component: AsideSurface { modelData: perScreen.modelData }
             }
 
             // Only while a page is open. A permanent fullscreen surface that

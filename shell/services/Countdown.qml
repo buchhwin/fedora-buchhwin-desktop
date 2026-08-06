@@ -146,7 +146,28 @@ Singleton {
     // notice is his to say, on the laptop.
     Process { id: chime }
 
+    // ⚠️ AND IT HAS TO SAY SO IN WRITING, not only out loud. The notch used to
+    // turn amber and hold the countdown in place of the clock; it does not any
+    // more — the clock is the clock — so a chime on a machine whose volume is
+    // down would be the whole notification. A real message survives that: it
+    // arrives as a toast AND stays in the notifications tab, so a timer that
+    // went off while you were in another room is still findable afterwards.
+    //
+    // We are the notification server ourselves, so this arrives at our own
+    // toast surface — measured on the VM, the test messages came through.
+    //
+    // ⚠️ SENT AS `critical`, which is what makes it survive Do Not Disturb. A
+    // countdown you set yourself is not an interruption from outside, and
+    // silently swallowing it would make the whole timer untrustworthy.
+    Process { id: announce }
+
     onFinished: {
+        announce.command = ["notify-send", "--urgency=critical",
+                            "--app-name=buchhwin",
+                            "--icon=alarm",
+                            "Timer finished", root.clock(root.total) + " is up"]
+        announce.running = true
+
         if (!Config.timer.sound) return
         chime.command = ["pw-play", Config.timer.soundFile]
         chime.running = true

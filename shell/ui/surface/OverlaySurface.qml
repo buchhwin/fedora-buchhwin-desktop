@@ -38,7 +38,19 @@ PanelWindow {
     // rules to this namespace. Renaming it here without renaming it there
     // loses all three silently.
     WlrLayershell.namespace: "buchhwin-overlay"
-    WlrLayershell.layer: WlrLayer.Top
+    // ⚠️ `Overlay`, NOT `Top`, AND THAT IS THE WHOLE PANEL'S USABILITY. The
+    // click-catcher — a fullscreen surface whose entire job is to swallow a
+    // click and close the panel — was also on `Top`, and Shell.qml creates it
+    // AFTER this one. wlr-layer-shell stacks within a layer by creation order,
+    // so the catcher sat on top of the panel and ate every click meant for it —
+    // "ich geh z. B. auf Medien oder auf Settings, schließt sich das Fenster und ich komme nicht in die Tab".  // english-ok: the report, quoted
+    // Measured with `niri msg layers`: both namespaces in the Top layer, with
+    // nothing deciding between them but the order they were made in.
+    //
+    // Raising the panel a layer is the fix rather than reordering the loaders,
+    // because order is an accident and a layer is a promise. ShellSurface
+    // already does exactly this when a window goes fullscreen.
+    WlrLayershell.layer: WlrLayer.Overlay
     WlrLayershell.keyboardFocus: root.wantsKeys ? WlrKeyboardFocus.OnDemand
                                                 : WlrKeyboardFocus.None
 

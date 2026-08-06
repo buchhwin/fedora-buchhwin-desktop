@@ -167,6 +167,20 @@ PanelWindow {
     // window rather than on the island, so the thin strip is easy to find.
     HoverHandler { id: hover }
 
+    // ⚠️ ONLY IN THE RESTING STATE. In the strip, hover already means "bring the
+    // notch back"; giving it a second meaning there would make one gesture do
+    // two things, and the one you wanted would be the other one. With a page
+    // open the notch is not on screen at all.
+    readonly property bool asideHere:
+        root.notchEnabled && root.mode === "full" && !root.fullscreenHere
+        && hover.hovered
+    onAsideHereChanged: {
+        if (root.asideHere)
+            Ipc.notchHover = root.screen ? root.screen.name : ""
+        else if (Ipc.notchHover === (root.screen ? root.screen.name : ""))
+            Ipc.notchHover = ""
+    }
+
     Silhouette {
         anchors.fill: parent
         barHeight: root.barH

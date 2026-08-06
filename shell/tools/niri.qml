@@ -409,6 +409,11 @@ Scope {
         // missing blur rule would be most obvious, with the wallpaper showing
         // through sharp behind a list of programs.
         s += "\n" + surface("buchhwin-launcher", L.rounding, blurOn)
+        // The pill beside the notch. Same treatment as the notch itself and
+        // for the same reason: it is a small opaque shape, so there is nothing
+        // to see through it and a blur pass behind it would be paid for and
+        // then covered up.
+        s += "\n" + surface("buchhwin-aside", L.rounding, false)
         return s
     }
 

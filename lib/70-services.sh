@@ -16,12 +16,19 @@ After=graphical-session.target
 
 [Service]
 Type=simple
-# ⚠️ Quickshell never removes the instance directory a run leaves behind, and
-# they live in a tmpfs. 407 of them, 15 MB of RAM, had accumulated on the test
+# Quickshell never removes the instance directory a run leaves behind, and they
+# live in a tmpfs. 407 of them, 15 MB of RAM, had accumulated on the test
 # machine. Pruning here rather than on shutdown is deliberate: at this moment
-# the previous instance is already gone, so `qs list` names only what is really
-# alive. The leading `-` means a failed cleanup can never stop the desktop from
-# starting.
+# the previous instance is already gone, so "qs list" names only what is really
+# alive. The leading minus means a failed cleanup can never stop the desktop
+# from starting.
+#
+# NOTE for whoever edits this comment: it is inside an UNQUOTED heredoc, so
+# backticks here are command substitution and would be RUN at install time.
+# This very line used to say "qs list" in backticks and the installer executed
+# it, printing "sh: -: command not found" and writing the empty result into the
+# unit. Quotes here, never backticks -- and the delimiter stays unquoted
+# because the ExecStartPre line below needs $REPO_DIR expanded.
 ExecStartPre=-$REPO_DIR/bin/bhctl prune
 ExecStart=/usr/bin/qs -c buchhwin
 # A shell that dies takes the bar, the notch and every menu with it, so it
