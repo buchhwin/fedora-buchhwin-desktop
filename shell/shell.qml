@@ -37,8 +37,28 @@ ShellRoot {
     // desktop for one frame before it covers it. The rule against `active`
     // exists for surfaces that come and go, which none of these do.
     LazyLoader {
+        id: toolLoader
         active: root.tool !== ""
         source: root.tool !== "" ? "tools/" + root.tool + ".qml" : ""
+    }
+
+    // ⚠️ A MISSPELT TOOL NAME USED TO START THE WHOLE DESKTOP. `BUCHHWIN_TOOL`
+    // names a file; if that file is not there the loader simply has nothing to
+    // load, the other two loaders are still switched off by `tool !== ""`, and
+    // the process sits in its event loop with no windows and no output until
+    // whatever `timeout` wrapped it kills it. From outside — a test runner, or
+    // a person — that looks exactly like a tool that hung, and half an hour can
+    // go into looking for the hang. It costs one timer to say so instead.
+    Timer {
+        running: root.tool !== ""
+        interval: 2000
+        onTriggered: {
+            if (toolLoader.item === null) {
+                console.warn("buchhwin: no such tool: shell/tools/"
+                             + root.tool + ".qml")
+                Qt.exit(2)
+            }
+        }
     }
 
     LazyLoader {

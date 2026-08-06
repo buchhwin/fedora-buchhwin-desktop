@@ -11,6 +11,10 @@
 # relative include paths resolve against the including file, and /dev/fd is not
 # a directory that contains colors.kdl.
 #
+# ⚠️ XDG_DATA_HOME IS REDIRECTED TOO. The generator writes a desktop-file
+# override into ~/.local/share/applications as well as the config, and a test
+# that leaves files outside its own temporary directory is a test that changes
+# the machine it runs on.
 set -uo pipefail
 cd "$(dirname "$0")/.." || exit 2
 
@@ -27,7 +31,7 @@ check() {   # $1 = label, $2 = shell.json contents ("" = no file at all)
     [[ -n "$json" ]] && printf '%s\n' "$json" > "$tmp/buchhwin/shell.json"
 
     rm -f /tmp/buchhwin-niri.log
-    XDG_CONFIG_HOME="$tmp" BUCHHWIN_TOOL=niri QT_QPA_PLATFORM=offscreen \
+    XDG_CONFIG_HOME="$tmp" XDG_DATA_HOME="$tmp/share" BUCHHWIN_TOOL=niri QT_QPA_PLATFORM=offscreen \
         timeout 60 qs -p shell >/dev/null 2>&1
 
     if [[ ! -f "$tmp/niri/config.kdl" ]]; then
@@ -88,7 +92,7 @@ printf '  %-34s ' "second run writes nothing"
 tmp="$(mktemp -d)"; mkdir -p "$tmp/buchhwin" "$tmp/niri" "$tmp/environment.d"
 printf '{"version":1}\n' > "$tmp/buchhwin/shell.json"
 for _ in 1 2; do
-    XDG_CONFIG_HOME="$tmp" BUCHHWIN_TOOL=niri QT_QPA_PLATFORM=offscreen \
+    XDG_CONFIG_HOME="$tmp" XDG_DATA_HOME="$tmp/share" BUCHHWIN_TOOL=niri QT_QPA_PLATFORM=offscreen \
         timeout 60 qs -p shell >/dev/null 2>&1
 done
 if grep -q '0 written' /tmp/buchhwin-niri.log; then
@@ -116,7 +120,7 @@ rm -rf "$tmp"
 printf '  %-34s ' "no key is bound twice"
 tmp="$(mktemp -d)"; mkdir -p "$tmp/buchhwin" "$tmp/niri" "$tmp/environment.d"
 printf '{"version":2}\n' > "$tmp/buchhwin/shell.json"
-XDG_CONFIG_HOME="$tmp" BUCHHWIN_TOOL=niri QT_QPA_PLATFORM=offscreen \
+XDG_CONFIG_HOME="$tmp" XDG_DATA_HOME="$tmp/share" BUCHHWIN_TOOL=niri QT_QPA_PLATFORM=offscreen \
     timeout 60 qs -p shell >/dev/null 2>&1
 dupes="$(sed -n '/^binds {/,/^}/p' "$tmp/niri/config.kdl" \
          | grep -oE '^    [A-Za-z0-9+_]+' | tr -d ' ' | sort | uniq -d)"

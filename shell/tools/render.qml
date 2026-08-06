@@ -125,6 +125,7 @@ Scope {
         case "tmux":      v = g.tmux;      break
         case "starship":  v = g.starship;  break
         case "lazygit":   v = g.lazygit;   break
+        case "vscode":    v = g.vscode;    break
         default:          v = "inherit"
         }
 
@@ -729,6 +730,123 @@ Scope {
     FileView { id: f11; blockLoading: true; printErrors: false }
     FileView { id: f12; blockLoading: true; printErrors: false }
     FileView { id: f13; blockLoading: true; printErrors: false }
+    FileView { id: f14; blockLoading: true; printErrors: false }
+    FileView { id: f15; blockLoading: true; printErrors: false }
+    FileView { id: f16; blockLoading: true; printErrors: false }
+
+    // ------------------------------------------------------------- VS Code
+    //
+    // ⚠️ AN EXTENSION, NOT A PILE OF colorCustomizations. VS Code has no
+    // include mechanism, so the only two ways in are its settings file — which
+    // belongs to the user and would then hold two hundred generated lines — or
+    // a colour theme of our own, which is a directory we own entirely with a
+    // ONE LINE pointer in the user's file. That is the same shape as kitty's
+    // include and btop's `color_theme`, and it is the shape this project uses
+    // everywhere for a reason: `off` has something to take back out.
+    function vscodePackage() {
+        return JSON.stringify({
+            name: "buchhwin-theme",
+            displayName: "Buchhwin",
+            description: "Generated from the buchhwin palette. Do not edit.",
+            version: "1.0.0",
+            publisher: "buchhwin",
+            engines: { vscode: "^1.70.0" },
+            categories: ["Themes"],
+            contributes: {
+                themes: [{
+                    label: "Buchhwin",
+                    uiTheme: Theme.dark ? "vs-dark" : "vs",
+                    path: "./themes/buchhwin-color-theme.json"
+                }]
+            }
+        }, null, 2) + "\n"
+    }
+
+    function vscodeTheme(m) {
+        var c = ({
+            "editor.background": col(m, "base"),
+            "editor.foreground": col(m, "text"),
+            "editorLineNumber.foreground": col(m, "overlay0"),
+            "editorLineNumber.activeForeground": accentOf(m),
+            "editorCursor.foreground": accentOf(m),
+            "editor.selectionBackground": col(m, "surface1"),
+            "editor.lineHighlightBackground": col(m, "mantle"),
+            "sideBar.background": col(m, "mantle"),
+            "sideBar.foreground": col(m, "subtext1"),
+            "sideBarSectionHeader.background": col(m, "surface0"),
+            "activityBar.background": col(m, "crust"),
+            "activityBar.foreground": col(m, "text"),
+            "activityBarBadge.background": accentOf(m),
+            "activityBarBadge.foreground": accentFgOf(m),
+            "statusBar.background": col(m, "crust"),
+            "statusBar.foreground": col(m, "subtext0"),
+            "titleBar.activeBackground": col(m, "crust"),
+            "titleBar.activeForeground": col(m, "text"),
+            "tab.activeBackground": col(m, "base"),
+            "tab.inactiveBackground": col(m, "mantle"),
+            "tab.activeBorderTop": accentOf(m),
+            "panel.background": col(m, "mantle"),
+            "terminal.background": col(m, "base"),
+            "terminal.foreground": col(m, "text"),
+            "focusBorder": accentOf(m),
+            "list.activeSelectionBackground": col(m, "surface1"),
+            "list.hoverBackground": col(m, "surface0"),
+            "errorForeground": col(m, "red"),
+            "editorError.foreground": col(m, "red"),
+            "editorWarning.foreground": col(m, "yellow"),
+            "editorInfo.foreground": col(m, "blue")
+        })
+        return JSON.stringify({
+            name: "Buchhwin",
+            type: Theme.dark ? "dark" : "light",
+            colors: c,
+            tokenColors: [
+                { scope: ["comment"], settings: { foreground: col(m, "overlay1"),
+                                                  fontStyle: "italic" } },
+                { scope: ["string"], settings: { foreground: col(m, "green") } },
+                { scope: ["constant.numeric"], settings: { foreground: col(m, "peach") } },
+                { scope: ["keyword", "storage.type"], settings: { foreground: col(m, "mauve") } },
+                { scope: ["entity.name.function"], settings: { foreground: col(m, "blue") } },
+                { scope: ["variable"], settings: { foreground: col(m, "text") } },
+                { scope: ["entity.name.type"], settings: { foreground: col(m, "yellow") } }
+            ]
+        }, null, 2) + "\n"
+    }
+
+    // ⚠️ THE USER'S OWN FILE, TOUCHED WITH TWO KEYS AND A BACKUP.
+    //
+    // settings.json is JSONC — VS Code allows comments in it — and JSON.parse
+    // does not. Whole-line comments are stripped, which cannot corrupt a `//`
+    // inside a string on a value line, and that is the only stripping done. If
+    // what is left still does not parse, NOTHING is written and the line to add
+    // by hand is printed instead. Destroying somebody's editor settings to set
+    // a colour scheme would be a poor trade.
+    function vscodeSettings(mode) {
+        var raw = f16.text()
+        var obj = ({})
+        if (raw && raw.trim().length) {
+            var stripped = raw.split("\n").filter(function (l) {
+                return l.replace(/^\s+/, "").indexOf("//") !== 0
+            }).join("\n")
+            try {
+                obj = JSON.parse(stripped)
+            } catch (e) {
+                return null
+            }
+            if (typeof obj !== "object" || obj === null)
+                return null
+        }
+        if (mode === "off") {
+            delete obj["workbench.colorTheme"]
+        } else {
+            obj["workbench.colorTheme"] = "Buchhwin"
+        }
+        // Not part of the colour scheme, and set in both states on purpose:
+        // "native" means the compositor draws the frame, and niri's
+        // prefer-no-csd then draws none at all — no title bar, no buttons.
+        obj["window.titleBarStyle"] = "native"
+        return JSON.stringify(obj, null, 4) + "\n"
+    }
     FileView { id: log; path: "/tmp/buchhwin-render.log" }
 
     // ⚠️ bat NEEDS A SECOND STEP, and without it this whole target is the kitty
@@ -850,6 +968,30 @@ Scope {
             // bat last, because it is the one that has to be compiled after it
             // is written.
             var batBefore = written
+            var home = Quickshell.env("HOME") || "~"
+            var ext = home + "/.vscode/extensions/buchhwin-theme"
+            var mCode = stateOf("vscode")
+            emitFile(mCode, f14, ext + "/package.json",
+                     function () { return root.vscodePackage() },
+                     root.vscodePackage(), "vscode manifest", "vscode")
+            emitFile(mCode, f15, ext + "/themes/buchhwin-color-theme.json",
+                     root.vscodeTheme,
+                     // ⚠️ `off` writes an EMPTY theme rather than deleting it.
+                     // The pointer in settings.json is taken out at the same
+                     // time, but a stale pointer at a deleted theme makes VS
+                     // Code fall back with a warning on every start.
+                     JSON.stringify({ name: "Buchhwin", colors: {}, tokenColors: [] },
+                                    null, 2) + "\n",
+                     "vscode theme", "vscode")
+            f16.path = root.cfg + "/Code/User/settings.json"
+            var codeSettings = root.vscodeSettings(mCode)
+            if (codeSettings === null)
+                note("  skip   vscode settings.json does not parse — "
+                     + "add \"workbench.colorTheme\": \"Buchhwin\" by hand")
+            else
+                write(f16, root.cfg + "/Code/User/settings.json", codeSettings,
+                      "vscode settings (" + mCode + ")")
+
             emitFile(mBat, f13, root.cfg + "/bat/themes/buchhwin.tmTheme",
                      batTheme, "<!-- buchhwin: theming is OFF for bat. -->\n",
                      "bat", "bat")

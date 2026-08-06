@@ -14,7 +14,7 @@ desktop — which is what makes it safe to add settings without a migration.
 |---|---|
 | `version` | migration marker; bumped only on a rename or removal |
 | `theme` | `palette`, `accent`, `lightPalette`, `customColor` |
-| `theming` | which programs we colour, and how — one state each, see below |
+| `theming` | which programs we colour, and how — one state each, see below. `vscode` also sets `window.titleBarStyle: native`, which is what removes its title bar |
 | `look` | `rounding`, `borderWidth`, `gapsIn/Out`, opacities, `blur`, `blurPasses`, `shadows`, fonts, `fontSize`, `profile` |
 | `surfaces` | `notifications`, `osd`, `wallpaper` — each on its own |
 | `notifications` | `dnd` (silences toasts, never critical ones), `timeoutMs`, `maxVisible`, `monitors` |

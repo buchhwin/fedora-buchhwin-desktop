@@ -528,6 +528,72 @@ Scope {
         return parts.join("\n")
     }
 
+    // ------------------------------------------------- desktop file overrides
+    //
+    // ⚠️ 43 TO 100 SECONDS, MEASURED, and this is what fixes it. Brave on a
+    // Wayland-only session takes that long to put a window on screen, because
+    // it probes for X11 first and waits for that to fail. Timed from exec to
+    // the window appearing, twice each:
+    //
+    //     no flag                     57 s  and  100 s
+    //     --ozone-platform-hint=auto  42.9 s and  43.1 s
+    //     --ozone-platform=wayland     1.5 s and   1.4 s
+    //
+    // The recommended `hint=auto` is almost no help — it is the explicit one
+    // that skips the probe. So the launcher gets the explicit one.
+    //
+    // ⚠️ THE TRADE, SAID OUT LOUD: `=wayland` means Brave will not start on an
+    // X11 session at all. This desktop is Wayland-only by design and by plan,
+    // and a browser that takes a minute and a half to open is not a browser
+    // anybody keeps. Somebody who needs X11 deletes the override — it is one
+    // file in ~/.local/share/applications.
+    //
+    // ⚠️ THE ORIGINAL IS COPIED, NOT REBUILT. A user desktop file REPLACES the
+    // system one rather than adding to it, so a hand-written one would quietly
+    // drop every translated name and both right-click actions. This reads the
+    // installed file and rewrites its Exec lines, which keeps all of it.
+    readonly property var desktopOverrides: [
+        { file: "brave-browser.desktop", flag: "--ozone-platform=wayland" }
+    ]
+
+    FileView { id: fSystemDesktop; blockLoading: true; printErrors: false }
+    FileView { id: fUserDesktop; blockLoading: true; printErrors: false }
+
+    function desktopOverride(source, flag) {
+        var lines = source.split("\n")
+        var out = []
+        for (var i = 0; i < lines.length; i++) {
+            var l = lines[i]
+            if (l.indexOf("Exec=") === 0 && l.indexOf(flag) < 0) {
+                // The flag goes after the binary and before any %U, or the
+                // browser is handed its own flag as a file to open.
+                var rest = l.substring(5)
+                var sp = rest.indexOf(" ")
+                l = sp < 0 ? "Exec=" + rest + " " + flag
+                           : "Exec=" + rest.substring(0, sp) + " " + flag + rest.substring(sp)
+            }
+            out.push(l)
+        }
+        return out.join("\n")
+    }
+
+    function writeDesktopOverrides() {
+        var home = Quickshell.env("HOME") || "~"
+        var userDir = (Quickshell.env("XDG_DATA_HOME") || home + "/.local/share")
+                      + "/applications/"
+        for (var i = 0; i < root.desktopOverrides.length; i++) {
+            var o = root.desktopOverrides[i]
+            fSystemDesktop.path = "/usr/share/applications/" + o.file
+            var src = fSystemDesktop.text()
+            if (!src || src.length === 0) {
+                note("  " + o.file + ": not installed, nothing to override")
+                continue
+            }
+            write(fUserDesktop, userDir + o.file,
+                  root.desktopOverride(src, o.flag), o.file)
+        }
+    }
+
     // blockLoading so that write() can compare against what is already on disk
     // in the same statement. printErrors off: "the file is not there yet" is
     // the normal case on a first run, not a fault worth shouting about.
@@ -573,6 +639,7 @@ Scope {
             write(fConfig, root.cfg + "/niri/config.kdl", buildConfig(), "niri config")
             write(fEnv, root.cfg + "/environment.d/50-buchhwin.conf",
                   environmentD(), "environment.d")
+            root.writeDesktopOverrides()
             note("done: " + written + " written, " + unchanged + " unchanged")
             Qt.callLater(Qt.quit)
         }

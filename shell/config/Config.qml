@@ -250,6 +250,10 @@ Singleton {
                 property string tmux: "inherit"
                 property string starship: "inherit"
                 property string lazygit: "inherit"
+                // ⚠️ Also sets window.titleBarStyle to "native" in both states,
+                // which is not a colour: with niri's prefer-no-csd that is what
+                // removes VS Code's title bar and its buttons entirely.
+                property string vscode: "inherit"
             }
 
             // The work timer's presets, in minutes. A working day is made of
