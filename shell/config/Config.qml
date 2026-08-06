@@ -806,7 +806,14 @@ Singleton {
                 // Choosing "left" or "both" is therefore also a decision to turn
                 // niri's off, and the generator says so rather than letting the
                 // two fight.
-                property string hotCorners: "right"
+                // ⚠️ "off" UNTIL THE SURFACE ACTUALLY APPEARS. The corner
+                // window is created — niri lists it — but it draws nothing and
+                // never answers a hover; see the measurements at the top of
+                // ui/surface/HotCorner.qml. Shipping it as "right" would be a
+                // gesture that does nothing, which is exactly what this project
+                // does not do. The intended default is "right" once it works,
+                // and "both" would also switch niri's own left corner off.
+                property string hotCorners: "off"
                 // How long the pointer has to REST there. A corner that fires on
                 // contact is a trap: you reach for a window's close button, you
                 // cross the corner, and a panel lands on what you were aiming

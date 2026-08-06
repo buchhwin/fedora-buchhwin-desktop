@@ -20,6 +20,31 @@
 // ⚠️ THE SURFACE IS TINY AND HAS NO INPUT REGION BEYOND ITSELF. It sits on the
 // `top` layer, which is above ordinary windows — so anything bigger than a few
 // pixels would be stealing clicks from whatever is underneath it.
+//
+// ⚠️⚠️ THIS DOES NOT WORK YET, AND `surfaces.hotCorners` DEFAULTS TO "off"
+// BECAUSE OF IT. What is measured, so the next attempt does not start over:
+//
+//   * The surface EXISTS. `niri msg layers` lists `buchhwin-hotcorner` on the
+//     Top layer, alongside notch, strut and wallpaper.
+//   * It DRAWS NOTHING. A probe rectangle in a screaming colour filling the
+//     whole item produced ZERO pixels anywhere on screen — checked in both top
+//     corners. So this is not "the hover is not firing", it is "the window has
+//     no size or is not mapped", and chasing the handler was the wrong end.
+//   * No QML warning of any kind in the shell's log.
+//   * `Theme.space2` is 16, so `implicitWidth`/`implicitHeight` are not zero
+//     from the token side.
+//   * Hover was tried at (1912,8), (1915,4), (1919,0) and (1904,0) — all
+//     silent, which is consistent with an unmapped window.
+//
+// WHAT TO TRY NEXT, in order:
+//   1. `anchors { top: true; right: true }` — two ADJACENT edges. Every other
+//      surface in this shell anchors to one edge or to three. It is the one
+//      thing here that has no precedent in the project, and a PanelWindow that
+//      does not know how wide it should be is a plausible zero.
+//      Test it by giving the window explicit `width`/`height` instead.
+//   2. `mask: Region { item: hitArea }` evaluated before `hitArea` has a size.
+//      Try without the mask at all.
+//   3. Only then look at the handler.
 
 import QtQuick
 import Quickshell
@@ -57,7 +82,25 @@ PanelWindow {
     implicitWidth: Theme.space2 * 2
     implicitHeight: Theme.space2 * 2
 
-    HoverHandler { id: hover }
+    // ⚠️ AN ITEM, AND AN EXPLICIT INPUT REGION. A HoverHandler written straight
+    // into the PanelWindow of a surface that draws NOTHING never fired —
+    // measured at four positions inside the corner, all silent. ShellSurface
+    // gets away with the bare handler because it paints a silhouette and sets
+    // `mask: Region { item: … }`; an empty, fully transparent window has
+    // nothing for the compositor to hand a pointer to.
+    //
+    // So there is a real (if invisible) Item here, the mask names it, and the
+    // handler lives on it.
+    Item {
+        id: hitArea
+        anchors.fill: parent
+        HoverHandler {
+            id: hover
+            onHoveredChanged: hovered ? dwell.restart() : dwell.stop()
+        }
+    }
+
+    mask: Region { item: hitArea }
 
     // ⚠️ The timer is what makes this usable rather than hostile. It restarts on
     // entry and stops on exit, so crossing the corner does nothing at all and
@@ -68,13 +111,4 @@ PanelWindow {
         onTriggered: root.triggered()
     }
 
-    Connections {
-        target: hover
-        function onHoveredChanged() {
-            if (hover.hovered)
-                dwell.restart()
-            else
-                dwell.stop()
-        }
-    }
 }
