@@ -145,6 +145,9 @@ Singleton {
         // in or choose from, not reports that have finished being read.
         function calendar(): void { root.toggle("calendar") }
         function tray(): void { root.toggle("tray") }
+        // The workspace map. Like the calendar and the tray it is a place
+        // you look around in, so it does not close itself.
+        function workspaces(): void { root.toggle("workspaces") }
         function wallpaper(): void { root.toggle("wallpaper") }
         function event(): void { root.toggle("event") }
         function brightness(): void { root.toggle("brightness") }

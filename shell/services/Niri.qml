@@ -95,6 +95,23 @@ Singleton {
     function focusWindow(id) { dispatch(["focus-window", "--id", String(id)]) }
     function toggleOverview() { dispatch(["toggle-overview"]) }
 
+    // Move a window to another workspace without going there yourself.
+    //
+    // ⚠️ THE REFERENCE IS THE INDEX, NOT THE ID, and the two differ: on the test
+    // machine the workspaces are idx 1/2/3 with ids 1/3/4. `niri msg action
+    // move-window-to-workspace --help` says "Reference (index or name)", so
+    // passing an id silently moves the window somewhere else — or nowhere.
+    //
+    // ⚠️ `--focus false` is the point of having this at all. The default
+    // follows the window, which for a drag in a workspace map means the desktop
+    // jumps out from under the pointer mid-gesture.
+    function moveWindowToWorkspace(windowId, wsIdx) {
+        dispatch(["move-window-to-workspace",
+                  "--window-id", String(windowId),
+                  "--focus", "false",
+                  String(wsIdx)])
+    }
+
     // One-shot actions. A second dispatch while the first is still running
     // would drop it, so each gets its own short-lived process.
     Process { id: action }

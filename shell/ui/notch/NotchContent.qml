@@ -175,6 +175,7 @@ Item {
                        : root.page === "quick" ? quickPage
                        : root.page === "calendar" ? calendarPage
                        : root.page === "tray" ? trayPage
+                       : root.page === "workspaces" ? workspacesPage
                        : root.page === "wallpaper" ? wallpaperPage
                        : root.page === "event" ? eventPage
                        : root.page === "brightness" ? brightnessPage
@@ -224,6 +225,7 @@ Item {
     Component { id: quickPage; QuickPage {} }
     Component { id: calendarPage; CalendarPage {} }
     Component { id: trayPage; TrayPage { hostWindow: root.hostWindow } }
+    Component { id: workspacesPage; WorkspacesPage {} }
     Component { id: wallpaperPage; WallpaperPage {} }
     Component { id: eventPage; EventPage {} }
     Component { id: brightnessPage; BrightnessPage {} }

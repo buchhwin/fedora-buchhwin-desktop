@@ -41,4 +41,7 @@ Singleton {
     function focusWorkspace(idx) { Services.Niri.focusWorkspace(idx) }
     function focusWindow(id) { Services.Niri.focusWindow(id) }
     function toggleOverview() { Services.Niri.toggleOverview() }
+    function moveWindowToWorkspace(windowId, wsIdx) {
+        Services.Niri.moveWindowToWorkspace(windowId, wsIdx)
+    }
 }

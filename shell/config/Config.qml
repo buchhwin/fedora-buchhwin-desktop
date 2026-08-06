@@ -792,6 +792,27 @@ Singleton {
                 // like any other — leaving whatever is behind it, which is the
                 // compositor's own background.
                 property bool wallpaper: true
+
+                // Hot corners: "off", "left", "right" or "both".
+                //
+                // ⚠️ "right" IS THE DEFAULT, NOT "both", and that is not
+                // caution — niri already owns the top-LEFT corner and has it
+                // switched on. Its own docs (Configuration: Gestures.md) say
+                // "Put your mouse at the very top-left corner of a monitor to
+                // toggle the overview". Claiming that corner as well would give
+                // one gesture two meanings, and the one you wanted would be the
+                // other one.
+                //
+                // Choosing "left" or "both" is therefore also a decision to turn
+                // niri's off, and the generator says so rather than letting the
+                // two fight.
+                property string hotCorners: "right"
+                // How long the pointer has to REST there. A corner that fires on
+                // contact is a trap: you reach for a window's close button, you
+                // cross the corner, and a panel lands on what you were aiming
+                // at. It is a key because how long feels right is not something
+                // anyone can decide for somebody else.
+                property int hotCornerDwellMs: 250
             }
 
             // How arriving notifications behave on screen. They are their own

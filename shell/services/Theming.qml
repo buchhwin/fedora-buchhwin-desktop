@@ -117,6 +117,7 @@ Singleton {
                 // the fingerprint. Whoever adds a key that tools/niri.qml reads
                 // adds it here as well; that is the whole contract of this string
                 // and it has now been broken twice in one day.
+                Config.surfaces.hotCorners,
                 JSON.stringify(Config.autostart),
                 JSON.stringify(Config.workspaces),
                 JSON.stringify(Config.outputs),

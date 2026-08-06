@@ -247,6 +247,21 @@ Scope {
         s += "screenshot-path "
              + q(root.picturesDir() + "/Screenshots/%Y-%m-%d %H-%M-%S.png") + "\n"
         s += "\ncursor {\n    hide-when-typing\n}\n"
+
+        // ⚠️ NIRI'S OWN HOT CORNER IS ON BY DEFAULT, top-left, and it toggles
+        // the overview. Its docs: "Put your mouse at the very top-left corner of
+        // a monitor to toggle the overview", with `off` to disable
+        // (Configuration: Gestures.md).
+        //
+        // Our own corner surfaces (ui/surface/HotCorner.qml) can be put on the
+        // same corner, and then TWO things answer one gesture — the failure this
+        // project already paid for once with the fullscreen strip. So choosing
+        // "left" or "both" here also switches niri's off, in one place, rather
+        // than leaving the two to fight and be discovered on screen.
+        var hc = Config.surfaces.hotCorners
+        if (hc === "left" || hc === "both") {
+            s += "\ngestures {\n    hot-corners {\n        off\n    }\n}\n"
+        }
         s += "\nhotkey-overlay {\n    skip-at-startup\n}\n"
         return s
     }

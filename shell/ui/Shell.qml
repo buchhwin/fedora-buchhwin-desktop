@@ -166,6 +166,33 @@ Scope {
             // old file admitted to in its own header: moving the pointer onto
             // the pill ended the hover on the notch and took the pill away.
 
+            // The hot corners. Two tiny surfaces, each with its own dwell.
+            //
+            // ⚠️ `hotCorners` defaults to "right" and NOT "both", because niri
+            // already owns the top-left corner and has it switched on — its own
+            // docs say so. Choosing "left" or "both" also switches niri's off;
+            // that happens in tools/niri.qml, so the two can never both answer
+            // the same corner.
+            LazyLoader {
+                activeAsync: Config.surfaces.hotCorners === "left"
+                             || Config.surfaces.hotCorners === "both"
+                component: HotCorner {
+                    modelData: perScreen.modelData
+                    corner: "left"
+                    onTriggered: Ipc.toggle("workspaces")
+                }
+            }
+
+            LazyLoader {
+                activeAsync: Config.surfaces.hotCorners === "right"
+                             || Config.surfaces.hotCorners === "both"
+                component: HotCorner {
+                    modelData: perScreen.modelData
+                    corner: "right"
+                    onTriggered: Ipc.toggle("notifications")
+                }
+            }
+
             // Only while a page is open. A permanent fullscreen surface that
             // swallows clicks is the kind of bug nobody suspects.
             LazyLoader {
