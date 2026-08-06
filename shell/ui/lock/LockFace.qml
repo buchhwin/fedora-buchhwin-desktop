@@ -40,6 +40,19 @@ Item {
     focus: true
     Keys.onPressed: function (event) {
         root.ask()
+
+        // ⚠️ ENTER IS NOT A CHARACTER, and treating it as one is why the screen
+        // never unlocked even after the identifier below was fixed. `event.text`
+        // for Return is "\r" — length 1 — so it passed the emptiness test, got
+        // appended to the password, and `event.accepted = true` swallowed it, so
+        // the TextInput's `onAccepted` never fired. Submitting from here as well
+        // means it works whether focus has reached the box yet or not.
+        if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
+            root.submit()
+            event.accepted = true
+            return
+        }
+
         // The first keystroke wakes the field; it must not also be swallowed,
         // or typing your password starts one character short.
         if (!event.text.length || event.key === Qt.Key_Escape)
@@ -229,7 +242,18 @@ Item {
                 horizontalAlignment: TextInput.AlignHCenter
                 verticalAlignment: TextInput.AlignVCenter
                 echoMode: TextInput.Password
-                enabled: !pam.active || pam.responseRequired
+                // ⚠️ `readOnly`, NOT `enabled`, and the difference is the whole
+                // bug. The intent is right — do not take typing while PAM is
+                // verifying — but "verifying" and "still starting up" look
+                // identical from here, and `enabled: false` also makes the item
+                // UNFOCUSABLE. So `forceActiveFocus()` in the key handler above
+                // silently did nothing, focus stayed on the outer item, and
+                // every further keystroke went through the fallback path
+                // including Enter.
+                //
+                // Read-only keeps the item focusable and still refuses input
+                // while PAM is busy, which is what was wanted.
+                readOnly: pam.active && !pam.responseRequired
                 color: Theme.fg
                 font.family: Theme.fontUi
                 font.pixelSize: Theme.fontSize
