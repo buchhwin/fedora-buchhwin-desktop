@@ -23,7 +23,7 @@ trap 'rm -f "$names"' EXIT
 #   Icon { … text: "name" … }       possibly spanning several lines
 #
 # The first attempt grepped every `text:` in ui/ and duly reported that
-# "ganztägig" and "heute" are not in the icon font. They are not meant to be.
+# "ganztägig" and "heute" are not in the icon font  english-ok: names a past bug. They are not meant to be.
 # ⚠️ mapfile, not an unquoted $(find …). Word splitting is what makes the bare
 # form work at all, and it breaks the moment a path contains a space. SC2046
 # reports it, and is right to.

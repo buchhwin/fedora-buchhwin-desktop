@@ -200,7 +200,7 @@ ColumnLayout {
     // a button that opens nothing is worse than one that says so.
     property string note: ""
     function openSettings() {
-        root.note = "Einstellungen kommen in M8 — bis dahin shell.json"
+        root.note = "Settings are M8 — until then, shell.json"
         forget.restart()
     }
     Timer { id: forget; interval: 4000; onTriggered: root.note = "" }

@@ -247,7 +247,12 @@ doctor)
     else
         printf 'niri config MISSING — run: bhctl niri apply\n'
     fi
-    printf 'startup     %s\n' "$(systemd-analyze --user critical-chain buchhwin-shell.service 2>/dev/null | grep -m1 '@' | sed 's/^ *//' || echo 'not measured')"
+    # ⚠️ The SERVICE line, not the first line containing an "@". systemd-analyze
+    # prints two sentences of explanation first — and one of them contains the
+    # word "@" — so the old grep reported "The time when unit became active or
+    # started is printed after the @ character" as though it were a measurement.
+    # A number that is not a number is worse than no number.
+    printf 'startup     %s\n' "$(systemd-analyze --user critical-chain buchhwin-shell.service 2>/dev/null | grep -m1 '^buchhwin-shell\.service' | sed 's/^ *//' || echo 'not measured')"
     # ⚠️ THE PRICE OF THE TWO COPRs, paid where it can be seen.
     #
     # starship and lazygit are the only two packages here that Fedora does not
@@ -257,7 +262,12 @@ doctor)
     for pair in "starship:atim/starship" "lazygit:atim/lazygit"; do
         p="${pair%%:*}"; repo="${pair##*:}"
         if command -v "$p" >/dev/null 2>&1; then
-            printf '%-11s %s\n' "$p" "$("$p" --version 2>/dev/null | head -1)"
+            # ⚠️ Cut to the version itself. lazygit --version answers with a
+            # whole line of build metadata — "commit=, build date=, build
+            # source=unknown, version=0.47.2, os=linux…" — and a doctor report
+            # that is mostly noise is a report nobody reads to the end.
+            printf '%-11s %s\n' "$p" "$("$p" --version 2>/dev/null | head -1 \
+                | grep -oE '[0-9]+\.[0-9]+(\.[0-9]+)?' | head -1)"
         elif dnf repoquery --qf '%{name}' "$p" >/dev/null 2>&1 &&
              [[ -n "$(dnf repoquery --qf '%{name}' "$p" 2>/dev/null)" ]]; then
             printf '%-11s MISSING but available — sudo dnf install %s\n' "$p" "$p"

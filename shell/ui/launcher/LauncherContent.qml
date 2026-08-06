@@ -2,10 +2,10 @@ pragma ComponentBehavior: Bound
 
 // The launcher: categories on the left, programs on the right.
 //
-// Straight from the brief — "Starter, zwei Spalten, links Kategorien, rechts die
-// Apps", with All and Frequent pinned above the categories. What goes in which
-// column is decided by services/Apps.qml; this file is only how it looks and
-// how the keyboard moves through it.
+// Straight from the brief: "Starter, zwei Spalten, links Kategorien,   english-ok: quoted brief
+// rechts die Apps" — with All and Frequent pinned above the categories.   english-ok: quoted brief
+// What goes in which column is decided by services/Apps.qml; this file is
+// only how it looks and how the keyboard moves through it.
 //
 // ⚠️ TYPING TAKES PRECEDENCE OVER THE COLUMNS. The search field has the focus
 // from the moment the surface opens, so the fastest path — type three letters,

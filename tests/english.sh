@@ -36,6 +36,11 @@ words+='|alle|alles|muss|kann|soll|sollen|warum|ich|sich|mehr|immer|nie|sehr'
 words+='|wie|wo|zum|zur|vom|beim|durch|ohne|gegen|über|ueber|unter|zwischen'
 words+='|jeder|jede|jedes|dieser|diese|dieses|diesem|damit|weil|aber|auch|nur'
 words+='|schliessen|schließen|öffnen|oeffnen|Fenster|Farbe|Datei|Ordner'
+# Added after one slipped through: "Einstellungen kommen in M8 — bis dahin
+# shell.json" contains not one word from the list above. A word list is only
+# ever as good as its last miss, so a miss earns an entry rather than a shrug.
+words+='|Einstellung|Einstellungen|kommen|kommt|bis|dahin|bisher|jetzt|heute'
+words+='|Programm|Programme|Taste[nr]|Starter|Leiste|Suche|Sitzung|Bildschirm'
 
 files=$(git ls-files 'shell/*.qml' 'shell/**/*.qml' 'docs/*.md' 'README.md' \
                     'lib/*.sh' 'bin/*' 'install.sh' 'tests/*.sh' 2>/dev/null)

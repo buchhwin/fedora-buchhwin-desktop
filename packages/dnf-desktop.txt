@@ -73,7 +73,15 @@ gvfs-goa                    # Google Drive and friends, via online accounts
 gnome-online-accounts
 gnome-online-accounts-gtk   # standalone account setup; no GNOME Settings needed
 
-# ⚠️ OPEN DECISION — no file manager is listed on purpose.
-# Every mature Linux file manager is GTK (nemo, nautilus, thunar) or Qt
-# (dolphin, pcmanfm-qt). The project rule is "no GTK", so this needs a
-# decision rather than a quiet default. See docs/ for the question.
+# ⚠️ THE FILE MANAGER QUESTION, ANSWERED. It said "OPEN DECISION — see docs/
+# for the question" while nautilus sat installed above and set as the default in
+# Config.qml, and the question was in no document. Decided on 5 August 2026, in
+# his words: "nautilus passt".
+#
+# Every mature Linux file manager is GTK (nautilus, nemo, thunar) or Qt
+# (dolphin, pcmanfm-qt), so "no GTK" cannot be met by any of them. The rule is
+# about the interface WE build — see docs and the project rules — and a file
+# manager is somebody else's program, recoloured by the generated GTK theme like
+# every other foreign window. nautilus is also load-bearing beyond browsing
+# files: xdg-desktop-portal-gnome uses it as the file chooser, so it is the
+# Open/Save dialog of every application.
