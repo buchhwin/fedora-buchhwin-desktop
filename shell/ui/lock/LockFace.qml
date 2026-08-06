@@ -44,8 +44,22 @@ Item {
         // or typing your password starts one character short.
         if (!event.text.length || event.key === Qt.Key_Escape)
             return
-        field.text += event.text
-        field.forceActiveFocus()
+        // ⚠️ `input`, NOT `field`. There is no `field` in this file and never
+        // was — the id on the TextInput is `input`. Every keystroke therefore
+        // threw a ReferenceError, the character was dropped and focus never
+        // moved to the box: THE LOCK SCREEN COULD NOT BE TYPED INTO AT ALL.
+        //
+        // Measured on the VM, which is the only way this was ever going to be
+        // found: PAM started, relayed "Password: ", received four submissions
+        // and refused every one, while `su buchhwin` accepted the very same
+        // password (rc 0). So the whole authentication chain was correct and
+        // the box was simply never filled.
+        //
+        // It survived because nothing builds this file: tests/smoke.sh runs the
+        // SHELL, and the lock screen is a separate process
+        // (`BUCHHWIN_MODE=lock`). tests/lock.sh now builds it.
+        input.text += event.text
+        input.forceActiveFocus()
         event.accepted = true
     }
 
@@ -101,7 +115,14 @@ Item {
                 radius: width / 2
                 color: Theme.surface
                 border.width: Theme.hairline
-                border.color: Theme.glassRimTop
+                // ⚠️ `outline`, not `glassRimTop`. That token was deleted when
+                // the panes lost their rim, and this was its last reader — QML
+                // answered with "Unable to assign [undefined] to QColor" in the
+                // lock screen's own log and drew the ring in whatever the
+                // default is. A dangling token reference is invisible until
+                // somebody reads a log, which for a separate process means
+                // never.
+                border.color: Theme.outline
             }
 
             // The initial, shown when there is no picture. A blank circle looks

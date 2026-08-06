@@ -7,7 +7,7 @@ pragma Singleton
 // surfaces bind to this; nobody assigns to their own `page`.
 //
 // Keys live in the compositor (niri has no protocol for shell-owned shortcuts),
-// so they reach us through `qs -c buchhwin ipc call notch show media`. That
+// so they reach us through `qs -c buchhwin ipc call notch media`. That
 // also means the shortcuts keep working when this shell is dead — they simply
 // fail to reach anyone, instead of the compositor swallowing them.
 
@@ -125,6 +125,13 @@ Singleton {
     // calls work. So the interface is shaped to what the tool can actually do
     // rather than to what its own listing suggests.
     //
+    // ⚠️ AND THE ARGUMENT WAS ONLY HALF OF IT. Measured on 06.08.2026 against
+    // the launcher, which had a parameterless `show()`: it printed the target's
+    // function list and did nothing, while `toggle` and `hide` on the same
+    // handler worked. So the NAME `show` is unusable on its own — it collides
+    // with the `qs ipc show` subcommand. Nothing here is called `show` any
+    // more, and tests/ipc-names.sh keeps it that way.
+    //
     //     qs -c buchhwin ipc call notch media
     //     qs -c buchhwin ipc call notch collapse
     IpcHandler {
@@ -183,7 +190,16 @@ Singleton {
         target: "launcher"
 
         function toggle(): void { root.toggleLauncher() }
-        function show(): void { root.showLauncher() }
+        // ⚠️ `open`, NOT `show`. An IPC function called `show` cannot be called
+        // from the command line at all: `qs ipc show` is quickshell's own
+        // subcommand, so `qs -c buchhwin ipc call launcher show` prints the
+        // target's function list and returns without doing anything. Measured —
+        // `toggle` and `hide` both worked, `show` left the launcher `closed`
+        // and printed the list. Nothing user-facing depended on it (the two key
+        // bindings use `toggle`), which is exactly why it could sit there
+        // broken: a function nobody can call is the same debt as a key nobody
+        // reads. tests/ipc-names.sh keeps the name from coming back.
+        function open(): void { root.showLauncher() }
         function hide(): void { root.hideLauncher() }
         function state(): string { return root.launcher ? "open" : "closed" }
     }
