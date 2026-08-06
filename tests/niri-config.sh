@@ -185,6 +185,54 @@ else
 fi
 rm -rf "$tmp"
 
+# The shadow must be a shadow — on EVERY palette, and switched on exactly once.
+#
+# ⚠️ TWO FAULTS IN ONE CHECK, and both shipped.
+#
+# 1. The colour used to be `crust` at a fixed alpha. `crust` is the palette's
+#    DARKEST tone, which on latte is #dce0e8 and on everforest-light #e6e2cc —
+#    both nearly white. Every window on a light palette would have been given a
+#    glow instead of a shadow, and nothing would have complained.
+#
+# 2. Whether the shadow exists at all is decided in config.kdl and must NOT be
+#    decided a second time in the included colours file: an include overrides
+#    what came before it, and `on`/`off` mean different things depending on
+#    which file they are in. So colors.kdl carries a colour and nothing else.
+#
+# The check runs the renderer as well as the generator, because the colour and
+# the switch live in different files and only the pair of them is the answer.
+printf '  %-34s ' "the shadow is a shadow"
+bad=""
+for pal in latte everforest-light gruvbox; do
+    tmp="$(mktemp -d)"; mkdir -p "$tmp/buchhwin" "$tmp/niri" "$tmp/environment.d"
+    printf '{"version":2,"theme":{"palette":"%s"}}\n' "$pal" > "$tmp/buchhwin/shell.json"
+    for tool in niri render; do
+        XDG_CONFIG_HOME="$tmp" XDG_DATA_HOME="$tmp/share" BUCHHWIN_TOOL="$tool" \
+            QT_QPA_PLATFORM=offscreen timeout 60 qs -p shell >/dev/null 2>&1
+    done
+    col="$(sed -n '/^layout {/,/^}/p' "$tmp/niri/colors.kdl" 2>/dev/null \
+           | awk '/shadow \{/ { s = 1 } s && $1 == "color" { print $2; exit }' | tr -d '"')"
+    if [[ ! "$col" =~ ^#([0-9a-fA-F]{6})([0-9a-fA-F]{2})?$ ]]; then
+        bad+="$pal: no shadow colour "
+    else
+        # Dark enough to BE a shadow: the mean channel must sit in the bottom
+        # quarter. A threshold rather than a formula, because the point is
+        # "darker than anything it can fall on", not a particular tone.
+        mean=$(( (16#${BASH_REMATCH[1]:0:2} + 16#${BASH_REMATCH[1]:2:2} + 16#${BASH_REMATCH[1]:4:2}) / 3 ))
+        (( mean < 64 )) || bad+="$pal: shadow is $col (mean $mean, that is a glow) "
+    fi
+    grep -q 'on' <<< "$(sed -n '/shadow {/,/}/p' "$tmp/niri/colors.kdl" 2>/dev/null)" \
+        && bad+="$pal: colors.kdl decides on/off "
+    sed -n '/^layout {/,/^}/p' "$tmp/niri/config.kdl" | sed -n '/shadow {/,/}/p' \
+        | grep -q '^        on$' || bad+="$pal: config.kdl does not switch it on "
+    rm -rf "$tmp"
+done
+if [[ -z "$bad" ]]; then
+    printf '\033[38;5;114mok\033[0m  dark on light palettes too\n'
+else
+    printf '\033[38;5;203m%s\033[0m\n' "$bad"; fail=1
+fi
+
 printf '  %-34s ' "no key is bound twice"
 tmp="$(mktemp -d)"; mkdir -p "$tmp/buchhwin" "$tmp/niri" "$tmp/environment.d"
 printf '{"version":2}\n' > "$tmp/buchhwin/shell.json"

@@ -108,6 +108,25 @@ Scope {
             root.ok("config version matches the migration chain",
                     Config.version === Migrations.current)
 
+            // The 6 → 7 step, both ways round. A migration that lifts an old
+            // DEFAULT has to be able to tell a default from a decision, and
+            // there is no way to see the difference from the value alone —
+            // only from whether it is still the exact triple the old build
+            // wrote. So both directions are asserted: the untouched file moves,
+            // the chosen one does not.
+            var alt = Migrations.migrate({ version: 6,
+                look: { shadowSoftness: 28, shadowSpread: 2, shadowOffsetY: 6 } })
+            root.ok("6→7 lifts the untouched shadow triple",
+                    alt.ok && alt.config.look.shadowSoftness === 40
+                    && alt.config.look.shadowSpread === 3
+                    && alt.config.look.shadowOffsetY === 8)
+            var eigen = Migrations.migrate({ version: 6,
+                look: { shadowSoftness: 12, shadowSpread: 2, shadowOffsetY: 6 } })
+            root.ok("6→7 leaves a chosen shadow alone",
+                    eigen.ok && eigen.config.look.shadowSoftness === 12
+                    && eigen.config.look.shadowSpread === 2
+                    && eigen.config.look.shadowOffsetY === 6)
+
             // ------------------------------------------------------ theme
             // All 26 palette names resolve. `hex()` answers Scheme.unknown for
             // a name it does not know — magenta, impossible to miss in a

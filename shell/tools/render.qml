@@ -421,6 +421,28 @@ Scope {
     //  * An include overrides what came before it, so config.kdl places this
     //    include after its own layout block. Sections merge property by
     //    property, so setting only colours leaves gaps and width untouched.
+    // ⚠️ A SHADOW IS SHADE, NOT A COLOUR — and writing it as one was a real
+    // fault, not a nicety. It used to be `crust` at a fixed alpha, `crust`
+    // being the palette's darkest tone. On the two LIGHT palettes that tone is
+    // nearly white (latte `#dce0e8`, everforest-light `#e6e2cc`), so every
+    // window would have been given a bright HALO instead of a shadow, and
+    // nothing in the shell would have said so.
+    //
+    // The tint therefore survives only while it is genuinely dark; otherwise
+    // the shadow is black, which is what a shadow is. Light palettes also get
+    // a gentler one — on a pale desktop a shadow at full strength reads as
+    // dirt rather than as depth.
+    function shadowColour(m, factor) {
+        var c = col(m, "crust")
+        var dark = Theme.luminance(c) < 0.25
+        var a = Config.look.shadowOpacity * (dark ? 1.0 : 0.45) * factor
+        var h = Math.round(Math.max(0, Math.min(1, a)) * 255).toString(16)
+        // There is no token for the absence of light, and taking one from the
+        // palette is exactly the fault described above.
+        var black = "#000000"   // literal-ok: a shadow is shade, not a colour
+        return (dark ? c : black) + (h.length < 2 ? "0" + h : h)
+    }
+
     function niriColours(m) {
         return head(true, m).replace(/^#/gm, "//") +
             "// Colours only — see tools/render.qml. Structure lives in config.kdl.\n" +
@@ -439,8 +461,23 @@ Scope {
             "        inactive-color \"" + col(m, "overlay1") + "\"\n" +
             "        urgent-color \"" + col(m, "red") + "\"\n" +
             "    }\n" +
+            // ⚠️ `inactive-color` IS WRITTEN, and it is not a nicety. niri's own
+            // default for it is "a more transparent color", and how much more is
+            // its business rather than ours. Measured on the running machine at
+            // the same window edge, as the darkening of the wallpaper beside it:
+            //
+            //   no shadow            0
+            //   unfocused, default   145      <- niri's guess, ~60 % of ours
+            //   focused              240
+            //
+            // Most windows on a screen are unfocused, so that guess is what the
+            // desktop actually looks like. Written down at 0.75 it stays a step
+            // below the focused window — with no border and no focus ring, the
+            // shadow is the only thing that says which window is live — while
+            // still being a shadow rather than a hint.
             "    shadow {\n" +
-            "        color \"" + col(m, "crust") + "b0\"\n" +
+            "        color \"" + shadowColour(m, 1.0) + "\"\n" +
+            "        inactive-color \"" + shadowColour(m, 0.75) + "\"\n" +
             "    }\n" +
             "    insert-hint {\n" +
             "        color \"" + accentOf(m) + "80\"\n" +

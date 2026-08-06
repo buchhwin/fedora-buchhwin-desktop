@@ -543,7 +543,7 @@ Singleton {
             // only the migration chain quietly papering over it. Both now write
             // no version at all: a file without one reads as 0 and is migrated
             // forward, which is exactly the path a genuinely old file takes.
-            property int version: 6
+            property int version: 7
 
             property JsonObject theme: JsonObject {
                 property string palette: "everforest-dark"
@@ -746,9 +746,29 @@ Singleton {
                 // it down. Generous and soft, as in the reference screenshots —
                 // and the same three values apply to windows AND to our own
                 // surfaces, so nothing floats differently from anything else.
-                property int shadowSoftness: 28
-                property int shadowSpread: 2
-                property int shadowOffsetY: 6
+                //
+                // ⚠️ 40/3/8 AND NOT 28/2/6, and the reason is a measurement
+                // rather than taste. "Windows have no shadow" was reported and
+                // then chased for two rounds as a broken config — it was not.
+                // With the shadow switched off and on again at the same window
+                // position, the wallpaper right of the edge differs by up to
+                // 192 (sum of R+G+B) and fades to nothing over exactly 30 px:
+                // the shadow was always being drawn, it was just too small and
+                // too pale to read as one. He asked for the opposite in so many
+                // words, and his words are the specification:
+                // "ein weicher, klar sichtbarer Schatten,   // english-ok: his own words, quoted
+                //  deutlich präsenter als eine bloße Andeutung"  // english-ok: his own words, quoted
+                property int shadowSoftness: 40
+                property int shadowSpread: 3
+                property int shadowOffsetY: 8
+                // How opaque the shadow is, 0…1. The one number that decides
+                // whether it reads as depth or as nothing at all, which is why
+                // it is a key and not a constant in the renderer.
+                //
+                // ⚠️ It is deliberately NOT the alpha of a palette colour: on a
+                // light palette the shadow is not the palette's darkest tone at
+                // all, it is black — see tools/render.qml.
+                property real shadowOpacity: 0.85
                 // Whether niri draws the shadow BEHIND the window as well as
                 // around it.
                 //

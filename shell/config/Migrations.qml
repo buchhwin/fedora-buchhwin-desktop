@@ -31,7 +31,7 @@ Singleton {
     // Must match Config's `version` default. A file with a lower number is
     // brought forward; a HIGHER number means the config was written by a newer
     // build than this one, which we must not "migrate" — see needed().
-    readonly property int current: 6
+    readonly property int current: 7
 
     // step[n] upgrades a config at version n to version n+1.
     // Each is a pure function: take the parsed object, return it changed.
@@ -157,6 +157,37 @@ Singleton {
                 // where the user's bindings actually were.
                 cfg.binds = cfg.keys.binds
                 delete cfg.keys.binds
+            }
+            return cfg
+        },
+
+        // 6 → 7: the window shadow's three numbers were too small to be seen.
+        //
+        // ⚠️ THE FIRST MIGRATION IN THIS CHAIN THAT IS NEITHER A RENAME NOR A
+        // REMOVAL, and it needs to exist for a reason the header does not
+        // cover: JsonAdapter writes every key it knows into shell.json, so the
+        // OLD default is already sitting in the file on every machine that has
+        // ever started this shell. Changing the default alone would fix new
+        // installations and leave his own desktop exactly as it was — and "the
+        // windows have no shadow" is his report, not a new machine's.
+        //
+        // Measured before touching it: with the shadow switched off and on
+        // again at the same window position, the wallpaper beside the window
+        // differs by up to 192 (sum of R+G+B) and fades out over exactly 30 px.
+        // The shadow was always being drawn. At 28/2/6 it was simply too small
+        // and too pale to read as one.
+        //
+        // ⚠️ ONLY THE UNTOUCHED TRIPLE IS LIFTED. Somebody who set their own
+        // numbers chose them, and a migration that overwrites a choice is a bug
+        // with a version number on it.
+        function (cfg) {
+            var l = cfg.look
+            if (l && typeof l === "object"
+                && l.shadowSoftness === 28 && l.shadowSpread === 2
+                && l.shadowOffsetY === 6) {
+                l.shadowSoftness = 40
+                l.shadowSpread = 3
+                l.shadowOffsetY = 8
             }
             return cfg
         }

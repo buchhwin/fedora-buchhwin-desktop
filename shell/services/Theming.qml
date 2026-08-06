@@ -128,6 +128,9 @@ Singleton {
                 l.gapsIn, l.gapsOut, l.blur, l.blurPasses, l.blurOffset,
                 l.blurNoise, l.blurSaturation, l.shadows, l.shadowSoftness,
                 l.shadowSpread, l.shadowOffsetY, l.shadowBehindWindow,
+                // The renderer reads this one, so it belongs here — same
+                // contract as opacityApp above, which was missing for a week.
+                l.shadowOpacity,
                 l.opacityActive,
                 l.opacityInactive, l.panelBorderWidth, Config.notch.cornerRadius,
                 Config.notch.hoverCornerRadius,
