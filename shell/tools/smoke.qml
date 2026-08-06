@@ -213,7 +213,7 @@ Scope {
                 "launcher": ["toggle", "show", "hide", "state"],
                 "bar": ["toggle", "state"]
             })
-            var binds = Config.keys.binds
+            var binds = Config.binds
             var orphans = []
             for (var b = 0; b < binds.length; b++) {
                 var arg = String(binds[b].arg || "")

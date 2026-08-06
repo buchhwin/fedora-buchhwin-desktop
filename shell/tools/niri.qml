@@ -494,7 +494,7 @@ Scope {
 
     function bindsSection() {
         var s = "binds {\n"
-        var binds = Config.keys.binds
+        var binds = Config.binds
         var seen = ({})
         var dropped = 0
         for (var i = 0; i < binds.length; i++) {

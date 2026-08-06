@@ -31,7 +31,7 @@ Singleton {
     // Must match Config's `version` default. A file with a lower number is
     // brought forward; a HIGHER number means the config was written by a newer
     // build than this one, which we must not "migrate" — see needed().
-    readonly property int current: 5
+    readonly property int current: 6
 
     // step[n] upgrades a config at version n to version n+1.
     // Each is a pure function: take the parsed object, return it changed.
@@ -126,6 +126,38 @@ Singleton {
         function (cfg) {
             if (cfg.programs && typeof cfg.programs === "object")
                 delete cfg.programs.launcher
+            return cfg
+        },
+
+        // 5 → 6: `keys.binds` moves to the top level as `binds`.
+        //
+        // ⚠️ THIS IS A CRASH FIX, NOT TIDYING. quickshell segfaulted on roughly
+        // half of all starts, always with the same backtrace: QObjectWrapper::wrap
+        // ← QMetaProperty::write ← JsonAdapter::deserializeRec, and the
+        // deserializeRec frame appeared TWICE — a nested object. Bisected on the
+        // machine, one key at a time, twelve runs each:
+        //
+        //   {"outputs":[ …objects… ]}            var, TOP LEVEL    0/12
+        //   {"keys":{"binds":[ …objects… ]}}     var, NESTED       6/12
+        //   {"windows":{"blurred":["kitty"]}}    list<string>      0/12
+        //   {"keys":{"binds":[]}}                var, NESTED       6/12
+        //
+        // An EMPTY nested list is enough, so it is neither the length nor the
+        // contents: writing a `var` property that sits inside a nested
+        // JsonObject is what quickshell cannot survive. `binds` was the only one
+        // in the whole config — every other list is a `list<string>` or
+        // `list<int>`, and `outputs` is the one other `var` and is top level.
+        //
+        // Moving it up is therefore the whole fix, and it costs a migration
+        // rather than a workaround that would have to be remembered.
+        function (cfg) {
+            if (cfg.keys && typeof cfg.keys === "object"
+                && cfg.keys.binds !== undefined) {
+                // The file wins over anything already at the top level: it is
+                // where the user's bindings actually were.
+                cfg.binds = cfg.keys.binds
+                delete cfg.keys.binds
+            }
             return cfg
         }
     ]

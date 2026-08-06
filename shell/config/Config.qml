@@ -92,19 +92,6 @@ Singleton {
     // every consumer gets it instead of each rediscovering it. (`adapterUpdated`
     // looks like the right signal and is not: it does not fire on load.)
     //
-    // ⚠️ AND IT HAS TO SEE THAT THE BLOCKS EXIST, not only that the file was
-    // read. During the window above, `adapter.theme` is NULL — not "still the
-    // defaults", null — and everything that reads `Config.theme.palette` in that
-    // moment throws. Measured with a config file that contains no nulls at all,
-    // so it is the adapter's construction order and not the file: three readers
-    // went down on every single start, Scheme (the palette name), Theme (the
-    // accent) and the Theming watcher, and Theming was already gating on this
-    // very property. It was gating on a promise the property could not keep.
-    //
-    // `theme` stands for all of them: JsonAdapter builds its sub-objects
-    // together, so one being present means they all are. On a machine with no
-    // file at all the declared JsonObject is there from the start, which is why
-    // this does not break the `_failed` path.
     // ⚠️ AND `settled` DELIBERATELY DOES NOT TEST THAT THE BLOCKS EXIST.
     //
     // During the window above `adapter.theme` is NULL — not "still the
@@ -126,6 +113,261 @@ Singleton {
     // re-enter beat one clever one that can.
     readonly property bool settled: file.loaded || _failed
     property bool _failed: false
+
+    // The built-in key bindings.
+    //
+    // ⚠️ THEY LIVE HERE, NOT IN THE ADAPTER, AND THAT IS LOAD-BEARING. As the
+    // default of `adapter.keys.binds` they made quickshell segfault on about
+    // half of all starts — see the note there for the bisection. JsonAdapter
+    // never touches this property, so nothing overwrites a large JS array.
+    //
+    // ⚠️ An empty `keys.binds` in shell.json therefore means "the built-in
+    // set", not "no bindings at all". That is the right default for a file
+    // that has never been edited, and it is the one thing this arrangement
+    // cannot express: to run with NO bindings, the settings window will have
+    // to write an explicit marker rather than an empty list.
+    readonly property var defaultBinds: [
+                    // --- programs -------------------------------------------
+                    { key: "Mod+Return",       action: "spawn", arg: "@terminal",    desc: "Terminal" },
+                    { key: "Mod+B",            action: "spawn", arg: "@browser",     desc: "Browser" },
+                    { key: "Mod+E",            action: "spawn", arg: "@fileManager", desc: "File manager" },
+                    { key: "Mod+Shift+C",      action: "spawn", arg: "@editor",      desc: "Editor" },
+
+                    // --- rescue: these must survive a dead shell -------------
+                    { key: "Mod+Shift+Return", action: "spawn", arg: "@terminal",
+                      desc: "Rescue: terminal", allowWhenLocked: false },
+                    { key: "Mod+Ctrl+Shift+R", action: "spawn-sh",
+                      arg: "systemctl --user restart buchhwin-shell",
+                      desc: "Rescue: restart the shell" },
+
+                    // --- focus (niri convention: Mod moves focus) ------------
+                    { key: "Mod+Left",  action: "focus-column-left",  desc: "Focus left" },
+                    { key: "Mod+Right", action: "focus-column-right", desc: "Focus right" },
+                    { key: "Mod+Up",    action: "focus-window-up",    desc: "Focus up" },
+                    { key: "Mod+Down",  action: "focus-window-down",  desc: "Focus down" },
+                    { key: "Mod+H",     action: "focus-column-left",  desc: "Focus left" },
+                    // Mod+L is the lock key now — see the note further down. Mod+Right
+                    // still goes right, and h/j/k are untouched.
+                    { key: "Mod+K",     action: "focus-window-up",    desc: "Focus up" },
+                    { key: "Mod+J",     action: "focus-window-down",  desc: "Focus down" },
+
+                    // --- move -----------------------------------------------
+                    { key: "Mod+Shift+Left",  action: "move-column-left",  desc: "Move window left" },
+                    { key: "Mod+Shift+Right", action: "move-column-right", desc: "Move window right" },
+                    { key: "Mod+Shift+Up",    action: "move-window-up",    desc: "Move window up" },
+                    { key: "Mod+Shift+Down",  action: "move-window-down",  desc: "Move window down" },
+
+                    // --- the four Hyprland groups niri has no equivalent for.
+                    // Remapped to the nearest real meaning rather than dropped;
+                    // docs/NIRI.md says plainly that these changed.
+                    { key: "Mod+Ctrl+Left",  action: "set-column-width", arg: "-10%",
+                      desc: "Narrower column (was: snap left)" },
+                    { key: "Mod+Ctrl+Right", action: "set-column-width", arg: "+10%",
+                      desc: "Wider column (was: snap right)" },
+                    { key: "Mod+Ctrl+Up",    action: "maximize-column",
+                      desc: "Maximise column (was: snap maximise)" },
+                    { key: "Mod+Ctrl+Down",  action: "switch-preset-column-width",
+                      desc: "Cycle preset widths (was: snap restore)" },
+                    { key: "Mod+Shift+J",    action: "consume-or-expel-window-right",
+                      desc: "Pull window into the column (was: split direction)" },
+                    { key: "Mod+Shift+K",    action: "consume-or-expel-window-left",
+                      desc: "Push window out of the column" },
+                    { key: "Mod+P",          action: "toggle-window-floating",
+                      desc: "Floating on/off (was: pin)" },
+                    { key: "Mod+odiaeresis", action: "focus-workspace", arg: "scratch",
+                      desc: "Scratch workspace" },
+                    { key: "Mod+Shift+odiaeresis", action: "move-window-to-workspace", arg: "scratch",
+                      desc: "Move window to the scratch workspace" },
+
+                    // --- windows --------------------------------------------
+                    { key: "Mod+Q",       action: "close-window", desc: "Close window", repeat: false },
+                    { key: "Alt+F4",      action: "close-window", desc: "Close window", repeat: false },
+                    // Fullscreen is the one people reach for, so it gets the
+                    // short key. `fullscreen-window` is already a toggle, so the
+                    // same press brings the window back.
+                    // ⚠️ WINDOWED fullscreen, and that is a bug fix rather than
+                    // a preference. From niri's own documentation,
+                    // Fullscreen-and-Maximize.md:39: "Niri renders a solid
+                    // black backdrop behind fullscreen windows." So a
+                    // translucent terminal blended with BLACK instead of the
+                    // wallpaper the moment it went fullscreen — reported as
+                    // "the colour changes and you cannot see the background any
+                    // more", and that is exactly what it was.
+                    //
+                    // `toggle-windowed-fullscreen` fills the working area
+                    // without the real fullscreen state, so there is no
+                    // backdrop and the wallpaper stays where it was. Real
+                    // fullscreen moves to Mod+Ctrl+F, where black IS what you
+                    // want: video and games. ⚠️ NOT Mod+Shift+F — that is
+                    // `maximize-column` and has been since the vim group was
+                    // laid out; saying otherwise in this comment would be a
+                    // second thing to get wrong.
+                    { key: "Mod+F",       action: "toggle-windowed-fullscreen", desc: "Fullscreen" },
+                    { key: "Mod+Ctrl+F",  action: "fullscreen-window",  desc: "True fullscreen (black behind it)" },
+                    { key: "Mod+Shift+F", action: "maximize-column",   desc: "Maximise column" },
+                    { key: "Mod+W",       action: "toggle-column-tabbed-display", desc: "Column as tabs" },
+                    { key: "Mod+O",       action: "toggle-overview",   desc: "Overview" },
+                    { key: "Mod+Shift+Slash", action: "show-hotkey-overlay", desc: "Keyboard shortcuts" },
+
+                    // --- the island ------------------------------------------
+                    // Keys reach the shell through its ipc socket, which is
+                    // also why they keep working when the shell is dead: they
+                    // simply reach nobody, instead of the compositor eating
+                    // them. ⚠️ `qs ipc call` takes no ARGUMENTS in 0.2.1, so
+                    // each page is its own parameterless verb — see ipc/Ipc.qml.
+                    //
+                    // Every page has a key, without exception. The bar is OFF
+                    // in the default setup, so a page reachable only by
+                    // clicking the bar would not be reachable at all.
+                    { key: "Mod+M", action: "spawn-sh",
+                      arg: "qs -c buchhwin ipc call notch media",
+                      desc: "Media in the island" },
+                    { key: "Mod+N", action: "spawn-sh",
+                      arg: "qs -c buchhwin ipc call notch notifications",
+                      desc: "Notifications" },
+                    { key: "Mod+comma", action: "spawn-sh",
+                      arg: "qs -c buchhwin ipc call notch quick",
+                      desc: "Quick settings" },
+                    { key: "Mod+C", action: "spawn-sh",
+                      arg: "qs -c buchhwin ipc call notch calendar",
+                      desc: "Calendar" },
+                    // ⚠️ TWO KEYS FOR ONE SURFACE, on purpose. Mod+D is what
+                    // niri's own default config binds a launcher to, so it is
+                    // the key somebody coming from any other setup will press
+                    // first; Mod+Space is the one somebody coming from a Mac
+                    // will press. Neither is used for anything else here, and a
+                    // launcher nobody can find is a launcher nobody uses.
+                    //
+                    // `ipc call launcher`, not `notch`: it is not a notch page
+                    // — it opens in the middle of the screen and leaves the
+                    // notch alone. See ipc/Ipc.qml.
+                    { key: "Mod+D", action: "spawn-sh",
+                      arg: "qs -c buchhwin ipc call launcher toggle",
+                      desc: "Launcher" },
+                    { key: "Mod+Space", action: "spawn-sh",
+                      arg: "qs -c buchhwin ipc call launcher toggle",
+                      desc: "Launcher" },
+                    { key: "Mod+T", action: "spawn-sh",
+                      arg: "qs -c buchhwin ipc call notch tray",
+                      desc: "Tray" },
+                    // ⚠️ Mod+V, NOT Ctrl+V. Copy and paste belong to the
+                    // application you are in — Ctrl+C and Ctrl+V go straight to
+                    // it through the Wayland clipboard, and binding either of
+                    // them here would take them away from every program on the
+                    // machine. This opens the HISTORY; picking an entry puts it
+                    // on the clipboard and you paste it as you always would.
+                    { key: "Mod+V", action: "spawn-sh",
+                      arg: "qs -c buchhwin ipc call notch clipboard",
+                      desc: "Clipboard history" },
+                    // ⚠️ NOT Mod+K — that is `focus-window-up` in the vim
+                    // navigation group, and a second binding for it would have
+                    // been dropped by the generator with a note in a log
+                    // nobody reads. Mod+R is free, and so is the dedicated
+                    // calculator key that many keyboards actually have.
+                    { key: "Mod+R", action: "spawn-sh",
+                      arg: "qs -c buchhwin ipc call notch calculator",
+                      desc: "Calculator" },
+                    { key: "XF86Calculator", action: "spawn-sh",
+                      arg: "qs -c buchhwin ipc call notch calculator",
+                      desc: "Calculator" },
+                    { key: "Mod+Shift+T", action: "spawn-sh",
+                      arg: "qs -c buchhwin ipc call notch timer",
+                      desc: "Work timer" },
+                    { key: "Mod+Shift+N", action: "spawn-sh",
+                      arg: "qs -c buchhwin ipc call notch event",
+                      desc: "New event" },
+                    { key: "Mod+Shift+W", action: "spawn-sh",
+                      arg: "qs -c buchhwin ipc call notch wallpaper",
+                      desc: "Choose a wallpaper" },
+                    // The same view the gear on the bar opens. It gets a key
+                    // of its own because the bar is off by default, so without
+                    // one the network and bluetooth controls would sit behind a
+                    // surface most people never switch on.
+                    { key: "Mod+Shift+comma", action: "spawn-sh",
+                      arg: "qs -c buchhwin ipc call notch settings",
+                      desc: "Network, bluetooth, sound and brightness" },
+                    { key: "Mod+Escape", action: "spawn-sh",
+                      arg: "qs -c buchhwin ipc call notch collapse",
+                      desc: "Close the island" },
+
+                    // ⚠️ Its own target, not a notch page: the bar is a
+                    // surface, not something the island shows. Off by default
+                    // and this is how it is tried out.
+                    { key: "Mod+Shift+B", action: "spawn-sh",
+                      arg: "qs -c buchhwin ipc call bar toggle",
+                      desc: "Top bar on or off" },
+
+                    // --- screenshots (niri does all three itself) ------------
+                    { key: "Print",       action: "screenshot",        desc: "Screenshot: selection" },
+                    { key: "Mod+S",       action: "screenshot",        desc: "Screenshot: selection" },
+                    { key: "Mod+Shift+S", action: "screenshot-screen", desc: "Screenshot: whole screen" },
+                    { key: "Mod+Ctrl+S",  action: "screenshot-window", desc: "Screenshot: window" },
+
+                    // --- hardware keys, must work on the lock screen ---------
+                    { key: "XF86AudioRaiseVolume", action: "spawn-sh",
+                      arg: "wpctl set-volume -l 1.5 @DEFAULT_AUDIO_SINK@ 5%+",
+                      desc: "Volume up", allowWhenLocked: true },
+                    { key: "XF86AudioLowerVolume", action: "spawn-sh",
+                      arg: "wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-",
+                      desc: "Volume down", allowWhenLocked: true },
+                    { key: "XF86AudioMute", action: "spawn-sh",
+                      arg: "wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle",
+                      desc: "Mute", allowWhenLocked: true },
+                    // ⚠️ `wpctl` FIRST, the shell second, joined with `;` — the
+                    // same shape as the brightness keys below and for the same
+                    // reason: muting the microphone has to work when the shell
+                    // is dead. The second half only adds the readout, which is
+                    // what this key never had.
+                    { key: "XF86AudioMicMute", action: "spawn-sh",
+                      arg: "wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle ; qs -c buchhwin ipc call notch mic",
+                      desc: "Mute the microphone", allowWhenLocked: true },
+                    // ⚠️ brightnessctl FIRST, the shell second, joined with `;`
+                    // rather than `&&`. The screen has to brighten even when the
+                    // shell is dead — that is the one moment when not being able
+                    // to see the screen is worst — so telling the island is a
+                    // best-effort afterthought, never a precondition.
+                    { key: "XF86MonBrightnessUp", action: "spawn-sh",
+                      arg: "brightnessctl set 5%+ ; qs -c buchhwin ipc call notch brightness",
+                      desc: "Brighter", allowWhenLocked: true },
+                    { key: "XF86MonBrightnessDown", action: "spawn-sh",
+                      arg: "brightnessctl set 5%- ; qs -c buchhwin ipc call notch brightness",
+                      desc: "Dimmer", allowWhenLocked: true },
+
+                    // --- session --------------------------------------------
+                    // ⚠️ This was bound straight to niri's `quit`: one keystroke,
+                    // no question, every unsaved thing gone. It opens the session
+                    // page now, and THAT asks before anything irreversible.
+                    { key: "Mod+Shift+E", action: "spawn-sh",
+                      arg: "qs -c buchhwin ipc call notch session",
+                      desc: "Session menu" },
+                    // ⚠️ Starts the locker DIRECTLY rather than asking logind
+                    // to. `loginctl lock-session` only emits a signal, and
+                    // nothing in this desktop was listening — so this key did
+                    // nothing at all, silently, which on a work machine is the
+                    // worst way for a lock to fail.
+                    //
+                    // Spawning it from the keybinding also means locking still
+                    // works when the shell is dead, which is the stated reason
+                    // keys live in KDL rather than in the shell.
+                    //
+                    // ⚠️ `-c buchhwin`, not a path: quickshell treats the
+                    // folder of the file it is given as the config root, so
+                    // starting it by path would put theme/ and config/ outside
+                    // that root and the singletons would never register.
+                    // ⚠️ Mod+L, LIKE WINDOWS, and it costs the vim group its
+                    // `l`. Locking used to be Mod+Ctrl+L precisely because
+                    // Mod+L was `focus-column-right` — but a lock key nobody
+                    // reaches for is not a lock key, and going right is still
+                    // on Mod+Right. h, j and k are untouched.
+                    { key: "Mod+L", action: "spawn-sh",
+                      arg: "BUCHHWIN_MODE=lock qs -c buchhwin", desc: "Lock" },
+                    { key: "Mod+Shift+P", action: "power-off-monitors", desc: "Screens off" }
+    ]
+
+    // What everything reads. The file wins when it says anything at all.
+    readonly property var binds:
+        (adapter.binds && adapter.binds.length)
+            ? adapter.binds : root.defaultBinds
 
     function save() { file.writeAdapter() }
 
@@ -301,7 +543,7 @@ Singleton {
             // only the migration chain quietly papering over it. Both now write
             // no version at all: a file without one reads as 0 and is migrated
             // forward, which is exactly the path a genuinely old file takes.
-            property int version: 5
+            property int version: 6
 
             property JsonObject theme: JsonObject {
                 property string palette: "everforest-dark"
@@ -673,243 +915,6 @@ Singleton {
             property JsonObject keys: JsonObject {
                 property string mod: "Super"
 
-                property var binds: [
-                    // --- programs -------------------------------------------
-                    { key: "Mod+Return",       action: "spawn", arg: "@terminal",    desc: "Terminal" },
-                    { key: "Mod+B",            action: "spawn", arg: "@browser",     desc: "Browser" },
-                    { key: "Mod+E",            action: "spawn", arg: "@fileManager", desc: "File manager" },
-                    { key: "Mod+Shift+C",      action: "spawn", arg: "@editor",      desc: "Editor" },
-
-                    // --- rescue: these must survive a dead shell -------------
-                    { key: "Mod+Shift+Return", action: "spawn", arg: "@terminal",
-                      desc: "Rescue: terminal", allowWhenLocked: false },
-                    { key: "Mod+Ctrl+Shift+R", action: "spawn-sh",
-                      arg: "systemctl --user restart buchhwin-shell",
-                      desc: "Rescue: restart the shell" },
-
-                    // --- focus (niri convention: Mod moves focus) ------------
-                    { key: "Mod+Left",  action: "focus-column-left",  desc: "Focus left" },
-                    { key: "Mod+Right", action: "focus-column-right", desc: "Focus right" },
-                    { key: "Mod+Up",    action: "focus-window-up",    desc: "Focus up" },
-                    { key: "Mod+Down",  action: "focus-window-down",  desc: "Focus down" },
-                    { key: "Mod+H",     action: "focus-column-left",  desc: "Focus left" },
-                    // Mod+L is the lock key now — see the note further down. Mod+Right
-                    // still goes right, and h/j/k are untouched.
-                    { key: "Mod+K",     action: "focus-window-up",    desc: "Focus up" },
-                    { key: "Mod+J",     action: "focus-window-down",  desc: "Focus down" },
-
-                    // --- move -----------------------------------------------
-                    { key: "Mod+Shift+Left",  action: "move-column-left",  desc: "Move window left" },
-                    { key: "Mod+Shift+Right", action: "move-column-right", desc: "Move window right" },
-                    { key: "Mod+Shift+Up",    action: "move-window-up",    desc: "Move window up" },
-                    { key: "Mod+Shift+Down",  action: "move-window-down",  desc: "Move window down" },
-
-                    // --- the four Hyprland groups niri has no equivalent for.
-                    // Remapped to the nearest real meaning rather than dropped;
-                    // docs/NIRI.md says plainly that these changed.
-                    { key: "Mod+Ctrl+Left",  action: "set-column-width", arg: "-10%",
-                      desc: "Narrower column (was: snap left)" },
-                    { key: "Mod+Ctrl+Right", action: "set-column-width", arg: "+10%",
-                      desc: "Wider column (was: snap right)" },
-                    { key: "Mod+Ctrl+Up",    action: "maximize-column",
-                      desc: "Maximise column (was: snap maximise)" },
-                    { key: "Mod+Ctrl+Down",  action: "switch-preset-column-width",
-                      desc: "Cycle preset widths (was: snap restore)" },
-                    { key: "Mod+Shift+J",    action: "consume-or-expel-window-right",
-                      desc: "Pull window into the column (was: split direction)" },
-                    { key: "Mod+Shift+K",    action: "consume-or-expel-window-left",
-                      desc: "Push window out of the column" },
-                    { key: "Mod+P",          action: "toggle-window-floating",
-                      desc: "Floating on/off (was: pin)" },
-                    { key: "Mod+odiaeresis", action: "focus-workspace", arg: "scratch",
-                      desc: "Scratch workspace" },
-                    { key: "Mod+Shift+odiaeresis", action: "move-window-to-workspace", arg: "scratch",
-                      desc: "Move window to the scratch workspace" },
-
-                    // --- windows --------------------------------------------
-                    { key: "Mod+Q",       action: "close-window", desc: "Close window", repeat: false },
-                    { key: "Alt+F4",      action: "close-window", desc: "Close window", repeat: false },
-                    // Fullscreen is the one people reach for, so it gets the
-                    // short key. `fullscreen-window` is already a toggle, so the
-                    // same press brings the window back.
-                    // ⚠️ WINDOWED fullscreen, and that is a bug fix rather than
-                    // a preference. From niri's own documentation,
-                    // Fullscreen-and-Maximize.md:39: "Niri renders a solid
-                    // black backdrop behind fullscreen windows." So a
-                    // translucent terminal blended with BLACK instead of the
-                    // wallpaper the moment it went fullscreen — reported as
-                    // "the colour changes and you cannot see the background any
-                    // more", and that is exactly what it was.
-                    //
-                    // `toggle-windowed-fullscreen` fills the working area
-                    // without the real fullscreen state, so there is no
-                    // backdrop and the wallpaper stays where it was. Real
-                    // fullscreen moves to Mod+Ctrl+F, where black IS what you
-                    // want: video and games. ⚠️ NOT Mod+Shift+F — that is
-                    // `maximize-column` and has been since the vim group was
-                    // laid out; saying otherwise in this comment would be a
-                    // second thing to get wrong.
-                    { key: "Mod+F",       action: "toggle-windowed-fullscreen", desc: "Fullscreen" },
-                    { key: "Mod+Ctrl+F",  action: "fullscreen-window",  desc: "True fullscreen (black behind it)" },
-                    { key: "Mod+Shift+F", action: "maximize-column",   desc: "Maximise column" },
-                    { key: "Mod+W",       action: "toggle-column-tabbed-display", desc: "Column as tabs" },
-                    { key: "Mod+O",       action: "toggle-overview",   desc: "Overview" },
-                    { key: "Mod+Shift+Slash", action: "show-hotkey-overlay", desc: "Keyboard shortcuts" },
-
-                    // --- the island ------------------------------------------
-                    // Keys reach the shell through its ipc socket, which is
-                    // also why they keep working when the shell is dead: they
-                    // simply reach nobody, instead of the compositor eating
-                    // them. ⚠️ `qs ipc call` takes no ARGUMENTS in 0.2.1, so
-                    // each page is its own parameterless verb — see ipc/Ipc.qml.
-                    //
-                    // Every page has a key, without exception. The bar is OFF
-                    // in the default setup, so a page reachable only by
-                    // clicking the bar would not be reachable at all.
-                    { key: "Mod+M", action: "spawn-sh",
-                      arg: "qs -c buchhwin ipc call notch media",
-                      desc: "Media in the island" },
-                    { key: "Mod+N", action: "spawn-sh",
-                      arg: "qs -c buchhwin ipc call notch notifications",
-                      desc: "Notifications" },
-                    { key: "Mod+comma", action: "spawn-sh",
-                      arg: "qs -c buchhwin ipc call notch quick",
-                      desc: "Quick settings" },
-                    { key: "Mod+C", action: "spawn-sh",
-                      arg: "qs -c buchhwin ipc call notch calendar",
-                      desc: "Calendar" },
-                    // ⚠️ TWO KEYS FOR ONE SURFACE, on purpose. Mod+D is what
-                    // niri's own default config binds a launcher to, so it is
-                    // the key somebody coming from any other setup will press
-                    // first; Mod+Space is the one somebody coming from a Mac
-                    // will press. Neither is used for anything else here, and a
-                    // launcher nobody can find is a launcher nobody uses.
-                    //
-                    // `ipc call launcher`, not `notch`: it is not a notch page
-                    // — it opens in the middle of the screen and leaves the
-                    // notch alone. See ipc/Ipc.qml.
-                    { key: "Mod+D", action: "spawn-sh",
-                      arg: "qs -c buchhwin ipc call launcher toggle",
-                      desc: "Launcher" },
-                    { key: "Mod+Space", action: "spawn-sh",
-                      arg: "qs -c buchhwin ipc call launcher toggle",
-                      desc: "Launcher" },
-                    { key: "Mod+T", action: "spawn-sh",
-                      arg: "qs -c buchhwin ipc call notch tray",
-                      desc: "Tray" },
-                    // ⚠️ Mod+V, NOT Ctrl+V. Copy and paste belong to the
-                    // application you are in — Ctrl+C and Ctrl+V go straight to
-                    // it through the Wayland clipboard, and binding either of
-                    // them here would take them away from every program on the
-                    // machine. This opens the HISTORY; picking an entry puts it
-                    // on the clipboard and you paste it as you always would.
-                    { key: "Mod+V", action: "spawn-sh",
-                      arg: "qs -c buchhwin ipc call notch clipboard",
-                      desc: "Clipboard history" },
-                    // ⚠️ NOT Mod+K — that is `focus-window-up` in the vim
-                    // navigation group, and a second binding for it would have
-                    // been dropped by the generator with a note in a log
-                    // nobody reads. Mod+R is free, and so is the dedicated
-                    // calculator key that many keyboards actually have.
-                    { key: "Mod+R", action: "spawn-sh",
-                      arg: "qs -c buchhwin ipc call notch calculator",
-                      desc: "Calculator" },
-                    { key: "XF86Calculator", action: "spawn-sh",
-                      arg: "qs -c buchhwin ipc call notch calculator",
-                      desc: "Calculator" },
-                    { key: "Mod+Shift+T", action: "spawn-sh",
-                      arg: "qs -c buchhwin ipc call notch timer",
-                      desc: "Work timer" },
-                    { key: "Mod+Shift+N", action: "spawn-sh",
-                      arg: "qs -c buchhwin ipc call notch event",
-                      desc: "New event" },
-                    { key: "Mod+Shift+W", action: "spawn-sh",
-                      arg: "qs -c buchhwin ipc call notch wallpaper",
-                      desc: "Choose a wallpaper" },
-                    // The same view the gear on the bar opens. It gets a key
-                    // of its own because the bar is off by default, so without
-                    // one the network and bluetooth controls would sit behind a
-                    // surface most people never switch on.
-                    { key: "Mod+Shift+comma", action: "spawn-sh",
-                      arg: "qs -c buchhwin ipc call notch settings",
-                      desc: "Network, bluetooth, sound and brightness" },
-                    { key: "Mod+Escape", action: "spawn-sh",
-                      arg: "qs -c buchhwin ipc call notch collapse",
-                      desc: "Close the island" },
-
-                    // ⚠️ Its own target, not a notch page: the bar is a
-                    // surface, not something the island shows. Off by default
-                    // and this is how it is tried out.
-                    { key: "Mod+Shift+B", action: "spawn-sh",
-                      arg: "qs -c buchhwin ipc call bar toggle",
-                      desc: "Top bar on or off" },
-
-                    // --- screenshots (niri does all three itself) ------------
-                    { key: "Print",       action: "screenshot",        desc: "Screenshot: selection" },
-                    { key: "Mod+S",       action: "screenshot",        desc: "Screenshot: selection" },
-                    { key: "Mod+Shift+S", action: "screenshot-screen", desc: "Screenshot: whole screen" },
-                    { key: "Mod+Ctrl+S",  action: "screenshot-window", desc: "Screenshot: window" },
-
-                    // --- hardware keys, must work on the lock screen ---------
-                    { key: "XF86AudioRaiseVolume", action: "spawn-sh",
-                      arg: "wpctl set-volume -l 1.5 @DEFAULT_AUDIO_SINK@ 5%+",
-                      desc: "Volume up", allowWhenLocked: true },
-                    { key: "XF86AudioLowerVolume", action: "spawn-sh",
-                      arg: "wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-",
-                      desc: "Volume down", allowWhenLocked: true },
-                    { key: "XF86AudioMute", action: "spawn-sh",
-                      arg: "wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle",
-                      desc: "Mute", allowWhenLocked: true },
-                    // ⚠️ `wpctl` FIRST, the shell second, joined with `;` — the
-                    // same shape as the brightness keys below and for the same
-                    // reason: muting the microphone has to work when the shell
-                    // is dead. The second half only adds the readout, which is
-                    // what this key never had.
-                    { key: "XF86AudioMicMute", action: "spawn-sh",
-                      arg: "wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle ; qs -c buchhwin ipc call notch mic",
-                      desc: "Mute the microphone", allowWhenLocked: true },
-                    // ⚠️ brightnessctl FIRST, the shell second, joined with `;`
-                    // rather than `&&`. The screen has to brighten even when the
-                    // shell is dead — that is the one moment when not being able
-                    // to see the screen is worst — so telling the island is a
-                    // best-effort afterthought, never a precondition.
-                    { key: "XF86MonBrightnessUp", action: "spawn-sh",
-                      arg: "brightnessctl set 5%+ ; qs -c buchhwin ipc call notch brightness",
-                      desc: "Brighter", allowWhenLocked: true },
-                    { key: "XF86MonBrightnessDown", action: "spawn-sh",
-                      arg: "brightnessctl set 5%- ; qs -c buchhwin ipc call notch brightness",
-                      desc: "Dimmer", allowWhenLocked: true },
-
-                    // --- session --------------------------------------------
-                    // ⚠️ This was bound straight to niri's `quit`: one keystroke,
-                    // no question, every unsaved thing gone. It opens the session
-                    // page now, and THAT asks before anything irreversible.
-                    { key: "Mod+Shift+E", action: "spawn-sh",
-                      arg: "qs -c buchhwin ipc call notch session",
-                      desc: "Session menu" },
-                    // ⚠️ Starts the locker DIRECTLY rather than asking logind
-                    // to. `loginctl lock-session` only emits a signal, and
-                    // nothing in this desktop was listening — so this key did
-                    // nothing at all, silently, which on a work machine is the
-                    // worst way for a lock to fail.
-                    //
-                    // Spawning it from the keybinding also means locking still
-                    // works when the shell is dead, which is the stated reason
-                    // keys live in KDL rather than in the shell.
-                    //
-                    // ⚠️ `-c buchhwin`, not a path: quickshell treats the
-                    // folder of the file it is given as the config root, so
-                    // starting it by path would put theme/ and config/ outside
-                    // that root and the singletons would never register.
-                    // ⚠️ Mod+L, LIKE WINDOWS, and it costs the vim group its
-                    // `l`. Locking used to be Mod+Ctrl+L precisely because
-                    // Mod+L was `focus-column-right` — but a lock key nobody
-                    // reaches for is not a lock key, and going right is still
-                    // on Mod+Right. h, j and k are untouched.
-                    { key: "Mod+L", action: "spawn-sh",
-                      arg: "BUCHHWIN_MODE=lock qs -c buchhwin", desc: "Lock" },
-                    { key: "Mod+Shift+P", action: "power-off-monitors", desc: "Screens off" }
-                ]
             }
 
             // ---------------------------------------------------------------
@@ -967,6 +972,32 @@ Singleton {
 
             // Empty = let niri decide. Filled in per machine; the VM and the
             // laptop are not the same and this file is not shared between them.
+            // ⚠️ TOP LEVEL, AND THAT IS THE WHOLE FIX FOR THE STARTUP CRASH.
+            //
+            // It used to be `keys.binds`, and quickshell segfaulted on about
+            // half of all starts because of exactly that nesting. Measured on
+            // the machine, twelve runs each:
+            //
+            //   {"outputs":[ …objects… ]}          var, TOP LEVEL    0/12
+            //   {"keys":{"binds":[ …objects… ]}}   var, NESTED       6/12
+            //   {"keys":{"binds":[]}}              var, NESTED       6/12
+            //   {"windows":{"blurred":["kitty"]}}  list<string>      0/12
+            //   {}                                                   0/10
+            //
+            // An empty nested list is enough to do it, so it is not the length
+            // and not the contents: JsonAdapter cannot write a `var` property
+            // that lives inside a nested JsonObject. The backtrace says the same
+            // thing — QObjectWrapper::wrap under QMetaProperty::write, with TWO
+            // deserializeRec frames, which is what nesting looks like.
+            //
+            // These were the only two `var` properties in the whole adapter, and
+            // now both are up here. Everything else is `list<string>` or
+            // `list<int>`, which never crashed. If a third one is ever added, it
+            // belongs here too — tests/config-crash.sh is the tripwire.
+            //
+            // ⚠️ Empty means "use Config.defaultBinds", not "no bindings".
+            property var binds: []
+
             property var outputs: []
 
             // Extra programs for the session. NOT the shell and NOT the
