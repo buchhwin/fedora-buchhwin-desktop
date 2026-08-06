@@ -65,11 +65,20 @@ PanelWindow {
     exclusionMode: ExclusionMode.Ignore
     color: "transparent"                    // literal-ok: absence of colour
 
-    // Sits below the notch, with the island's own gap under it. That is the
-    // island's height — which is its own key, and only rises to the bar's when
-    // a bar is actually on screen to sit inside.
-    margins.top: Math.max(Config.notch.collapsedHeight,
-                          Config.bar.enabled ? Config.bar.height : 0) + Theme.space2
+    // ⚠️ AT THE TOP EDGE, WITH NO GAP — and this is a bug fix, not a style
+    // choice. It used to sit below the notch with the island's own gap under
+    // it, which left a band at the top of the screen that belonged to the
+    // fullscreen ClickCatcher. Measured with a real pointer, one row at a time:
+    // a click at y=41 closed the panel and a click at y=44 did not. The tab row
+    // is at y=79. So aiming at a tab and landing a few pixels high shut the
+    // window — which is exactly the "I click on Media or Settings and it
+    // closes" that was reported, and it was nothing to do with the tabs.
+    //
+    // With the panel at the edge there is no dead band left to miss into, and
+    // it also gives what the brief asks for: the surface grows out of the notch
+    // rather than appearing under it. The notch is hidden while a page is open,
+    // so nothing is covered that anybody is looking at.
+    margins.top: 0
 
     implicitWidth: Math.max(1, card.implicitWidth)
     implicitHeight: Math.max(1, card.implicitHeight)

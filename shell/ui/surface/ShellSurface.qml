@@ -89,6 +89,14 @@ PanelWindow {
     // ⚠️ The mask is the INPUT region, and it must follow the drawn shape, not
     // the window. Masking the whole window turns the entire top strip of the
     // screen into a click trap even where nothing is painted.
+    //
+    // ⚠️ AND IT KEEPS ITS REGION WHILE THE NOTCH IS HIDDEN, deliberately. The
+    // first attempt emptied the mask when `mode` is "hidden" — and that made it
+    // WORSE rather than better: the click went straight through to the
+    // fullscreen ClickCatcher underneath, which closed the page just the same.
+    // Measured both ways with a real pointer. What is wanted is a click that
+    // does NOTHING there, so the region stays and the handler stands down —
+    // see the island's TapHandler below.
     mask: Region {
         item: hitArea
     }
@@ -231,7 +239,21 @@ PanelWindow {
             // question first. It used to open media, or volume when nothing
             // was playing, which meant the same click did different things
             // depending on whether Spotify happened to be running.
-            TapHandler { onTapped: Ipc.toggle("quick") }
+            //
+            // ⚠️ NOT WHILE A PAGE IS OPEN. Measured on the machine with a real
+            // pointer: with the quick panel up, a click at y=20 closed it and a
+            // click at y=45 did not. The notch is drawn at opacity 0 there and
+            // was still answering — and the panel opens DIRECTLY under it, so
+            // anything aimed a little high at the tab row hit an invisible
+            // thing that shut the window. That is the whole of "I click on
+            // Media or Settings and it closes".
+            //
+            // Now the region is still there (so the click does not fall through
+            // to the catcher either) and simply nothing happens.
+            TapHandler {
+                enabled: root.mode !== "hidden"
+                onTapped: Ipc.toggle("quick")
+            }
 
             // What the notch itself shows: the clock, and only the clock. The
             // pages moved to surface/OverlaySurface.qml — see the note there
