@@ -57,9 +57,21 @@ Item {
                     interactive: true
                     active: modelData.is_focused
 
+                    // ⚠️ THE INDEX, ALWAYS — never the name.
+                    //
+                    // This used to print the name when a workspace had one, and
+                    // `Config.workspaces` names the first one "scratch". So the
+                    // row read "scratch 2 3": reported as "das erste ist gar    english-ok: the report, quoted
+                    // keine zahl sondern irgend ein wort".                      english-ok: the report, quoted
+                    //
+                    // A row of workspace buttons is a POSITION indicator. Its
+                    // job is "you are on the second of three", and a word in
+                    // the first slot destroys that at a glance — the eye can no
+                    // longer count. The name is still there and still works for
+                    // `focus-workspace scratch`; it is just not what the button
+                    // is for.
                     BarText {
-                        text: wsPill.modelData.name ? wsPill.modelData.name
-                                                    : wsPill.modelData.idx
+                        text: String(wsPill.modelData.idx)
                         color: wsPill.active ? Theme.accentFg
                              : wsPill.modelData.is_urgent ? Theme.warn
                              : Theme.fgDim
