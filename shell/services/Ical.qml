@@ -32,6 +32,15 @@ import Quickshell
 Singleton {
     id: root
 
+    // ⚠️ CONSTANT, and that is the honest answer rather than a formality.
+    // `available` everywhere else in services/ means "the hardware or the daemon
+    // this speaks to is there". This one speaks to neither: it is arithmetic and
+    // string handling, and it works on a machine with no calendar, no network
+    // and no clock set. So it is always true — but it is *present*, because
+    // services/qmldir says every service carries the flag "without exception",
+    // and a rule with one exception is a rule the next reader has to look up.
+    readonly property bool available: true
+
     // ---------------------------------------------------------------- unfold
     // ⚠️ FIRST, always. iCalendar wraps long lines at 75 octets and continues
     // them with a leading space or tab. A parser that reads line by line

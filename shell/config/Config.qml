@@ -589,9 +589,23 @@ Singleton {
                     { key: "Mod+Shift+W", action: "spawn-sh",
                       arg: "qs -c buchhwin ipc call notch wallpaper",
                       desc: "Choose a wallpaper" },
+                    // The same view the gear on the bar opens. It gets a key
+                    // of its own because the bar is off by default, so without
+                    // one the network and bluetooth controls would sit behind a
+                    // surface most people never switch on.
+                    { key: "Mod+Shift+comma", action: "spawn-sh",
+                      arg: "qs -c buchhwin ipc call notch settings",
+                      desc: "Network, bluetooth, sound and brightness" },
                     { key: "Mod+Escape", action: "spawn-sh",
                       arg: "qs -c buchhwin ipc call notch collapse",
                       desc: "Close the island" },
+
+                    // ⚠️ Its own target, not a notch page: the bar is a
+                    // surface, not something the island shows. Off by default
+                    // and this is how it is tried out.
+                    { key: "Mod+Shift+B", action: "spawn-sh",
+                      arg: "qs -c buchhwin ipc call bar toggle",
+                      desc: "Top bar on or off" },
 
                     // --- screenshots (niri does all three itself) ------------
                     { key: "Print",       action: "screenshot",        desc: "Screenshot: selection" },

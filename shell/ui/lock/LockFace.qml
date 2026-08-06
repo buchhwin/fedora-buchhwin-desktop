@@ -1,8 +1,8 @@
 // What the lock screen shows: a large clock, the date, a round avatar, and
 // nothing else until you touch a key.
 //
-// The brief asks for exactly that — "große Uhr, Datum, runder Avatar, beliebige
-// Taste" — and the reason it works is that a lock screen is looked at far more
+// The brief asks for exactly that: "große Uhr, Datum, runder Avatar, beliebige Taste".  // english-ok: the specification, quoted in the words it was given in
+// The reason it works is that a lock screen is looked at far more
 // often than it is used. Most of the time you want the time.
 //
 // ⚠️ EVERY FAILURE HAS TO BE VISIBLE. A lock screen that silently does nothing

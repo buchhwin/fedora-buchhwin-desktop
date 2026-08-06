@@ -229,7 +229,7 @@ Singleton {
                     root.matches = out
                     root.status = out.length ? "" : "No place found"
                 } catch (e) {
-                    root.status = "Ortssuche lieferte Unsinn"
+                    root.status = "Place search returned nonsense"
                 }
             }
             x.open("GET", "https://geocoding-api.open-meteo.com/v1/search?count=5&language=de&format=json&name="

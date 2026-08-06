@@ -51,22 +51,20 @@ ColumnLayout {
             active: true
             visible: Services.Location.guessed
             BarText {
-                text: "stimmt"
+                text: "correct"
                 font.pixelSize: Theme.fontSizeSm
                 color: Theme.accentFg
             }
-            TapHandler { onTapped: Services.Location.confirm() }
+            onClicked: Services.Location.confirm()
         }
 
         Pill {
             interactive: true
             Icon { text: "edit"; size: Theme.fontSizeLg }
-            TapHandler {
-                onTapped: {
-                    root.editing = true
-                    field.text = ""
-                    field.forceActiveFocus()
-                }
+            onClicked: {
+                root.editing = true
+                field.text = ""
+                field.forceActiveFocus()
             }
         }
     }
@@ -108,7 +106,7 @@ ColumnLayout {
                 anchors { left: parent.left; leftMargin: Theme.space2
                           verticalCenter: parent.verticalCenter }
                 visible: field.text.length === 0
-                text: "Stadt eingeben"
+                text: "Type a town"
                 color: Theme.fgDim
             }
         }
@@ -130,11 +128,9 @@ ColumnLayout {
                     font.pixelSize: Theme.fontSizeSm
                     elide: Text.ElideRight
                 }
-                TapHandler {
-                    onTapped: {
-                        Services.Location.choose(hit.modelData)
-                        root.editing = false
-                    }
+                onClicked: {
+                    Services.Location.choose(hit.modelData)
+                    root.editing = false
                 }
             }
         }
@@ -142,7 +138,7 @@ ColumnLayout {
         BarText {
             Layout.fillWidth: true
             visible: Services.Location.searching || Services.Location.status.length > 0
-            text: Services.Location.searching ? "sucht …" : Services.Location.status
+            text: Services.Location.searching ? "searching …" : Services.Location.status
             font.pixelSize: Theme.fontSizeSm
             color: Theme.fgMuted
         }

@@ -124,11 +124,9 @@ ColumnLayout {
                     }
                 }
 
-                TapHandler {
-                    onTapped: {
-                        root.cursor = tile.index
-                        root.activate(tile.index)
-                    }
+                onClicked: {
+                    root.cursor = tile.index
+                    root.activate(tile.index)
                 }
             }
         }

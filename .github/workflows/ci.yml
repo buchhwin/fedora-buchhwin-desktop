@@ -19,6 +19,11 @@ jobs:
       # again. 275 lines were, when this check was written.
       - name: no German outside the places that say why
         run: bash tests/english.sh
+      # Third of the structural tripwires. A TapHandler inside a Pill attaches
+      # to the Pill's inner Item, so most of the button is lit and dead — it
+      # shipped that way in every Pill in the shell before it was measured.
+      - name: no tap handlers hidden inside a Pill
+        run: bash tests/tap-targets.sh
 
   shell:
     runs-on: ubuntu-latest

@@ -163,11 +163,9 @@ Item {
                         font.pixelSize: Theme.fontSizeSm
                     }
 
-                    TapHandler {
-                        onTapped: {
-                            actionPill.modelData.invoke()
-                            Services.Notifications.hideToast(root.notification)
-                        }
+                    onClicked: {
+                        actionPill.modelData.invoke()
+                        Services.Notifications.hideToast(root.notification)
                     }
                 }
             }

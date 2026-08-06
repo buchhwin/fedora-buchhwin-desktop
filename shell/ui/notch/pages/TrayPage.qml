@@ -67,18 +67,12 @@ Item {
                     asynchronous: true
                 }
 
-                TapHandler {
-                    acceptedButtons: Qt.LeftButton | Qt.RightButton
-                    onTapped: function (point, button) {
-                        if (button === Qt.RightButton && root.hostWindow)
-                            // Anchored to the island's own window, below it —
-                            // the same call the bar makes, with a different host.
-                            Services.Tray.menu(trayPill.modelData, root.hostWindow,
-                                               trayPill.x, root.height)
-                        else
-                            Services.Tray.activate(trayPill.modelData)
-                    }
-                }
+                onClicked: Services.Tray.activate(trayPill.modelData)
+                // Anchored to the island's own window, below it — the same call
+                // the bar makes, with a different host.
+                onRightClicked: if (root.hostWindow)
+                    Services.Tray.menu(trayPill.modelData, root.hostWindow,
+                                       trayPill.x, root.height)
             }
         }
     }

@@ -41,6 +41,20 @@ words+='|schliessen|schließen|öffnen|oeffnen|Fenster|Farbe|Datei|Ordner'
 # ever as good as its last miss, so a miss earns an entry rather than a shrug.
 words+='|Einstellung|Einstellungen|kommen|kommt|bis|dahin|bisher|jetzt|heute'
 words+='|Programm|Programme|Taste[nr]|Starter|Leiste|Suche|Sitzung|Bildschirm'
+# Two more that slipped through into the location picker and shipped: a button
+# labelled "stimmt" and a status reading "sucht …". Neither contains a word from
+# the lists above, and neither is a function word — which is the limit of the
+# method, not a reason to stop extending it.
+words+='|stimmt|stimmen|sucht|suchen|gefunden|Ton|Netz|Gerät|Geraet|Geräte|Geraete'
+# ⚠️ AND THEN A WHOLE WEATHER FORECAST WAS FOUND IN GERMAN — nine of the ten
+# descriptions the panel shows, plus two calendar errors, a location error and
+# the town-name placeholder. Not one of them contains a function word, which is
+# the honest limit of the method: it catches sentences, and a label is not a
+# sentence. Nouns a user-facing string is likely to be made of therefore go in
+# too, even though each one is a guess about the future rather than a rule.
+words+='|klar|bedeckt|Nebel|Niesel|Regen|Schnee|Schauer|Gewitter|Wolken|Sonne'
+words+='|Anmeldung|abgelehnt|Konto|Stadt|eingeben|Ortssuche|Unsinn|Uhrzeit|Datum'
+words+='|Lautstärke|Lautstaerke|Helligkeit|Verbindung|verbunden|getrennt|Passwort'
 
 files=$(git ls-files 'shell/*.qml' 'shell/**/*.qml' 'docs/*.md' 'README.md' \
                     'lib/*.sh' 'bin/*' 'install.sh' 'tests/*.sh' 2>/dev/null)

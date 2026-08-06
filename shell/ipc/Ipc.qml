@@ -57,6 +57,30 @@ Singleton {
         root.page = ""
     }
 
+    // ---------------------------------------------------- the quick panel's tab
+    //
+    // Which of the quick panel's four views is showing. It lives here rather
+    // than in the page because two different things point at it from outside:
+    // the gear on the bar opens the panel already on the settings view, and the
+    // page itself is rebuilt every time the surface opens, so a property of its
+    // own would forget which tab you were on between openings.
+    readonly property int quickOverview: 0
+    readonly property int quickMedia: 1
+    readonly property int quickNotifications: 2
+    readonly property int quickSettings: 3
+    property int quickTab: quickOverview
+
+    // Open the panel on a named tab — or, if it is already open on that tab,
+    // close it, so the gear behaves like every other toggle in the shell.
+    function showQuick(tab) {
+        if (root.page === "quick" && root.quickTab === tab) {
+            root.collapse()
+            return
+        }
+        root.quickTab = tab
+        root.show("quick")
+    }
+
     // ------------------------------------------------------------- launcher
     //
     // ⚠️ NOT A PAGE, AND THAT IS THE WHOLE POINT. Pages open AT the notch, so
@@ -106,8 +130,30 @@ Singleton {
         function brightness(): void { root.toggle("brightness") }
         function session(): void { root.toggle("session") }
         function clipboard(): void { root.toggle("clipboard") }
+        // The quick panel, opened straight onto its settings view. This is what
+        // the gear on the bar calls, and what the settings key is bound to —
+        // the bar's gear used to have no handler at all and was, in the words of
+        // the report, "stumm": it did nothing and did not say so either.
+        function settings(): void { root.showQuick(root.quickSettings) }
         function collapse(): void { root.collapse() }
         function state(): string { return root.page }
+    }
+
+    // ⚠️ Lower case, no digits, in both the target and the verb. The smoke test
+    // reads every keybinding with /ipc call ([a-z]+) ([a-z]+)/ and checks the
+    // pair exists; a name like `barToggle` would not match the expression at
+    // all, so the binding would go unchecked rather than fail.
+    IpcHandler {
+        target: "bar"
+
+        // The bar is built and off by default — the notch is the surface. This
+        // is how it gets tried out without editing shell.json, which was the
+        // only way until now.
+        function toggle(): void {
+            Config.bar.enabled = !Config.bar.enabled
+            Config.save()
+        }
+        function state(): string { return Config.bar.enabled ? "on" : "off" }
     }
 
     // Its own target rather than a verb on `notch`, because it is not one:

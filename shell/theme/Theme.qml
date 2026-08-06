@@ -131,11 +131,15 @@ Singleton {
     // cheaply, and paying for it every frame on a laptop. A gradient costs one
     // draw and no per-frame work.
     //
-    // Brightest along the top edge, where light would land; a weaker return
-    // along the bottom, which is the light bouncing back up through the pane —
-    // that faint lower hairline is the most recognisable part of the look.
-    readonly property color glassRimTop:    alpha(fg, dark ? 0.30 : 0.42)
-    readonly property color glassRimSide:   alpha(fg, dark ? 0.08 : 0.14)
+    // ⚠️ TWO TOKENS, NOT FOUR. There were a top and a side rim as well, drawn as
+    // a gradient ring behind every pane. On screen that reads as a border, and
+    // it was reported as one; the reference screenshots have no ring at all,
+    // only "a fine lighter line along the bottom edge". They are deleted rather
+    // than set to transparent, because a token with no reader is the same debt
+    // as a config key with no reader — see GlassPane.qml.
+    //
+    // What is left is the light bouncing back up through the pane, which is the
+    // most recognisable part of the look and the cheapest part to draw.
     readonly property color glassRimBottom: alpha(fg, dark ? 0.18 : 0.26)
     // The sheen lies over the top of the pane and fades out well before the
     // middle. Any further and it stops reading as light and starts reading as

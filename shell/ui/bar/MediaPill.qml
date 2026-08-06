@@ -54,8 +54,5 @@ Pill {
         }
     }
 
-    TapHandler {
-        enabled: Services.Media.canToggle
-        onTapped: Services.Media.toggle()
-    }
+    onClicked: if (Services.Media.canToggle) Services.Media.toggle()
 }

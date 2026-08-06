@@ -15,6 +15,7 @@ import QtQuick.Layouts
 import Quickshell
 import "../../theme"
 import "../../config"
+import "../../ipc"
 import "../../services" as Services
 import "../common"
 
@@ -64,9 +65,7 @@ Item {
                              : Theme.fgDim
                     }
 
-                    TapHandler {
-                        onTapped: Services.Compositor.focusWorkspace(wsPill.modelData.idx)
-                    }
+                    onClicked: Services.Compositor.focusWorkspace(wsPill.modelData.idx)
                 }
             }
         }
@@ -109,9 +108,7 @@ Item {
                         }
                     }
 
-                    TapHandler {
-                        onTapped: Services.Compositor.focusWindow(winPill.modelData.id)
-                    }
+                    onClicked: Services.Compositor.focusWindow(winPill.modelData.id)
                 }
             }
         }
@@ -169,16 +166,9 @@ Item {
                         asynchronous: true
                     }
 
-                    TapHandler {
-                        acceptedButtons: Qt.LeftButton | Qt.RightButton
-                        onTapped: function (point, button) {
-                            if (button === Qt.RightButton)
-                                Services.Tray.menu(trayPill.modelData,
-                                                   root.hostWindow, 0, root.height)
-                            else
-                                Services.Tray.activate(trayPill.modelData)
-                        }
-                    }
+                    onClicked: Services.Tray.activate(trayPill.modelData)
+                    onRightClicked: Services.Tray.menu(trayPill.modelData,
+                                                       root.hostWindow, 0, root.height)
                 }
             }
         }
@@ -198,7 +188,7 @@ Item {
                 color: Services.Audio.muted ? Theme.fgDim : Theme.fg
             }
 
-            TapHandler { onTapped: Services.Audio.toggleMute() }
+            onClicked: Services.Audio.toggleMute()
         }
 
         Pill {
@@ -244,9 +234,12 @@ Item {
         // --------------------------------------------------- settings
         Pill {
             interactive: true
+            active: Ipc.page === "quick" && Ipc.quickTab === Ipc.quickSettings
             Icon { text: "settings"; size: Theme.fontSizeLg }
-            // The settings window is M8. Until then this is deliberately
-            // inert rather than wired to something that does not exist.
+            // The settings WINDOW is still M8. What this opens is the quick
+            // panel's settings view — network, bluetooth, sound, brightness —
+            // which is a real answer rather than the nothing it did before.
+            onClicked: Ipc.showQuick(Ipc.quickSettings)
         }
     }
 }

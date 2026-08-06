@@ -121,7 +121,7 @@ ColumnLayout {
         Pill {
             interactive: true
             Icon { text: "chevron_left"; size: Theme.fontSizeLg }
-            TapHandler { onTapped: root.step(-1) }
+            onClicked: root.step(-1)
         }
 
         BarText {
@@ -137,18 +137,16 @@ ColumnLayout {
             interactive: true
             visible: !root.onToday
             BarText { text: "today"; font.pixelSize: Theme.fontSizeSm }
-            TapHandler {
-                onTapped: {
-                    root.shownYear = clock.date.getFullYear()
-                    root.shownMonth = clock.date.getMonth()
-                }
+            onClicked: {
+                root.shownYear = clock.date.getFullYear()
+                root.shownMonth = clock.date.getMonth()
             }
         }
 
         Pill {
             interactive: true
             Icon { text: "chevron_right"; size: Theme.fontSizeLg }
-            TapHandler { onTapped: root.step(1) }
+            onClicked: root.step(1)
         }
 
         // Only where it can do something. Without a connected calendar there is
@@ -158,7 +156,7 @@ ColumnLayout {
             interactive: true
             visible: Services.Calendar.available
             Icon { text: "add"; size: Theme.fontSizeLg }
-            TapHandler { onTapped: root.newEvent() }
+            onClicked: root.newEvent()
         }
     }
 

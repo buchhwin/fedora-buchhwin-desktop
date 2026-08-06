@@ -66,9 +66,6 @@ RowLayout {
             size: Theme.fontSizeXl
         }
 
-        TapHandler {
-            enabled: Services.Media.canToggle
-            onTapped: Services.Media.toggle()
-        }
+        onClicked: Services.Media.toggle()
     }
 }

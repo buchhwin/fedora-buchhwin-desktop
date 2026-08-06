@@ -131,16 +131,16 @@ Singleton {
     // enumerated: the difference between "slight" and "moderate" drizzle is not
     // something anybody needs from a panel they glance at.
     function describe(c) {
-        if (c === 0) return "klar"
+        if (c === 0) return "clear"
         if (c <= 2) return "mainly clear"
-        if (c === 3) return "bedeckt"
-        if (c <= 48) return "Nebel"
-        if (c <= 57) return "Niesel"
-        if (c <= 67) return "Regen"
-        if (c <= 77) return "Schnee"
-        if (c <= 82) return "Schauer"
-        if (c <= 86) return "Schneeschauer"
-        if (c <= 99) return "Gewitter"
+        if (c === 3) return "overcast"
+        if (c <= 48) return "fog"
+        if (c <= 57) return "drizzle"
+        if (c <= 67) return "rain"
+        if (c <= 77) return "snow"
+        if (c <= 82) return "showers"
+        if (c <= 86) return "snow showers"
+        if (c <= 99) return "thunderstorm"
         return ""
     }
 

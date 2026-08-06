@@ -64,7 +64,7 @@ ColumnLayout {
             Pill {
                 interactive: true
                 Icon { text: "close"; size: Theme.fontSize; color: Theme.fgDim }
-                TapHandler { onTapped: Services.Notifications.dismiss(row.modelData) }
+                onClicked: Services.Notifications.dismiss(row.modelData)
             }
         }
     }

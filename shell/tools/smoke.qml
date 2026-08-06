@@ -30,6 +30,7 @@ import "../config"
 import "../theme"
 import "../ipc"
 import "../common"
+import "../ui/common" as Ui
 
 Scope {
     id: root
@@ -62,6 +63,25 @@ Scope {
             return
         }
         note("  ok    services/" + name + " (available: " + obj.available + ")")
+    }
+
+    // A pill with something in it, built off screen purely so the check below
+    // can ask whether it carries a tap handler of its own. Nothing draws it.
+    Ui.Pill {
+        id: probe
+        interactive: true
+        Ui.BarText { text: "Media" }
+    }
+
+    // Is there a TapHandler on the pill itself? `data` holds an Item's children
+    // and its handlers together; a TapHandler is the one with a gesture policy,
+    // which the HoverHandler beside it does not have.
+    function pillHasOwnTap() {
+        var d = probe.data
+        for (var i = 0; i < d.length; i++)
+            if (d[i] && d[i].gesturePolicy !== undefined)
+                return true
+        return false
     }
 
     // ⚠️ WaitFor, not a Timer, and the difference is documented in Config.qml:
@@ -154,9 +174,21 @@ Scope {
                     Theme.panelBg !== undefined && Theme.radiusLg > 0
                     && Theme.space4 > 0 && Theme.fontSize > 0)
             root.ok("glass tokens exist",
-                    Theme.glassRimTop !== undefined
+                    Theme.glassRimBottom !== undefined
                     && Theme.glassSheen !== undefined
                     && Theme.hairline > 0)
+
+            // ⚠️ THE TAP TARGET, because this one shipped. A TapHandler written
+            // inside a Pill lands in the Pill's inner Item, which is sized to
+            // its contents — so half the pill highlighted on hover and did
+            // nothing on click. Measured on the quick panel's "Media" tab: pill
+            // 68 x 29, target 44 x 21, 1050 px² lit and dead.
+            //
+            // The call sites are guarded statically by tests/tap-targets.sh.
+            // This is the other half: that Pill still has a handler of its own
+            // for them to rely on.
+            root.ok("a Pill carries its own tap handler",
+                    probe.width > 0 && probe.height > 0 && root.pillHasOwnTap())
 
             // ------------------------------------------------------ ipc
             // Every verb the generated keybindings call has to exist, or a key
@@ -170,8 +202,9 @@ Scope {
             var verbs = ({
                 "notch": ["media", "volume", "quick", "notifications", "calendar",
                           "tray", "wallpaper", "event", "brightness", "session",
-                          "clipboard", "collapse", "state"],
-                "launcher": ["toggle", "show", "hide", "state"]
+                          "clipboard", "settings", "collapse", "state"],
+                "launcher": ["toggle", "show", "hide", "state"],
+                "bar": ["toggle", "state"]
             })
             var binds = Config.keys.binds
             var orphans = []
@@ -203,9 +236,12 @@ Scope {
             root.service("Clipboard", Services.Clipboard)
             root.service("Theming", Services.Theming)
 
-            // Ical is a parser rather than a device, so it has no `available`;
-            // it still has to build, and it is the one piece with real logic.
-            root.ok("services/Ical builds", Services.Ical !== null)
+            // ⚠️ NO EXCEPTION ANY MORE. Ical used to be waved through here as
+            // "a parser rather than a device", while services/qmldir said every
+            // service carries `available` "without exception". One of the two
+            // was wrong, and it was cheaper to give the parser an honest flag
+            // than to keep a rule with a hole in it.
+            root.service("Ical", Services.Ical)
 
             note(root.failures === 0
                  ? "smoke: all good"

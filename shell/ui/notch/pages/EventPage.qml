@@ -197,7 +197,7 @@ ColumnLayout {
                 font.pixelSize: Theme.fontSizeSm
                 color: allDay.on ? Theme.accentFg : Theme.fg
             }
-            TapHandler { onTapped: allDay.on = !allDay.on }
+            onClicked: allDay.on = !allDay.on
         }
     }
 
@@ -225,7 +225,7 @@ ColumnLayout {
                 font.pixelSize: Theme.fontSizeSm
                 color: parent.active ? Theme.accentFg : Theme.fgDim
             }
-            TapHandler { onTapped: root.save() }
+            onClicked: root.save()
         }
     }
 }

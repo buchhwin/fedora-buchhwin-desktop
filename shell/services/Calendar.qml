@@ -184,7 +184,7 @@ Singleton {
                     // The token was refused: drop it so the next attempt gets
                     // a fresh one instead of retrying with the same bad value.
                     root._token = ""
-                    root.status = "Anmeldung abgelehnt — Konto neu verbinden"
+                    root.status = "Sign-in refused — reconnect the account"
                 } else {
                     root.status = "Calendar not found (HTTP " + x.status + ")"
                 }
@@ -240,7 +240,7 @@ Singleton {
                 root.busy = false
                 if (x.status === 401) {
                     root._token = ""
-                    root.status = "Anmeldung abgelehnt"
+                    root.status = "Sign-in refused"
                     return
                 }
                 if (x.status < 200 || x.status >= 300) {

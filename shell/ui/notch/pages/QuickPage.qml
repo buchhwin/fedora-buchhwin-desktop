@@ -31,9 +31,11 @@ ColumnLayout {
     id: root
     spacing: Theme.space4
 
-    // 0 = overview, 1 = media. An int rather than a string: there are two, and
-    // a name would invite a third without anybody deciding to add one.
-    property int tab: 0
+    // Which view is showing. The value lives in Ipc, not here: the gear on the
+    // bar opens this panel already on the settings view, and this page is built
+    // afresh every time the surface opens, so a property of its own would
+    // forget the tab between openings.
+    readonly property int tab: Ipc.quickTab
 
     // ------------------------------------------------------------------- tabs
     RowLayout {
@@ -55,7 +57,7 @@ ColumnLayout {
                     font.pixelSize: Theme.fontSizeSm
                     color: tabPill.active ? Theme.accentFg : Theme.fgMuted
                 }
-                TapHandler { onTapped: root.tab = tabPill.index }
+                onClicked: Ipc.quickTab = tabPill.index
             }
         }
 
@@ -66,7 +68,7 @@ ColumnLayout {
         Pill {
             interactive: true
             Icon { text: "settings"; size: Theme.fontSizeLg }
-            TapHandler { onTapped: root.openSettings() }
+            onClicked: root.openSettings()
         }
     }
 
