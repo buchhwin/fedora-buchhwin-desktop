@@ -17,8 +17,42 @@ bhctl location [<town>]              show or set where this machine is
 bhctl niri apply                     regenerate ~/.config/niri/config.kdl
 bhctl niri diff                      show what a regeneration would change
 bhctl doctor                         check the installation
+bhctl prune                          drop the instance dirs quickshell leaves
 bhctl shell reset                    restore default settings and restart
 EOF
+}
+
+# Quickshell leaves an instance directory behind for EVERY run and never removes
+# one. Measured on the test machine after two days: 407 directories, 15 MB, in
+# /run/user/<uid> — which is a tmpfs, so it is RAM. Each run adds exactly one.
+#
+# ⚠️ NOT `flock` ON instance.lock. That is the obvious way to tell a live
+# instance from a dead one and it does not work: measured, `flock -n` succeeded
+# on all 407 of them INCLUDING the directory belonging to the running shell, so
+# a prune built on it would have deleted the live instance's socket out from
+# under it.
+#
+# `qs list` names the instances that are actually alive. Anything else under
+# by-id/ belongs to a process that is gone.
+prune_instances() {
+    local dir="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/quickshell/by-id"
+    [[ -d "$dir" ]] || return 0
+    command -v qs >/dev/null || return 0
+
+    local live
+    # ⚠️ If the listing itself fails, do NOTHING. An empty answer would
+    # otherwise read as "nothing is alive" and take the running shell with it.
+    live="$(qs list --all --json 2>/dev/null)" || return 0
+    [[ -n "$live" ]] || return 0
+    live="$(printf '%s' "$live" | sed -n 's/.*"id": "\([^"]*\)".*/\1/p')"
+
+    local d name
+    for d in "$dir"/*/; do
+        [[ -d "$d" ]] || continue
+        name="$(basename "$d")"
+        printf '%s\n' "$live" | grep -qxF "$name" && continue
+        rm -rf "$d"
+    done
 }
 
 # One runner for every tool. This used to be a second copy of the installer's
@@ -44,6 +78,7 @@ run_tool() {
         sed -n '/ABORT/,$p' "$log" >&2
         return 1
     fi
+    prune_instances
     return 0
 }
 render() { run_tool render; }
@@ -290,6 +325,24 @@ doctor)
     else
         printf 'theming     every generated theme is pointed at\n'
     fi
+    # Two things that are invisible until they are counted.
+    #
+    # A second shell draws its own bar and its own notch on top of the first
+    # one's, and looks exactly like the first one behaving strangely — which is
+    # how a stray instance went unnoticed here for half an hour of debugging.
+    shells=$(pgrep -c -x qs 2>/dev/null || echo 0)
+    if (( shells > 1 )); then
+        printf 'shell       \033[38;5;203m%s instances running\033[0m — one of them is a stray\n' "$shells"
+    fi
+
+    # And the directories quickshell leaves behind, in a tmpfs, one per run.
+    inst=$(ls "${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/quickshell/by-id" 2>/dev/null | wc -l)
+    if (( inst > 20 )); then
+        printf 'instances   %s directories left behind — run `bhctl prune`\n' "$inst"
+    else
+        printf 'instances   %s directory(ies), nothing to clean up\n' "$inst"
+    fi
+
     # "as little XWayland as possible" is only a claim until something counts.
     if command -v niri >/dev/null && niri msg -j windows >/dev/null 2>&1; then
         if pgrep -x Xwayland >/dev/null 2>&1; then
@@ -300,6 +353,17 @@ doctor)
         fi
     fi
     ;;
+"prune")
+    # Called by buchhwin-shell.service before every start, and by hand. The
+    # numbers are printed because a cleanup that says nothing is one nobody can
+    # tell apart from a cleanup that did nothing.
+    d="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/quickshell/by-id"
+    before=$(ls "$d" 2>/dev/null | wc -l)
+    prune_instances
+    after=$(ls "$d" 2>/dev/null | wc -l)
+    echo "quickshell instance directories: $before → $after"
+    ;;
+
 "shell")
     [[ "${2:-}" == "reset" ]] || { usage; exit 2; }
     cp "$CONFIG_HOME/buchhwin/shell.json" "$CONFIG_HOME/buchhwin/shell.json.bak" 2>/dev/null

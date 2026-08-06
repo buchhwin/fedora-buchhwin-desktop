@@ -52,6 +52,39 @@ dnf_install() {
 # class path, not a trick: the installer and a running session use the same
 # code, so a fresh machine and a palette switch cannot drift apart.
 #
+# Quickshell leaves an instance directory behind for EVERY run and never removes
+# one. Measured on the test machine after two days: 407 directories, 15 MB, in
+# /run/user/<uid> — which is a tmpfs, so it is RAM. Each run adds exactly one.
+#
+# ⚠️ NOT `flock` ON instance.lock. That is the obvious way to tell a live
+# instance from a dead one and it does not work: measured, `flock -n` succeeded
+# on all 407 of them INCLUDING the directory belonging to the running shell, so
+# a prune built on it would have deleted the live instance's socket out from
+# under it.
+#
+# `qs list` names the instances that are actually alive. Anything else under
+# by-id/ belongs to a process that is gone.
+prune_instances() {
+    local dir="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/quickshell/by-id"
+    [[ -d "$dir" ]] || return 0
+    command -v qs >/dev/null || return 0
+
+    local live
+    # ⚠️ If the listing itself fails, do NOTHING. An empty answer would
+    # otherwise read as "nothing is alive" and take the running shell with it.
+    live="$(qs list --all --json 2>/dev/null)" || return 0
+    [[ -n "$live" ]] || return 0
+    live="$(printf '%s' "$live" | sed -n 's/.*"id": "\([^"]*\)".*/\1/p')"
+
+    local d name
+    for d in "$dir"/*/; do
+        [[ -d "$d" ]] || continue
+        name="$(basename "$d")"
+        printf '%s\n' "$live" | grep -qxF "$name" && continue
+        rm -rf "$d"
+    done
+}
+
 # One helper for every tool, rather than one function per tool hardcoding its
 # own name — there were two copies of this, in common.sh and in bin/bhctl, and
 # adding the niri generator would have meant editing both.
