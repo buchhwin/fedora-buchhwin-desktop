@@ -51,8 +51,28 @@ Item {
 
     readonly property real floorWidth:
         pageIsCompact ? Config.notch.collapsedWidth : Config.notch.minExpandedWidth
-    readonly property real floorHeight:
-        pageIsCompact ? Config.notch.collapsedHeight : Config.notch.expandedHeight
+
+    // ⚠️ THE HEIGHT FLOOR IS THE COLLAPSED HEIGHT FOR EVERY PAGE, NOT
+    // `expandedHeight`, and that is the second half of "der abstand passt nicht".  english-ok: the report, quoted
+    //
+    // `expandedHeight` (135) was being applied as a MINIMUM to every page you
+    // read, and the loader is centred — so a page whose contents are shorter got
+    // the difference split above and below it as dead space. Measured on the VM,
+    // panel height from an image diff against the empty desktop:
+    //
+    //   media 161   tray 161   calculator 161      <- all three on the floor
+    //   wallpaper 165   session 168   timer 218
+    //   notifications 232   clipboard 324   calendar 383
+    //
+    // Three pages sat exactly on it (161 = 135 plus the shadow the diff also
+    // sees). The 135 in the reference describes a page with something ON it, not
+    // a rule that a page with three lines must be as tall as one with a month
+    // grid — the WIDTH floor is what keeps the shape recognisable, and that one
+    // stays.
+    //
+    // The collapsed height remains as a floor so a page can never come out
+    // shorter than the notch it grew from.
+    readonly property real floorHeight: Config.notch.collapsedHeight
 
     readonly property real pagePadding:
         pageIsCompact ? Theme.space3 : Theme.space5

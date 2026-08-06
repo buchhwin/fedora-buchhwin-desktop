@@ -223,7 +223,7 @@ demonstrably reaches a desktop — a broken greeter would mean no way to log in.
 | | |
 |---|---|
 | Calendar | a whole month, six weeks, today in the accent, weekdays correct |
-| The island grows for it | `expandedHeight` is a **lower bound** now, like the width |
+| The island grows for it | The WIDTH has a lower bound (`minExpandedWidth`); the HEIGHT follows the contents, floored only at `collapsedHeight`. `expandedHeight` is the reference size the wallpaper row is drawn against, not a minimum for every page — it used to be, and three pages sat on it being padded with dead space. |
 | Tray | the page opens, the empty state is one line of text |
 | All seven pages | reachable through `ipc` and through keys, no warning in the log |
 
