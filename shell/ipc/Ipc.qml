@@ -87,14 +87,12 @@ Singleton {
 
     // ------------------------------------------------- the pointer on the notch
     //
-    // The NAME OF THE SCREEN whose notch is under the pointer, or "". A bool
-    // would light the pill up on both monitors at once, because Ipc is one
-    // object for the whole shell and the surfaces are one per screen.
-    //
-    // It lives here rather than in ShellSurface because the pill is a different
-    // window: the notch knows about the pointer, the aside has to be created
-    // because of it, and Shell.qml is where windows are created.
-    property string notchHover: ""
+    // ⚠️ `notchHover` IS GONE. It named the screen whose notch was under the
+    // pointer, and it existed only so Shell.qml could create the pill beside it
+    // on that screen. The notch now grows in place instead, so the state stayed
+    // inside the one surface that owns it (ShellSurface's `mode`) and this key
+    // had no reader left. A property nothing reads is the debt this project has
+    // found five times.
 
     // ------------------------------------------------------------- launcher
     //

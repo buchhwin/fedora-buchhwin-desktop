@@ -576,6 +576,26 @@ Singleton {
                 // switched off was resized.
                 property int collapsedHeight: 34
                 property int cornerRadius: 9      // the two rounded corners below
+                // What the notch grows to while the pointer is on it: media on
+                // the left, clock and date in the middle, a status pill on the
+                // right. Both numbers are measured off the reference screenshot
+                // (shots/2026-08-06/vorlage-notch-ausgefahren.png): the pill
+                // there is 359 x 68 in a 1318-wide capture, which is 523 x 99 at
+                // 1920. Rounded onto the 4 px grid.
+                //
+                // ⚠️ The width is a FLOOR, not the width. Nothing is shown that
+                // does not exist — no music means no media block — so the shape
+                // follows what is actually in it and this stops it looking empty
+                // when there is little to say.
+                property int hoverHeight: 96
+                property int hoverMinWidth: 520
+                // ⚠️ Its own radius, because a corner is a PROPORTION of the
+                // shape and this shape is three times as tall. 9 on a 34 px pill
+                // is 26 % of its height, which is the ratio the reference was
+                // measured at; 9 on a 96 px pill is 9 % and looks like a box.
+                // 24 keeps the same proportion. It is a key rather than a
+                // multiplication so the settings window can show both numbers.
+                property int hoverCornerRadius: 24
                 property int expandedHeight: 135
                 property int minExpandedWidth: 619
                 property list<string> monitors: []

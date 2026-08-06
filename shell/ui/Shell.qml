@@ -155,16 +155,16 @@ Scope {
                 component: OverlaySurface { modelData: perScreen.modelData }
             }
 
-            // The pill beside the notch, while the pointer is on the notch AND
-            // there is something to put in it. Both conditions are here rather
-            // than inside the surface, so "nothing running" means no window at
-            // all instead of an empty one waiting to be filled.
-            LazyLoader {
-                activeAsync: perScreen.notchHere
-                             && Ipc.notchHover === perScreen.modelData.name
-                             && (Services.Countdown.active || Services.Countdown.rang)
-                component: AsideSurface { modelData: perScreen.modelData }
-            }
+            // ⚠️ THE PILL BESIDE THE NOTCH IS GONE, and so is its surface. It
+            // existed because the collapsed notch had room for one meaning and
+            // that meaning was the time, so a running timer needed somewhere
+            // else to live. It has somewhere else now: the notch grows when the
+            // pointer is on it and shows the timer inside itself, along with
+            // what is playing and the status pill — see notch/NotchWide.qml.
+            //
+            // That removes a window, a layer namespace and the awkwardness the
+            // old file admitted to in its own header: moving the pointer onto
+            // the pill ended the hover on the notch and took the pill away.
 
             // Only while a page is open. A permanent fullscreen surface that
             // swallows clicks is the kind of bug nobody suspects.

@@ -171,7 +171,7 @@ else
         got="$(radius_of "$ns")"
         [[ "$got" == "$drawn" ]] || bad+="$ns=$got (drawn $drawn) "
     done
-    for ns in buchhwin-notch buchhwin-aside; do
+    for ns in buchhwin-notch; do
         got="$(radius_of "$ns")"
         [[ "$got" == "11" ]] || bad+="$ns=$got (notch corner 11) "
     done

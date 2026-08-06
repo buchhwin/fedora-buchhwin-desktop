@@ -112,11 +112,22 @@ PanelWindow {
     // The notch does not become the pages any more; it gets out of their way.
     //
     //   full    the pill with the clock — the resting state
+    //   wide    the pointer is on it: media, clock and date, timer, status pill
     //   hidden  something is open AT the notch, and that surface has the stage
     //   strip   a window is fullscreen: a discreet dark bar, nothing more
     //
     // Hovering the strip brings the full notch back, and leaving returns it —
     // so the clock is never more than a pointer away, even in fullscreen.
+    //
+    // ⚠️ `wide` IS THE SAME SURFACE GROWING, not a second one, and that is
+    // allowed here for a reason that does not hold anywhere else in this shell:
+    // the notch has `background-effect` OFF and fills opaquely, so it has no
+    // blur and no halo to mis-size. Every translucent surface still has to be
+    // exactly as big as what it draws — see OverlaySurface.qml.
+    //
+    // ⚠️ AND NOT IN THE STRIP. Hovering there already means "bring the notch
+    // back"; a gesture may not mean two things, and the one you wanted would be
+    // the other one.
     //
     // ⚠️ Only surfaces that open AT the notch hide it. A launcher in the middle
     // of the screen leaves it alone; that is a property of the surface, not a
@@ -129,7 +140,8 @@ PanelWindow {
     readonly property string mode:
         !root.notchEnabled ? "full"
       : Ipc.expanded ? "hidden"
-      : (root.fullscreenHere && !hover.hovered) ? "strip"
+      : root.fullscreenHere ? (hover.hovered ? "full" : "strip")
+      : hover.hovered ? "wide"
       : "full"
 
     // The strip is deliberately thin and deliberately still THERE: a fullscreen
@@ -138,9 +150,14 @@ PanelWindow {
     readonly property real stripHeight:
         Math.max(2, Math.round(Config.notch.collapsedHeight / 8))
 
+    // ⚠️ The wide width comes from the CONTENT, so a desktop with nothing
+    // playing and no timer gets a narrower shape rather than a wide one with
+    // holes in it. `notch.hoverMinWidth` is the floor inside NotchContent.
     readonly property real targetIslandWidth:
         root.mode === "hidden" ? 0
       : root.mode === "strip" ? Config.notch.collapsedWidth * 0.55
+      : root.mode === "wide" ? Math.max(Config.notch.collapsedWidth,
+                                        notch.implicitWidth)
       : Config.notch.collapsedWidth
 
     // The island has its OWN height. It used to read `bar.height`, so resizing a
@@ -151,6 +168,7 @@ PanelWindow {
     readonly property real targetIslandHeight:
         root.mode === "hidden" ? 0
       : root.mode === "strip" ? root.stripHeight
+      : root.mode === "wide" ? Math.max(Config.notch.hoverHeight, root.barH)
       : Math.max(Config.notch.collapsedHeight, root.barH)
 
     // One pair of animated numbers drives the shape, the hit area and the
@@ -171,23 +189,16 @@ PanelWindow {
         NumberAnimation { duration: Theme.durBase; easing.type: Theme.easing }
     }
 
-    // Brings the full notch back while the pointer is on the strip. On the
-    // window rather than on the island, so the thin strip is easy to find.
+    // Brings the full notch back while the pointer is on the strip, and opens
+    // the wide shape the rest of the time. On the window rather than on the
+    // island, so the thin strip is easy to find.
+    //
+    // ⚠️ THE HIT AREA GROWS WITH THE SHAPE, which is what keeps the wide state
+    // stable: the mask follows `hitArea`, `hitArea` fills the window, and the
+    // window follows `islandW`/`islandH`. If it did not, the pointer would leave
+    // the collapsed rectangle the moment the shape opened past it and the notch
+    // would flicker between the two sizes.
     HoverHandler { id: hover }
-
-    // ⚠️ ONLY IN THE RESTING STATE. In the strip, hover already means "bring the
-    // notch back"; giving it a second meaning there would make one gesture do
-    // two things, and the one you wanted would be the other one. With a page
-    // open the notch is not on screen at all.
-    readonly property bool asideHere:
-        root.notchEnabled && root.mode === "full" && !root.fullscreenHere
-        && hover.hovered
-    onAsideHereChanged: {
-        if (root.asideHere)
-            Ipc.notchHover = root.screen ? root.screen.name : ""
-        else if (Ipc.notchHover === (root.screen ? root.screen.name : ""))
-            Ipc.notchHover = ""
-    }
 
     Silhouette {
         anchors.fill: parent
@@ -200,7 +211,17 @@ PanelWindow {
         // The shoulders curve INSIDE `islandWidth`, so they never need room
         // outside the surface — see the note on implicitWidth above.
         flare: root.notchEnabled ? Config.notch.flare : 0
-        cornerRadius: Config.notch.cornerRadius
+        // ⚠️ Follows the MODE, not one fixed number. A corner is a proportion of
+        // the shape, and the hovered shape is three times as tall — the
+        // collapsed 9 px on a 96 px pill reads as a box with the edges knocked
+        // off. Silhouette clamps whatever it is given against its own geometry,
+        // so this only ever asks.
+        cornerRadius: root.mode === "wide" ? Config.notch.hoverCornerRadius
+                                           : Config.notch.cornerRadius
+        Behavior on cornerRadius {
+            enabled: Theme.animate
+            NumberAnimation { duration: Theme.durBase; easing.type: Theme.easing }
+        }
         // The reference calls for a near-black island that stands clearly
         // apart from what is behind it — panelBg sat so close to the desktop
         // backdrop that the shape was invisible on screen.
@@ -234,41 +255,35 @@ PanelWindow {
             visible: root.notchEnabled
             clip: true
 
-            // Clicking the island opens the quick panel — the one surface
-            // that answers "what is going on" without making you choose a
-            // question first. It used to open media, or volume when nothing
-            // was playing, which meant the same click did different things
-            // depending on whether Spotify happened to be running.
+            // ⚠️ THERE IS NO TAP HANDLER ON THE ISLAND ANY MORE, and that is
+            // the instruction rather than an omission: "der Klick auf die Notch  english-ok: quoted brief
+            // nichts mehr" — only the status pill in the hovered shape opens     english-ok: quoted brief
+            // the quick panel. It lives in notch/NotchWide.qml.
             //
-            // ⚠️ NOT WHILE A PAGE IS OPEN. Measured on the machine with a real
-            // pointer: with the quick panel up, a click at y=20 closed it and a
-            // click at y=45 did not. The notch is drawn at opacity 0 there and
-            // was still answering — and the panel opens DIRECTLY under it, so
-            // anything aimed a little high at the tab row hit an invisible
-            // thing that shut the window. That is the whole of "I click on
-            // Media or Settings and it closes".
-            //
-            // Now the region is still there (so the click does not fall through
-            // to the catcher either) and simply nothing happens.
-            TapHandler {
-                enabled: root.mode !== "hidden"
-                onTapped: Ipc.toggle("quick")
-            }
+            // The input REGION still covers the island (the mask follows
+            // `hitArea`), and that is deliberate too. Emptying it was tried and
+            // made things worse: the click fell straight through to the
+            // fullscreen ClickCatcher underneath, which closed whatever was
+            // open. What is wanted here is a click that does NOTHING, so the
+            // region stays and there is simply nothing listening.
 
-            // What the notch itself shows: the clock, and only the clock. The
-            // pages moved to surface/OverlaySurface.qml — see the note there
-            // for why the island stopped morphing into them.
+            // What the notch shows: the clock at rest, and the wide row while
+            // the pointer is on it. The pages moved to
+            // surface/OverlaySurface.qml — see the note there for why the island
+            // stopped morphing into them.
             NotchContent {
                 id: notch
                 anchors.fill: parent
-                // Nothing but the clock lives here now, so `page` stays empty.
+                // Nothing but the clock and the hovered row live here, so `page`
+                // stays empty.
                 page: ""
                 // The clock moves into the island exactly when the bar is not
                 // there to hold it — and never while the notch is a strip,
                 // where there is no room for it.
                 showClock: !root.barEnabled && root.mode === "full"
+                wide: root.mode === "wide"
                 hostWindow: root
-                opacity: root.mode === "full" ? 1 : 0
+                opacity: (root.mode === "full" || root.mode === "wide") ? 1 : 0
                 Behavior on opacity {
                     enabled: Theme.animate
                     NumberAnimation { duration: Theme.durFast; easing.type: Theme.easing }

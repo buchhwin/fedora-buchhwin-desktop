@@ -450,7 +450,6 @@ Scope {
         // for the same reason: it is a small opaque shape, so there is nothing
         // to see through it and a blur pass behind it would be paid for and
         // then covered up.
-        s += "\n" + surface("buchhwin-aside", notchRadius, false)
         return s
     }
 

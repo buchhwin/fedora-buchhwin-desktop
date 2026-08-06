@@ -24,6 +24,12 @@ Item {
     // in die Notch." So it is one clock that moves, never two on one screen.
     property bool showClock: true
 
+    // The pointer is on the notch and nothing is open: it grows and shows what
+    // is playing, the time with the date, a running timer and the status pill.
+    // See NotchWide.qml. Only ever true in the resting state — ShellSurface owns
+    // that decision, because it is the one that knows about fullscreen.
+    property bool wide: false
+
     readonly property bool expanded: page !== ""
 
     // The island asks the content how big it wants to be, never the reverse —
@@ -51,12 +57,24 @@ Item {
     readonly property real pagePadding:
         pageIsCompact ? Theme.space3 : Theme.space5
 
+    // The hovered shape asks its own content how wide it wants to be, exactly
+    // as a page does — so a desktop with no music and no timer gets a narrower
+    // notch instead of a wide one with gaps in it. `hoverMinWidth` is the floor
+    // from the reference screenshot, not the width.
+    readonly property real wideWidth:
+        wideLoader.item
+            ? Math.max(Config.notch.hoverMinWidth,
+                       wideLoader.item.implicitWidth + Theme.space5 * 2)
+            : Config.notch.hoverMinWidth
+
     implicitWidth: expanded && loader.item
         ? Math.max(floorWidth, loader.item.implicitWidth + pagePadding * 2)
+        : wide ? wideWidth
         : Config.notch.collapsedWidth
 
     implicitHeight: expanded && loader.item
         ? Math.max(floorHeight, loader.item.implicitHeight + pagePadding * 2)
+        : wide ? Config.notch.hoverHeight
         : Config.notch.collapsedHeight
 
     // Collapsed: the clock — but only when the bar is not already showing one.
@@ -69,12 +87,15 @@ Item {
     // A surface with one line has room for one meaning, and this one's meaning
     // is the time of day.
     //
-    // What a running timer gets instead is its own pill, which slides out
-    // beside the notch while the pointer is over it — see ui/surface/AsideSurface.
+    // What a running timer gets instead is a place in the WIDE shape below,
+    // which the notch grows into while the pointer is on it — see NotchWide.qml.
+    // It used to be a separate pill in its own window beside the notch; that
+    // surface is gone, and with it the awkwardness that moving the pointer onto
+    // the pill ended the hover and took the pill away.
     BarText {
         anchors.centerIn: parent
-        visible: !root.expanded && root.showClock
-        opacity: root.expanded ? 0 : 1
+        visible: !root.expanded && !root.wide && root.showClock
+        opacity: (root.expanded || root.wide) ? 0 : 1
         color: Theme.fg
         text: {
             function p(n) { return n < 10 ? "0" + n : "" + n }
@@ -87,6 +108,40 @@ Item {
     }
 
     SystemClock { id: clock; precision: SystemClock.Minutes }
+
+    // The hovered contents. A Loader for the same reason the pages are: a
+    // desktop nobody is pointing at should not be holding an album cover, a
+    // network icon and a battery reading in memory.
+    //
+    // ⚠️ It fades and settles like a page rather than appearing, so the notch
+    // reads as one shape opening rather than as a box that filled up.
+    Loader {
+        id: wideLoader
+        anchors.centerIn: parent
+        width: parent.width - Theme.space5 * 2
+        active: root.wide && !root.expanded
+        visible: active
+        asynchronous: true
+        sourceComponent: wideContent
+
+        opacity: root.wide && !root.expanded ? 1 : 0
+        scale: root.wide && !root.expanded ? 1 : 0.94
+        transformOrigin: Item.Center
+
+        Behavior on opacity {
+            enabled: Theme.animate
+            NumberAnimation { duration: Theme.durFast; easing.type: Theme.easing }
+        }
+        Behavior on scale {
+            enabled: Theme.animate
+            NumberAnimation { duration: Theme.durBase; easing.type: Theme.easing }
+        }
+    }
+
+    Component {
+        id: wideContent
+        NotchWide { hours: clock.hours; minutes: clock.minutes }
+    }
 
     Loader {
         id: loader
