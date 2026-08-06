@@ -225,6 +225,8 @@ Scope {
             root.service("Niri", Services.Niri)
             root.service("Power", Services.Power)
             root.service("Audio", Services.Audio)
+            root.service("Net", Services.Net)
+            root.service("Bt", Services.Bt)
             root.service("Media", Services.Media)
             root.service("Notifications", Services.Notifications)
             root.service("Brightness", Services.Brightness)

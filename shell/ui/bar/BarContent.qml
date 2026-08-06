@@ -191,6 +191,50 @@ Item {
             onClicked: Services.Audio.toggleMute()
         }
 
+        // The network. Bars rather than a graded glyph, because the font has
+        // none — see common/SignalBars. Clicking opens the settings view of the
+        // quick panel, which is where the list of networks lives.
+        Pill {
+            visible: Services.Net.available
+            interactive: true
+
+            RowLayout {
+                spacing: Theme.space1
+
+                Icon {
+                    text: Services.Net.icon
+                    size: Theme.fontSizeLg
+                    // Offline is not an error — it is a state, and the shell
+                    // says so by going quiet rather than by going red.
+                    color: Services.Net.online ? Theme.fg : Theme.fgDim
+                }
+
+                // Only where there is a strength to show. On a cable there is
+                // no such thing, and four grey bars beside an ethernet symbol
+                // would be inventing a measurement.
+                SignalBars {
+                    visible: Services.Net.kind === "wifi"
+                    level: Services.Net.level
+                    size: Theme.fontSizeLg
+                }
+            }
+
+            onClicked: Ipc.showQuick(Ipc.quickSettings)
+        }
+
+        Pill {
+            visible: Services.Bt.available && Services.Bt.enabled
+            interactive: true
+
+            Icon {
+                text: Services.Bt.icon
+                size: Theme.fontSizeLg
+                color: Services.Bt.connectedDevices.length > 0 ? Theme.fg : Theme.fgDim
+            }
+
+            onClicked: Ipc.showQuick(Ipc.quickSettings)
+        }
+
         Pill {
             visible: Services.Power.available
 
