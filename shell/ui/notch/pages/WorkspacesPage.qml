@@ -183,12 +183,12 @@ ColumnLayout {
                                                             : Theme.surfaceHigh
                                 opacity: drag.active ? 0.5 : 1
 
-                                // ⚠️ `source` und `appName`, nicht `appId` —
-                                // AppIcon nimmt den freedesktop-Namen und
-                                // faellt auf den Anfangsbuchstaben zurueck.
-                                // niris `app_id` IST dieser Name in aller Regel
-                                // (kitty, org.gnome.Nautilus, brave-browser),
-                                // und wo nicht, greift der Rueckfall.
+                                // ⚠️ `source` AND `appName`, not `appId` —
+                                // AppIcon takes the freedesktop name and falls
+                                // back to the first letter. niri's `app_id` IS
+                                // that name in nearly every case (kitty,
+                                // org.gnome.Nautilus, brave-browser), and where
+                                // it is not, the fallback catches it.
                                 AppIcon {
                                     anchors.centerIn: parent
                                     source: tile.modelData.app_id || ""

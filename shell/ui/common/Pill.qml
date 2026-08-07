@@ -22,6 +22,13 @@ Rectangle {
     property bool active: false
     default property alias content: inner.data
 
+    // Whether the pointer is on it. Exposed because a caller that wants to react
+    // to hover — a tooltip, for one — would otherwise add a SECOND HoverHandler
+    // at the call site, and a handler written inside a Pill lands in `inner`,
+    // which is sized to its contents. That is the "every pill was half dead"
+    // bug, and this is how it is not reopened.
+    readonly property alias hovered: hover.hovered
+
     signal clicked
     // Only the tray has a use for it so far, but a second handler at the call
     // site would land back in `inner` and reopen the hole this closes.

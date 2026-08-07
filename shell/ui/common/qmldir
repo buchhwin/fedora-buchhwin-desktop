@@ -8,3 +8,5 @@ LocationPicker 1.0 LocationPicker.qml
 GlassPane 1.0 GlassPane.qml
 AppIcon 1.0 AppIcon.qml
 SignalBars 1.0 SignalBars.qml
+IconRail 1.0 IconRail.qml
+Tooltip 1.0 Tooltip.qml

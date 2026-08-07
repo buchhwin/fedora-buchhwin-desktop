@@ -37,7 +37,7 @@ import "../../../services" as Services
 import "../../common"
 import "../../quick"
 
-ColumnLayout {
+RowLayout {
     id: root
     spacing: Theme.space4
 
@@ -74,40 +74,41 @@ ColumnLayout {
     // changes on rearrange.
     readonly property int contentWidth: Theme.space6 * 24
 
-    // ------------------------------------------------------------------- tabs
+    // ------------------------------------------------------------------- rail
+    // ⚠️ SYMBOLS DOWN THE LEFT, NOT PILLS ACROSS THE TOP — his choice. The
+    // component is `common/IconRail.qml` rather than something built here,
+    // because the settings window (M8) has the same strip and building it twice
+    // is how the predecessor ended up with two sidebars that drifted apart.
+    //
+    // ⚠️ The glyphs were chosen by `tests/icons.sh`, not by taste: `grid_view`
+    // and `space_dashboard` are both MISSING from "Material Icons Round", which
+    // is how "Overview" ended up as `dashboard`.
+    IconRail {
+        Layout.alignment: Qt.AlignTop
+        currentIndex: root.tab
+        entries: [
+            { icon: "dashboard",     tooltip: "Overview" },
+            { icon: "music_note",    tooltip: "Media" },
+            { icon: "notifications", tooltip: "Notifications" },
+            { icon: "timer",         tooltip: "Timer" }
+        ]
+        onActivated: function (i) { Ipc.quickTab = i }
+    }
+
+    // Everything that is not the rail. It is its own column so the rail stays
+    // the height of four symbols instead of stretching to the calendar.
+    ColumnLayout {
+        id: body
+        Layout.alignment: Qt.AlignTop
+        Layout.preferredWidth: root.contentWidth
+        spacing: Theme.space4
+
+    // The way out of the panel entirely — the full settings WINDOW, which is M8
+    // and does not exist yet. On its own row now that the tabs have left the
+    // top, right-aligned so it does not read as a fifth entry.
     RowLayout {
         Layout.fillWidth: true
-        // The row is on every tab, so pinning the width here pins it for all of
-        // them. Everything else may be narrower; nothing may be wider, and
-        // tests/quick-panel.sh measures that rather than trusting it.
-        Layout.preferredWidth: root.contentWidth
-        spacing: Theme.space2
-
-        Repeater {
-            model: ["Overview", "Media", "Notifications", "Timer"]
-
-            Pill {
-                id: tabPill
-                required property int index
-                required property string modelData
-                interactive: true
-                // Accent marks the tab you are on, and nothing else on this row.
-                active: root.tab === tabPill.index
-                BarText {
-                    text: tabPill.modelData
-                    font.pixelSize: Theme.fontSizeSm
-                    color: tabPill.active ? Theme.accentFg : Theme.fgMuted
-                }
-                onClicked: Ipc.quickTab = tabPill.index
-            }
-        }
-
         Item { Layout.fillWidth: true }
-
-        // Still on the tab row rather than inside a tab, because it leaves the
-        // panel entirely — it is the way to the full settings WINDOW, which is
-        // M8 and does not exist yet. The everyday switches are the fourth tab
-        // beside it now, so this is no longer the only thing it could have been.
         Pill {
             interactive: true
             Icon { text: "open_in_new"; size: Theme.fontSizeLg }
@@ -275,6 +276,8 @@ ColumnLayout {
     // The full settings window is still M8. The difference now is that the
     // everyday switches are one tab away rather than nowhere, so this says what
     // is missing instead of standing in for it.
+    }   // body
+
     property string note: ""
     function openSettings() {
         root.note = "The settings window is still to come — the switches are under Settings"
