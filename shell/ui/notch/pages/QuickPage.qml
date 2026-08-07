@@ -83,22 +83,44 @@ RowLayout {
     // ⚠️ The glyphs were chosen by `tests/icons.sh`, not by taste: `grid_view`
     // and `space_dashboard` are both MISSING from "Material Icons Round", which
     // is how "Overview" ended up as `dashboard`.
+    // ⚠️ SIX ENTRIES, AND TWO OF THEM ARE DOORS RATHER THAN TABS. His request
+    // of 07.08.2026: a button for the theme menu and one for the wallpapers,
+    // beside the four views. Both already exist as their own surfaces, on
+    // Mod+Shift+A and Mod+Shift+W — rebuilding either as a fifth and sixth tab
+    // would be a second theme grid to drift from the first, which is the
+    // mistake this file's header spends a paragraph on.
+    //
+    // So an entry may carry a `page`, and the rail opens that instead of
+    // switching tab. Two behaviours in one strip, told apart by the DATA rather
+    // than by the index — an index test would need correcting every time the
+    // order changed.
+    readonly property var railEntries: [
+        { icon: "dashboard",     tooltip: "Overview" },
+        { icon: "music_note",    tooltip: "Media" },
+        { icon: "notifications", tooltip: "Notifications" },
+        { icon: "timer",         tooltip: "Timer" },
+        { icon: "palette",       tooltip: "Theme",     page: "theme" },
+        { icon: "wallpaper",     tooltip: "Wallpaper", page: "wallpaper" }
+    ]
+
     IconRail {
         // ⚠️ `fillHeight` AND `centred`, not `AlignTop`. The rail used to sit at
         // the top of a panel as tall as a month grid, so three quarters of the
-        // strip was empty. Spreading the four symbols over that whole height was
+        // strip was empty. Spreading the symbols over that whole height was
         // tried first and he turned it down — they belong together as a group,
         // in the middle.
         Layout.fillHeight: true
         centred: true
         currentIndex: root.tab
-        entries: [
-            { icon: "dashboard",     tooltip: "Overview" },
-            { icon: "music_note",    tooltip: "Media" },
-            { icon: "notifications", tooltip: "Notifications" },
-            { icon: "timer",         tooltip: "Timer" }
-        ]
-        onActivated: function (i) { Ipc.quickTab = i }
+        entries: root.railEntries
+
+        onActivated: function (i) {
+            var e = root.railEntries[i]
+            if (e && e.page)
+                Ipc.toggle(String(e.page))
+            else
+                Ipc.quickTab = i
+        }
     }
 
     // Everything that is not the rail. It is its own column so the rail stays
