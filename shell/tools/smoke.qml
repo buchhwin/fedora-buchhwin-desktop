@@ -245,19 +245,18 @@ Scope {
             // own ipc target — and a check that only knew about `notch` would
             // have let a typo in the launcher's key through silently, which is
             // the one thing this check exists to prevent.
-            var verbs = ({
-                // ⚠️ This list is typed by hand and ipc/Ipc.qml is the truth, so
-                // it goes stale in one direction only: a verb that exists and is
-                // missing here. `workspaces` was exactly that — the page and its
-                // handler shipped a round ago with nothing calling them, so the
-                // gap could not show. It showed the moment a key did.
-                "notch": ["media", "volume", "quick", "notifications", "calendar",
-                          "tray", "workspaces", "wallpaper", "event", "brightness",
-                          "session", "clipboard", "settings", "mic", "calculator",
-                          "timer", "collapse", "state"],
-                "launcher": ["toggle", "show", "hide", "state"],
-                "bar": ["toggle", "state"]
-            })
+            // ⚠️ ASKED, NOT LISTED. This was a hand-typed table of every
+            // verb, and the comment above it said what was wrong with it: it
+            // could only ever go stale in the direction of a verb that EXISTS
+            // and is missing here. That came true the first time a verb was
+            // added afterwards — the check went red at a keybinding that worked,
+            // which is the worst way for a tripwire to fail, because the next
+            // person edits the tripwire.
+            //
+            // Now each binding's verb is looked up on the handler object itself:
+            // `typeof handler[verb] === "function"` is the same question the IPC
+            // layer answers at run time, asked of the same object. Nothing to
+            // keep in step.
             var binds = Config.binds
             var orphans = []
             for (var b = 0; b < binds.length; b++) {
@@ -265,7 +264,8 @@ Scope {
                 var m = arg.match(/ipc call ([a-z]+) ([a-z]+)/)
                 if (!m)
                     continue
-                if (!verbs[m[1]] || verbs[m[1]].indexOf(m[2]) < 0)
+                var handler = Ipc.targets[m[1]]
+                if (!handler || typeof handler[m[2]] !== "function")
                     orphans.push(binds[b].key + " → " + m[1] + " " + m[2])
             }
             // ⚠️ THE DUPLICATE CHECK BELONGS HERE, NOT IN tests/niri-config.sh.

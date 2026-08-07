@@ -139,7 +139,24 @@ Singleton {
     //
     //     qs -c buchhwin ipc call notch media
     //     qs -c buchhwin ipc call notch collapse
+    // ⚠️ THE HANDLERS THEMSELVES, BY TARGET NAME — so a checker can ASK one
+    // whether it has a verb instead of being handed a list of verbs to trust.
+    //
+    // tools/smoke.qml used to carry that list, typed out by hand, and its own
+    // comment admitted the flaw: "it goes stale in one direction only: a verb
+    // that exists and is missing here." That is exactly what happened the first
+    // time a verb was added after it was written — the check went red at a key
+    // that worked perfectly, which is worse than not checking, because a
+    // tripwire nobody believes gets edited until it is quiet.
+    //
+    // Three names instead of eighteen, and the three are the targets, which are
+    // structural. A wrong one here fails loudly on the very first binding.
+    readonly property var targets: ({
+        "notch": notchIpc, "bar": barIpc, "launcher": launcherIpc
+    })
+
     IpcHandler {
+        id: notchIpc
         target: "notch"
 
         function media(): void { root.toggle("media") }
@@ -154,6 +171,9 @@ Singleton {
         // you look around in, so it does not close itself.
         function workspaces(): void { root.toggle("workspaces") }
         function wallpaper(): void { root.toggle("wallpaper") }
+        // The palette grid. A place you look around in, so it stays open
+        // until you choose or leave — same as the wallpaper grid beside it.
+        function theme(): void { root.toggle("theme") }
         function event(): void { root.toggle("event") }
         function brightness(): void { root.toggle("brightness") }
         // ⚠️ `show`, not `toggle`. It is fired by the mute key right after the
@@ -191,6 +211,7 @@ Singleton {
     // pair exists; a name like `barToggle` would not match the expression at
     // all, so the binding would go unchecked rather than fail.
     IpcHandler {
+        id: barIpc
         target: "bar"
 
         // The bar is built and off by default — the notch is the surface. This
@@ -207,6 +228,7 @@ Singleton {
     // `qs -c buchhwin ipc call launcher toggle` says what it does, and the
     // notch's verb list stays a list of the notch's pages.
     IpcHandler {
+        id: launcherIpc
         target: "launcher"
 
         function toggle(): void { root.toggleLauncher() }

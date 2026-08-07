@@ -292,6 +292,11 @@ Singleton {
                     { key: "Mod+Shift+W", action: "spawn-sh",
                       arg: "qs -c buchhwin ipc call notch wallpaper",
                       desc: "Choose a wallpaper" },
+                    // Beside the wallpaper grid, because they are the same
+                    // gesture: the two things that change how everything looks.
+                    { key: "Mod+Shift+A", action: "spawn-sh",
+                      arg: "qs -c buchhwin ipc call notch theme",
+                      desc: "Choose a theme" },
                     // The same view the gear on the bar opens. It gets a key
                     // of its own because the bar is off by default, so without
                     // one the network and bluetooth controls would sit behind a
@@ -556,7 +561,7 @@ Singleton {
             // only the migration chain quietly papering over it. Both now write
             // no version at all: a file without one reads as 0 and is migrated
             // forward, which is exactly the path a genuinely old file takes.
-            property int version: 8
+            property int version: 9
 
             property JsonObject theme: JsonObject {
                 property string palette: "everforest-dark"
@@ -620,7 +625,32 @@ Singleton {
             // particular lengths rather than round numbers, and anybody whose
             // are different says so once, here.
             property JsonObject timer: JsonObject {
-                property list<int> presets: [5, 15, 25, 60]
+                // ⚠️ STRINGS, AND THAT IS NOT A STYLE CHOICE — it is the only
+                // list type JsonAdapter can actually read. Measured on the
+                // machine, one type at a time, with a config supplying the key:
+                //
+                //   list<string> nested (windows.blurred)   0 warnings
+                //   list<string> top level (autostart)      0 warnings
+                //   list<int>    nested (this)              1 warning
+                //   list<int>    top level                  1 warning
+                //   list<real>   nested                     1 warning
+                //
+                // So it is the TYPE, not the depth: "Failed to deserialize
+                // property presets: expected QList<int> but got QVariantList".
+                // A JSON array of numbers arrives as a QVariantList and the
+                // adapter will not convert it — for a VALID list, not only for
+                // a null one. The consequence was silent and total: whatever
+                // presets anybody wrote in shell.json were ignored and the
+                // defaults won, with one line in the journal to say so.
+                //
+                // ⚠️ tests/config-shape.sh SAID THE OPPOSITE — "list<string> and
+                // list<int> are safe at any depth". That was measured against
+                // CRASHING, which is true: list<int> does not segfault. It just
+                // does not work. The check now covers this too.
+                //
+                // The reader turns them back into numbers; see
+                // ui/notch/pages/TimerPage.qml.
+                property list<string> presets: ["5", "15", "25", "60"]
                 // ⚠️ A timer that ends silently is a timer you miss, which is
                 // the only thing it had to do. Off is still a setting, because
                 // a shared office is a real place.

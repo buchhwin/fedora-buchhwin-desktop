@@ -31,7 +31,19 @@ Singleton {
     // Must match Config's `version` default. A file with a lower number is
     // brought forward; a HIGHER number means the config was written by a newer
     // build than this one, which we must not "migrate" — see needed().
-    readonly property int current: 8
+    // ⚠️ THE SEPARATOR IS WRITTEN AS AN ESCAPE, and it used to be a RAW NUL
+    // BYTE sitting in the source. It worked — QML is happy with one inside a
+    // string — but it made this file `data` rather than `text` to every tool
+    // that asks: `grep` prints "binary file matches" and no line, `git diff`
+    // refuses to show it, and searching the repository for anything in here
+    // came back EMPTY rather than wrong. That is the worst kind of quiet: a
+    // search that finds nothing looks exactly like a fact that is not there.
+    //
+    // NUL because it cannot occur in a key name, an action or an argument, so
+    // joining three fields with it can never collide with their contents.
+    readonly property string sep: "\u0000"
+
+   readonly property int current: 9
 
     // step[n] upgrades a config at version n to version n+1.
     // Each is a pure function: take the parsed object, return it changed.
@@ -225,7 +237,7 @@ Singleton {
 
             function sig(e) {
                 return (e && e.action !== undefined ? e.action : "")
-                     + " " + (e && e.arg !== undefined ? e.arg : "")
+                     + sep + (e && e.arg !== undefined ? e.arg : "")
             }
             var ours = {}
             for (var i = 0; i < d.length; i++)
@@ -241,7 +253,41 @@ Singleton {
             }
             delete cfg.binds
             return cfg
-        }
+        },
+
+        // 8 → 9: `timer.presets` holds STRINGS.
+        //
+        // ⚠️ Not a rename and not a removal — a TYPE change, which this chain
+        // has not had before, and it is here because the old type never worked.
+        // `property list<int>` is something JsonAdapter cannot deserialise at
+        // all: a JSON array of numbers arrives as a QVariantList and it refuses
+        // the conversion, for a valid list as much as for a null one. So any
+        // presets anybody had written were being ignored in favour of the
+        // defaults, with a single journal line as the only sign.
+        //
+        // Measured before changing anything — list<string> is clean nested and
+        // at the top level, list<int> and list<real> both warn at either depth.
+        // The full table is in config/Config.qml beside the property.
+        //
+        // Numbers become their own text so the value a user chose survives the
+        // change instead of being reset to the defaults, which is what "we only
+        // ever migrate forwards" is for. Anything that is not a positive number
+        // is dropped rather than carried: the reader treats 0 as "not a preset"
+        // and would draw a dead pill.
+        function (cfg) {
+            var t = cfg.timer
+            if (!t || t.presets === undefined || t.presets === null)
+                return cfg
+            var out = []
+            for (var i = 0; i < t.presets.length; i++) {
+                var n = parseInt(t.presets[i])
+                if (!isNaN(n) && n > 0)
+                    out.push(String(n))
+            }
+            t.presets = out
+            return cfg
+        },
+
     ]
 
     function versionOf(cfg) {

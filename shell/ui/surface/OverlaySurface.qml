@@ -58,6 +58,7 @@ PanelWindow {
     // or opening the volume readout would take focus away from your editor.
     readonly property bool wantsKeys:
         Ipc.page === "event" || Ipc.page === "wallpaper" || Ipc.page === "session"
+        || Ipc.page === "theme"
         || Ipc.page === "calendar" || Ipc.page === "quick"
         || Ipc.page === "clipboard" || Ipc.page === "calculator"
 

@@ -102,13 +102,20 @@ ColumnLayout {
 
             Pill {
                 id: preset
-                required property int modelData
+                // ⚠️ `string`, and converted here. The config stores these as
+                // strings because that is the only list type JsonAdapter can
+                // read back — see config/Config.qml, where the measurement is.
+                // Declaring it `int` here would silently coerce and then a
+                // stray "20 min" in the file would become 0.
+                required property string modelData
+                readonly property int minutes: parseInt(preset.modelData) || 0
                 interactive: true
+                visible: preset.minutes > 0
                 BarText {
-                    text: preset.modelData + " min"
+                    text: preset.minutes + " min"
                     font.pixelSize: Theme.fontSizeSm
                 }
-                onClicked: Services.Countdown.start(preset.modelData * 60)
+                onClicked: Services.Countdown.start(preset.minutes * 60)
             }
         }
 

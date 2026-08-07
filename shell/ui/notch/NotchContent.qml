@@ -177,6 +177,7 @@ Item {
                        : root.page === "tray" ? trayPage
                        : root.page === "workspaces" ? workspacesPage
                        : root.page === "wallpaper" ? wallpaperPage
+                       : root.page === "theme" ? themePage
                        : root.page === "event" ? eventPage
                        : root.page === "brightness" ? brightnessPage
                        : root.page === "mic" ? micPage
@@ -227,6 +228,7 @@ Item {
     Component { id: trayPage; TrayPage { hostWindow: root.hostWindow } }
     Component { id: workspacesPage; WorkspacesPage {} }
     Component { id: wallpaperPage; WallpaperPage {} }
+    Component { id: themePage; ThemePage {} }
     Component { id: eventPage; EventPage {} }
     Component { id: brightnessPage; BrightnessPage {} }
     Component { id: micPage; MicPage {} }

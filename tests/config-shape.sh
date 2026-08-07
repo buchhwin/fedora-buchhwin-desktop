@@ -27,8 +27,13 @@
 # It is writing a `var` property that lives inside a nested JsonObject. Moving
 # `binds` to the top level took the same configs from 6/12 to 0/12.
 #
-# `list<string>` and `list<int>` are safe at any depth — they have a real
-# element type and never go through QObjectWrapper::wrap.
+# `list<string>` is safe at any depth — it has a real element type and never
+# goes through QObjectWrapper::wrap.
+#
+# ⚠️ THIS USED TO SAY "list<string> and list<int>", AND THE list<int> HALF WAS
+# WRONG. It is true that a numeric list does not CRASH, which is what this
+# paragraph is about — but it does not work either, and the third check at the
+# bottom of this file is what came of finding that out.
 #
 # So: a `var` in the adapter belongs at the TOP LEVEL. This checks that, because
 # the alternative is rediscovering it with another week of "sometimes it does not
@@ -62,7 +67,8 @@ if [[ -n "$bad" ]]; then
 
   Two ways out, both fine:
     * move it to the top level of the adapter, next to `binds` and `outputs`
-    * give it a real element type: list<string>, list<int>, …
+    * give it a real element type — list<string>, and ONLY list<string>; see
+      the third check below for why a numeric list is not an option
 
   Moving a key needs a migration; see shell/config/Migrations.qml step 5 -> 6,
   which is the one this check was written for.
@@ -101,14 +107,10 @@ done < <(awk '
     /^[ \t]*\}/ { if (depth > 0) depth-- }
 ' "$file")
 
-if [[ -z "$missing" ]]; then
-    printf '\033[38;5;114mok\033[0m\n'
-    exit 0
-fi
-
-printf '\033[38;5;203mmissing\033[0m\n'
-sed 's/^/      Config./' <<< "${missing%$'\n'}"
-cat <<'WHY'
+if [[ -n "$missing" ]]; then
+    printf '\033[38;5;203mmissing\033[0m\n'
+    sed 's/^/      Config./' <<< "${missing%$'\n'}"
+    cat <<'WHY'
 
   These sections exist in the adapter but nothing exposes them. Add one line
   each to the block at the top of shell/config/Config.qml:
@@ -118,4 +120,50 @@ cat <<'WHY'
   Without it the section is not missing, it is `undefined` — and the error
   surfaces in whatever reads it, which is never where the mistake is.
 WHY
+    exit 1
+fi
+printf '\033[38;5;114mok\033[0m\n'
+
+# ─────────────────────────────────────────────────────────────────────────────
+# No list of numbers anywhere in the adapter.
+#
+# ⚠️ MEASURED, AND IT CONTRADICTS WHAT THE TOP OF THIS FILE USED TO SAY.
+# The note above claims "list<string> and list<int> are safe at any depth". That
+# is true of CRASHING — a numeric list does not segfault. It also does not work.
+# JsonAdapter cannot deserialise one at all:
+#
+#   list<string> nested (windows.blurred)   0 warnings
+#   list<string> top level (autostart)      0 warnings
+#   list<int>    nested (timer.presets)     1 warning
+#   list<int>    top level                  1 warning
+#   list<real>   nested                     1 warning
+#
+#   "Failed to deserialize property presets: expected QList<int> but got
+#    QVariantList"
+#
+# So it is the type, not the depth, and it fails for a VALID list as much as for
+# a null one. `timer.presets` was the only one, and every preset anybody wrote
+# in shell.json was being thrown away in favour of the defaults, with one line
+# in the journal as the only sign. Strings, converted at the reader.
+printf '  %-34s ' "no list<int>/list<real>"
+
+numeric="$(grep -nE 'property list<(int|real|double|float)>' "$file" || true)"
+
+if [[ -z "$numeric" ]]; then
+    printf '\033[38;5;114mok\033[0m\n'
+    exit 0
+fi
+
+printf '\033[38;5;203mfound\033[0m\n'
+sed 's/^/      /' <<< "$numeric"
+cat <<'WHY'
+
+  JsonAdapter cannot read these back. The key will appear to work — the default
+  is used and the shell runs — but nothing anybody writes in shell.json ever
+  reaches it.
+
+  Use `list<string>` and convert at the reader, as timer.presets does, and add a
+  migration so existing numbers become their own text instead of being lost.
+WHY
 exit 1
+
