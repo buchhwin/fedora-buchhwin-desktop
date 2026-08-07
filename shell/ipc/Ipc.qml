@@ -69,6 +69,14 @@ Singleton {
     readonly property int quickMedia: 1
     readonly property int quickNotifications: 2
     readonly property int quickTimer: 3
+    // ⚠️ APPENDED, NOT INSERTED. The calendar became a tab of its own when it
+    // stopped being squeezed in beside the tiles, and the obvious place for it
+    // is second — but these numbers are written into shell.json by nothing and
+    // read by the bar, the hot corner and two keybindings. Renumbering the
+    // existing four to make the new one sit in the middle would move
+    // `quickTimer` under everything that already names it. The RAIL decides the
+    // order it is shown in; this is only an identity.
+    readonly property int quickCalendar: 4
     // ⚠️ `quickSettings` IS GONE — the switches moved into the overview beside
     // the calendar on 06.08.2026, because the space there was empty and the
     // deep settings are going to M8 anyway. Five tabs became four.

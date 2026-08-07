@@ -89,13 +89,41 @@ Item {
                 required property int index
                 required property var modelData
 
+                // ⚠️ EVERY CELL THE SAME SIZE, and nothing used to say so. The
+                // brief is exact: "beim Quicksettings soll jeder Tab gleich        // english-ok: quoted brief
+                // groß sein, ist aktuell auch nicht". It was not, and the        // english-ok: quoted brief
+                // reason is worth writing down because it is invisible in the
+                // source: a Pill takes its width from `childrenRect`, its only
+                // child here is an Icon, and an Icon is a bare Text. So each
+                // cell was as wide as its LIGATURE — `notifications` wider than
+                // `timer`, with NativeRendering giving fractional metrics on top
+                // — and the column came out ragged with nothing in the code
+                // naming a single width.
+                //
+                // A square from a token, the same trick SettingsRail already
+                // uses for its symbols, and the Icon centres inside it.
                 Layout.alignment: Qt.AlignHCenter
+                Layout.preferredWidth: Theme.space6 + Theme.space2
+                Layout.preferredHeight: Theme.space6 + Theme.space2
                 interactive: true
                 active: root.currentIndex === railPill.index
 
                 Icon {
+                    // ⚠️ NO `anchors.centerIn` HERE. Pill's inner Item already
+                    // centres itself in the pill AND takes its size from
+                    // `childrenRect` — anchoring the icon to that parent is a
+                    // size that depends on a position that depends on the size.
+                    // The fixed square above is what does the centring now.
                     text: railPill.modelData.icon
                     size: Theme.fontSizeLg
+                    // ⚠️ A DOOR IS NOT A TAB. Two of the six entries in the quick
+                    // panel's rail carry a `page:` and open a different surface
+                    // entirely — they can never be the current index, so drawing
+                    // them exactly like the four that can was a rail that lied
+                    // about its own state. They are dimmed, which is the same
+                    // language the rest of the shell uses for "this leads
+                    // elsewhere".
+                    opacity: railPill.modelData.page === undefined ? 1 : Theme.dimmed
                     color: railPill.active ? Theme.accentFg : Theme.fgMuted
                 }
 

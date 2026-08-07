@@ -41,6 +41,15 @@ RowLayout {
     id: root
     spacing: Theme.space4
 
+    // ⚠️ ESC CLOSED EVERY OTHER PAGE AND NOT THIS ONE. OverlaySurface already
+    // grants keyboard focus for "quick" — `wantsKeys` names it explicitly — but
+    // nothing inside the panel ever TOOK that focus, so the key went nowhere.
+    // The calculator, the clipboard, the theme grid, the wallpaper grid and the
+    // session page all do exactly this; the panel you reach for most often was
+    // the one you could not dismiss.
+    focus: true
+    Keys.onEscapePressed: Ipc.collapse()
+
     // Which view is showing. The value lives in Ipc, not here: the gear on the
     // bar opens this panel already on the settings view, and this page is built
     // afresh every time the surface opens, so a property of its own would
@@ -72,7 +81,12 @@ RowLayout {
     // `implicitWidth`. A Layout computes its own implicit size and writes it,
     // so assigning it means whoever writes last wins — which is a size that
     // changes on rearrange.
-    readonly property int contentWidth: Theme.space6 * 24
+    // ⚠️ 608, NOT 768, AND THE OLD NUMBER WAS MEASURED WRONG. 768 came from
+    // looking at the panel with the calendar and the tiles side by side — both
+    // already cut down to fit — so it recorded what they had settled for rather
+    // than what they asked for. With the calendar on its own tab the widest
+    // thing here is QuickSettings, which wants exactly this.
+    readonly property int contentWidth: Theme.space6 * 19
 
     // ------------------------------------------------------------------- rail
     // ⚠️ SYMBOLS DOWN THE LEFT, NOT PILLS ACROSS THE TOP — his choice. The
@@ -94,11 +108,17 @@ RowLayout {
     // switching tab. Two behaviours in one strip, told apart by the DATA rather
     // than by the index — an index test would need correcting every time the
     // order changed.
+    // ⚠️ THE TAB IS ON THE ENTRY NOW, not the position in this list. It used to
+    // be `Ipc.quickTab = i` — the rail index WAS the tab number — so inserting
+    // the calendar anywhere but the end would silently have renamed Media,
+    // Notifications and Timer. That is the same reasoning the note above gives
+    // for `page`, applied to the other half of the entry.
     readonly property var railEntries: [
-        { icon: "dashboard",     tooltip: "Overview" },
-        { icon: "music_note",    tooltip: "Media" },
-        { icon: "notifications", tooltip: "Notifications" },
-        { icon: "timer",         tooltip: "Timer" },
+        { icon: "dashboard",     tooltip: "Overview",      tab: Ipc.quickOverview },
+        { icon: "schedule",      tooltip: "Calendar",      tab: Ipc.quickCalendar },
+        { icon: "music_note",    tooltip: "Media",         tab: Ipc.quickMedia },
+        { icon: "notifications", tooltip: "Notifications", tab: Ipc.quickNotifications },
+        { icon: "timer",         tooltip: "Timer",         tab: Ipc.quickTimer },
         { icon: "palette",       tooltip: "Theme",     page: "theme" },
         { icon: "wallpaper",     tooltip: "Wallpaper", page: "wallpaper" }
     ]
@@ -111,15 +131,25 @@ RowLayout {
         // in the middle.
         Layout.fillHeight: true
         centred: true
-        currentIndex: root.tab
+        // Which POSITION shows as active, found from the tab rather than
+        // assumed to be it. A door entry has no `tab`, so it can never match —
+        // which is correct, and is why it is drawn dimmed instead.
+        currentIndex: {
+            for (var i = 0; i < root.railEntries.length; i++)
+                if (root.railEntries[i].tab === root.tab)
+                    return i
+            return -1
+        }
         entries: root.railEntries
 
         onActivated: function (i) {
             var e = root.railEntries[i]
-            if (e && e.page)
+            if (!e)
+                return
+            if (e.page)
                 Ipc.toggle(String(e.page))
             else
-                Ipc.quickTab = i
+                Ipc.quickTab = e.tab
         }
     }
 
@@ -205,16 +235,22 @@ RowLayout {
     Component { id: notificationsTab; NotificationsPage {} }
     Component { id: timerTab; TimerPage {} }
 
-    // --------------------------------------------------------------- overview
-    RowLayout {
-        visible: root.tab === Ipc.quickOverview
-        spacing: Theme.space5
-
-        CalendarPage {
+    // --------------------------------------------------------------- calendar
+    // ⚠️ A TAB OF ITS OWN, because side by side it never fitted. Measured:
+    // CalendarPage asks for 576 px and QuickSettings for 608, which is 1208
+    // before the gap — and `body` was pinned to 768. Both children were
+    // permanently squeezed below their natural size, and that 768 had been
+    // measured against the already-elided result rather than against what they
+    // wanted. Two views that each get their width beat one view where both are
+    // wrong.
+    CalendarPage {
+        visible: root.tab === Ipc.quickCalendar
         Layout.alignment: Qt.AlignTop
     }
 
+    // --------------------------------------------------------------- overview
     ColumnLayout {
+        visible: root.tab === Ipc.quickOverview
         Layout.alignment: Qt.AlignTop
         Layout.minimumWidth: Theme.space6 * 9
         spacing: Theme.space4
@@ -288,7 +324,6 @@ RowLayout {
             Layout.fillWidth: true
         }
 
-        }
     }
 
     // The everyday switches stay here: the panel is what you reach for while
