@@ -516,7 +516,19 @@ Scope {
             // One string per argument. `spawn "kitty -e fish"` makes niri look
             // for a binary called "kitty -e fish"; the error message does not
             // mention the real cause, so this is worth getting right once.
-            var argv = Config.program(arg)
+            // ⚠️ `@terminal btop` — a reference MAY carry extra arguments, and
+            // everything after the first word is appended as its own argv
+            // entry. Without this there is no way to bind "the configured
+            // terminal, running X": `spawn` takes a program reference and
+            // `spawn-sh` takes a shell string that would have to name kitty
+            // outright, which breaks the moment `programs.terminal` changes.
+            //
+            // One string per argument all the way through, for the reason the
+            // note below gives.
+            var parts = arg.split(/\s+/).filter(function (x) { return x.length })
+            var argv = Config.program(parts[0])
+            for (var e = 1; e < parts.length; e++)
+                argv.push(parts[e])
             if (!argv.length)
                 return ""   // no program configured: drop the key rather than
                             // bind it to something that quietly does nothing

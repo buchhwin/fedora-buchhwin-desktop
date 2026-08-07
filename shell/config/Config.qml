@@ -327,6 +327,21 @@ Singleton {
                       arg: "qs -c buchhwin ipc call notch collapse",
                       desc: "Close the island" },
 
+                    // ⚠️ btop WAS THEMED AND UNREACHABLE. tools/render.qml has
+                    // been writing ~/.config/btop/themes/buchhwin.theme on every
+                    // palette change since M4, and nothing opened it — no key,
+                    // no entry, nothing. A tool we colour with no way to get to
+                    // it is the same debt as a key with no reader, the other way
+                    // round.
+                    //
+                    // Ctrl+Shift+Escape because that is the task-manager key
+                    // everywhere else and it costs no Mod combination; Mod+Escape
+                    // is taken by the island. The real one — his own, in
+                    // Quickshell — is a milestone after M8; this is the terminal
+                    // one in the meantime, and it stays either way.
+                    { key: "Ctrl+Shift+Escape", action: "spawn", arg: "@terminal -e btop",
+                      desc: "Task manager (btop)" },
+
                     // ⚠️ Its own target, not a notch page: the bar is a
                     // surface, not something the island shows. Off by default
                     // and this is how it is tried out.
