@@ -85,3 +85,66 @@ EOF
 fi
 
 echo "  no tap handlers hidden inside a Pill"
+
+# ---------------------------------------------------------------------------
+# The other half of the same fault: a surface that is lit and answers nothing.
+#
+# ⚠️ THIS ONE SHIPPED. The notch's click used to live in a status pill inside
+# NotchWide.qml. The brief changed to "the whole hovered notch opens the quick
+# panel", the pill was deleted — and no handler took its place. The result was a
+# release in which clicking the notch did nothing whatsoever, and nothing went
+# red, because every check in this repo asks whether a target is big enough and
+# none asked whether there was one at all.
+#
+# The island is the drawn shape of the notch. If it has no handler, the notch is
+# decoration.
+surface="shell/ui/surface/ShellSurface.qml"
+if [[ ! -f "$surface" ]]; then
+    echo "  cannot find $surface"
+    exit 2
+fi
+
+# Same brace-depth walk as above: find `id: island`, remember the depth its
+# block opened at, and look for a TapHandler before that depth closes again.
+if awk '
+    {
+        bare = $0
+        sub(/^[[:space:]]*/, "", bare)
+        if (bare ~ /^\/\//) next
+
+        # The opening brace of the island block is on the line above `id:`, so
+        # arm on the id and take the depth as it stands.
+        if (!armed && bare ~ /^id:[[:space:]]*island[[:space:]]*$/) {
+            armed = 1
+            base = depth
+        }
+        if (armed && $0 ~ /TapHandler[[:space:]]*\{/) { found = 1; exit }
+
+        n = gsub(/\{/, "{"); depth += n
+        n = gsub(/\}/, "}"); depth -= n
+        if (armed && depth < base) exit
+    }
+    END { exit(found ? 0 : 1) }
+' "$surface"; then
+    echo "  the notch itself answers a click"
+else
+    cat <<'EOF'
+  the notch has no click receiver
+
+  There is no TapHandler inside `Item { id: island }` in
+  shell/ui/surface/ShellSurface.qml, so a click on the notch does nothing.
+
+  The island is the drawn shape, so a handler on it can never be narrower than
+  what is lit. Do not put it back inside a child: the brief is that clicking
+  ANYWHERE on the hovered notch opens the quick panel.
+
+      Item {
+          id: island
+          TapHandler {
+              enabled: root.mode === "wide" || root.mode === "full"
+              onTapped: Ipc.toggle("quick")
+          }
+      }
+EOF
+    exit 1
+fi

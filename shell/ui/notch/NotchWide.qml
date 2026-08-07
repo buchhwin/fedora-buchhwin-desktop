@@ -7,11 +7,14 @@
 // small under it in the MIDDLE, and a rounded pill on the RIGHT holding the
 // network and battery icons in the accent colour.
 //
-// ⚠️ ONLY THE PILL OPENS ANYTHING. Clicking the notch itself used to open the
-// quick panel and no longer does — "und **nur diese Pille** öffnet das             english-ok: quoted brief
-// Quick-Panel, der Klick auf die Notch nichts mehr". That is why the pill is a   english-ok: quoted brief
-// Pill (which brings its own tap target sized to the whole shape) and why the
-// island's own TapHandler stands down.
+// ⚠️ NOTHING IN HERE ANSWERS A CLICK, ON PURPOSE. There was once a status pill
+// that was the only way to open the quick panel; the brief that replaced it is
+// "wenn man auf die Notch gehovert hat, soll es egal sein, wo man in dem          english-ok: quoted brief
+// Fenster hinklickt — das Quick-Panel soll immer aufgehen". A row of readouts    english-ok: quoted brief
+// with its own tap target inside a shape that already answers everywhere is a
+// smaller target inside a bigger one doing the same thing, so the handler lives
+// on the island instead — surface/ShellSurface.qml. Anything added here that
+// takes a click takes it AWAY from the whole-notch gesture.
 //
 // ⚠️ NOTHING EMPTY IS DRAWN. No player means no artwork and no title, not a
 // placeholder; no timer means no timer; a machine with no battery shows no
@@ -206,30 +209,34 @@ Item {
         // was a smaller target inside a bigger one that does the same thing.
         // Dropping it also gives back its padding, which is width this row did
         // not have to spare — see the layout note at the top.
+        // ⚠️ THE SPACING HERE WAS NOT A TOKEN. The network group used to sit in
+        // a wrapper of its own carrying `Theme.space2`, while the battery was a
+        // sibling one level up — so the gap between the two was RowLayout's
+        // built-in default, not a value from the theme. Nothing catches that:
+        // no-literals.sh looks for numbers that were written down, and this one
+        // never was. The wrapper held exactly one child, so removing it puts
+        // both groups on the same token.
         RowLayout {
             Layout.alignment: Qt.AlignVCenter
+            spacing: Theme.space2
 
             RowLayout {
-                spacing: Theme.space2
-
-                RowLayout {
-                    spacing: Theme.space1
-                    visible: Services.Net.available
-                    Icon {
-                        text: Services.Net.icon
-                        size: Theme.fontSize
-                        color: Theme.accent
-                    }
-                    SignalBars {
-                        visible: Services.Net.kind === "wifi"
-                        level: Services.Net.level
-                        // ⚠️ `activeColour`, not `color` — SignalBars is an Item
-                        // with two colours, and assigning `color` to an Item is
-                        // accepted and painted by nobody.
-                        activeColour: Theme.accent
-                    }
+                spacing: Theme.space1
+                visible: Services.Net.available
+                Icon {
+                    text: Services.Net.icon
+                    size: Theme.fontSize
+                    color: Theme.accent
                 }
-    }
+                SignalBars {
+                    visible: Services.Net.kind === "wifi"
+                    level: Services.Net.level
+                    // ⚠️ `activeColour`, not `color` — SignalBars is an Item
+                    // with two colours, and assigning `color` to an Item is
+                    // accepted and painted by nobody.
+                    activeColour: Theme.accent
+                }
+            }
 
             RowLayout {
                 spacing: Theme.space1

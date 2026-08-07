@@ -255,17 +255,28 @@ PanelWindow {
             visible: root.notchEnabled
             clip: true
 
-            // ⚠️ THERE IS NO TAP HANDLER ON THE ISLAND ANY MORE, and that is
-            // the instruction rather than an omission: "der Klick auf die Notch  english-ok: quoted brief
-            // nichts mehr" — only the status pill in the hovered shape opens     english-ok: quoted brief
-            // the quick panel. It lives in notch/NotchWide.qml.
+            // ⚠️ THE WHOLE ISLAND ANSWERS, and it has to be said here because it
+            // has now been wrong in both directions. For a while a single status
+            // pill inside the hovered row was the only thing that opened the
+            // quick panel; the brief that replaced it is "wenn man auf die Notch  english-ok: quoted brief
+            // gehovert hat, soll es egal sein, wo man in dem Fenster hinklickt". english-ok: quoted brief
+            // The pill was then deleted — and nothing took over, so for one
+            // release a click on the notch did nothing at all. A handler on the
+            // island is the shape that cannot rot that way: it is the drawn
+            // shape itself, so it cannot be narrower than what is lit.
             //
-            // The input REGION still covers the island (the mask follows
-            // `hitArea`), and that is deliberate too. Emptying it was tried and
-            // made things worse: the click fell straight through to the
-            // fullscreen ClickCatcher underneath, which closed whatever was
-            // open. What is wanted here is a click that does NOTHING, so the
-            // region stays and there is simply nothing listening.
+            // `enabled` rather than a mask change, for the reason spelled out at
+            // the top of this file: the region stays put in every mode, because
+            // emptying it makes the click fall through to the fullscreen
+            // ClickCatcher, which closes whatever is open. Standing the handler
+            // down leaves a click that does nothing, which is what "hidden" and
+            // "strip" want. "full" is included as well as "wide": in fullscreen
+            // a hover yields "full", not "wide", and on a touchscreen there is
+            // no hover to yield anything.
+            TapHandler {
+                enabled: root.mode === "wide" || root.mode === "full"
+                onTapped: Ipc.toggle("quick")
+            }
 
             // What the notch shows: the clock at rest, and the wide row while
             // the pointer is on it. The pages moved to
