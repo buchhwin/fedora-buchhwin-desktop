@@ -78,6 +78,17 @@ phase_shellenv() {
     # simply not found. ~/.zshrc adds it as well; this covers the programs that
     # read the environment rather than starting a shell.
     mkdir -p "$HOME/.local/bin" "$CONFIG_HOME/environment.d"
+
+    # ⚠️ AND bhctl ITSELF, WHICH WAS ON NOBODY'S PATH. `doctor` recommends
+    # `bhctl binds reset` and `bhctl niri apply` in its own output, the README
+    # names it, the settings window's error banner points at it — and on his
+    # laptop `command -v bhctl` answered nothing, because ~/.local/bin was
+    # empty. A rescue you have to know the source tree to call is not a rescue.
+    #
+    # A symlink, not a copy: a `git pull` has to reach it, the same argument as
+    # the shell directory in lib/60-shell.sh.
+    ln -sfn "$REPO_DIR/bin/bhctl" "$HOME/.local/bin/bhctl"
+    ok "bhctl is on the PATH"
     if [[ ! -f "$CONFIG_HOME/environment.d/10-buchhwin-path.conf" ]]; then
         printf 'PATH=%s/.local/bin:${PATH}\n' "$HOME" \
             > "$CONFIG_HOME/environment.d/10-buchhwin-path.conf"

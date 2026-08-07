@@ -151,6 +151,49 @@ printf '\033[38;5;114mok\033[0m\n'
 # the settings window, and appeared in no document at all. That is the sort of
 # gap nobody trips over: the code works perfectly and the reader concludes the
 # feature does not exist.
+# ⚠️ A DEFAULT THAT NAMES SOMETHING ON THE MACHINE MUST BE SOMETHING WE PUT
+# THERE. `cursor.theme` shipped as "Breeze_Dark" with a comment claiming it
+# "ships with Fedora's breeze-cursor-theme" — a package that appears in none of
+# the lists under packages/. So every fresh machine handed niri a theme name
+# that does not resolve, niri fell back to its own pointer at its own size, and
+# it was reported as "the cursor is far too big and cannot be changed".
+#
+# The check is deliberately about what the INSTALLER provides, not about what
+# happens to be on the machine running the test: a CI container has no cursor
+# themes at all, so asking /usr/share/icons here would be green for the wrong
+# reason on every runner and red for the wrong reason on a workstation.
+printf '  %-38s ' "the cursor default is one we install"
+curdef="$(grep -A1 'property JsonObject cursor:' "$file" \
+          | grep -oE 'property string theme: "[^"]+"' | grep -oE '"[^"]+"' | tr -d '"')"
+[[ -n "$curdef" ]] || curdef="$(sed -n '/property JsonObject cursor:/,/^            }/p' "$file" \
+                                | grep -oE 'property string theme: "[^"]+"' \
+                                | grep -oE '"[^"]+"' | tr -d '"')"
+if [[ -z "$curdef" ]]; then
+    printf '\033[38;5;203mcould not read the default\033[0m\n'; exit 1
+# ⚠️ MENTIONED IS NOT INSTALLED, and the first version of this check could not
+# tell the difference: a plain `grep -r` matched the WARNING in lib/50-fonts.sh
+# that says "Breeze_Dark stays the pointer", so the control stayed green with
+# the exact fault it was written to catch. Two precise forms instead:
+#   - the installer places a directory of that name (a slash before it), or
+#   - an uncommented package line names a cursor package
+elif grep -qF "/$curdef" lib/*.sh 2>/dev/null; then
+    printf '\033[38;5;114mok\033[0m  %s (the installer places it)\n' "$curdef"
+# ⚠️ AND "A CURSOR PACKAGE IS INSTALLED" WAS NOT GOOD ENOUGH EITHER — that was
+# the second version of this check and the control caught it too. packages/
+# does list `breeze-cursor-theme`, so the test went green for `Breeze_Dark`
+# again. Measured on his laptop: that package is installed and it contains
+# `Breeze_Light` and `breeze_cursors`. THERE IS NO Breeze_Dark IN IT. A package
+# being present says nothing about which names it provides, and the repository
+# cannot know that — so the only claim this file can honestly make is the one
+# above: we place a directory of that name ourselves.
+else
+    printf '\033[38;5;203m%s is installed by nothing under lib/ or packages/\033[0m\n' "$curdef"
+    printf '      Naming it in a comment is not installing it. That is exactly how\n'
+    printf '      Breeze_Dark shipped as the default to machines that never had it,\n'
+    printf '      where niri fell back to its own pointer at its own size.\n'
+    exit 1
+fi
+
 printf '  %-38s ' "every config group is in docs/CONFIG.md"
 undoc=""
 while read -r g; do

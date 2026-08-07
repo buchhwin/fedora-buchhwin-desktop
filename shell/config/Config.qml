@@ -692,7 +692,7 @@ Singleton {
             // only the migration chain quietly papering over it. Both now write
             // no version at all: a file without one reads as 0 and is migrated
             // forward, which is exactly the path a genuinely old file takes.
-            property int version: 10
+            property int version: 11
 
             property JsonObject theme: JsonObject {
                 property string palette: "everforest-dark"
@@ -836,13 +836,26 @@ Singleton {
             // (Configuration: Miscellaneous.md:20) that the block accepts
             // `xcursor-theme` and `xcursor-size` — not from memory.
             property JsonObject cursor: JsonObject {
-                // `Breeze_Dark` ships with Fedora's breeze-cursor-theme.
-                // `McMojave-cursors` is his choice for a macOS-like pointer —
-                // a free GPL-3 rebuild, because Apple's own cursors are not
-                // redistributable. The installer fetches it pinned, with a
-                // checksum; see lib/50-fonts.sh, which already does that for
-                // the Nerd font.
-                property string theme: "Breeze_Dark"
+                // ⚠️⚠️ THE DEFAULT WAS `Breeze_Dark` AND THAT THEME IS NOT ON
+                // THE MACHINE. The comment here used to say it "ships with
+                // Fedora's breeze-cursor-theme" — that package is in NO list in
+                // packages/, so nothing ever installed it. Measured on his
+                // laptop: /usr/share/icons holds Adwaita, Breeze_Light,
+                // McMojave-cursors and breeze_cursors. niri was handed a name
+                // that does not resolve, fell back to its own pointer at its
+                // own size, and he reported it as "the cursor is far too big
+                // and cannot be changed".
+                //
+                // McMojave-cursors is the honest default because it is the one
+                // the installer actually fetches — pinned, with a checksum, in
+                // lib/50-fonts.sh — so it exists on every machine this has ever
+                // run on. It is also his own choice, by name, from 06.08.2026.
+                //
+                // ⚠️ Note the second half of that report: "and cannot be
+                // changed". That was a separate fault in the settings row (see
+                // SettingRow.qml), and fixing only one of the two would have
+                // left him with a pointer he still could not correct.
+                property string theme: "McMojave-cursors"
                 // 24 is the GNOME default and what the VM was running. It is a
                 // separate key from `look.scale` on purpose: the pointer is
                 // drawn by the compositor at its own size and does not follow
@@ -1128,7 +1141,20 @@ Singleton {
                 // one place where legibility outranks the effect — but at 0.88
                 // the blur behind it was being computed and then covered, the
                 // same waste as the terminal at 0.90.
-                property real opacityPanel: 0.78
+                // ⚠️ 1.0, NOT 0.78 — HIS DECISION, AND IT ALSO EXPLAINS THE
+                // "STRANGE GRADIENT". He reported two things that turned out to
+                // be one: every menu has "a strange gradient and is not clean",
+                // and "take the transparency out everywhere except the
+                // terminal". Seen on a screenshot from his laptop: the settings
+                // window is see-through, and the wallpaper behind it is not
+                // uniform — so the panel picked up the picture's gradient. It
+                // was never a gradient in the theme.
+                //
+                // The terminal keeps its own (`opacityTerminal` below), and
+                // that is a different mechanism: kitty's own background_opacity
+                // rather than compositor opacity, which is why the text stays
+                // sharp there and would not here.
+                property real opacityPanel: 1.0
                 // The background of GTK applications, written into their own
                 // CSS rather than applied by the compositor.
                 //
@@ -1142,7 +1168,11 @@ Singleton {
                 // window; see `windows.blurred`. Without that, a translucent
                 // window is a window with the raw wallpaper behind it, which is
                 // worse than an opaque one.
-                property real opacityApp: 0.80
+                // 1.0 for the same reason as opacityPanel — see there. This is
+                // the one for foreign windows (the file manager), and compositor
+                // opacity fades their TEXT along with the background, which is
+                // exactly the "not clean" he means.
+                property real opacityApp: 1.0
                 // The terminal's own background, through kitty rather than
                 // through the compositor — see tools/render.qml for why.
                 //

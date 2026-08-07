@@ -27,6 +27,13 @@ polkit
 xdg-user-dirs
 # ⚠️ THE FOUR THE PREDECESSOR HAD AND THIS DID NOT. Each is a package whose
 # absence is only noticed at the moment it is needed, which is the worst kind:
+# ⚠️⚠️ upower WAS MISSING ON A LAPTOP PROJECT. services/Power.qml has existed
+# since M2 and the shell says so at every start: "Could not launch service
+# org.freedesktop.UPower: The name is not activatable". So there was no battery
+# reading anywhere — not in the notch, not in the quick panel, not in `doctor` —
+# on a desktop whose whole point is laptops. /sys/class/power_supply/BAT1 was
+# there the entire time; nothing was reading it.
+upower
 udisks2                     # mount a USB stick without a password
 avahi                       # .local names resolve — nas.local, printer.local
 nss-mdns                    # ...and glibc actually asks avahi for them

@@ -43,7 +43,7 @@ Singleton {
     // joining three fields with it can never collide with their contents.
     readonly property string sep: "\u0000"
 
-   readonly property int current: 10
+   readonly property int current: 11
 
     // step[n] upgrades a config at version n to version n+1.
     // Each is a pure function: take the parsed object, return it changed.
@@ -303,6 +303,48 @@ Singleton {
         function (cfg) {
             if (cfg.notch && cfg.notch.expandedHeight !== undefined)
                 delete cfg.notch.expandedHeight
+            return cfg
+        },
+
+        // 10 → 11: three fossilised defaults are lifted to their new values.
+        //
+        // ⚠️⚠️ EVERY DEFAULT THIS PROJECT SHIPS IS DEAD ON A MACHINE THAT HAS
+        // WRITTEN ITS SETTINGS ONCE, and that is not a bug in one key — it is
+        // how JsonAdapter works. Measured on his laptop: shell.json holds **148
+        // keys**, which is every setting there is. The installer seeds a file
+        // with two groups in it; the moment anything is changed, the adapter
+        // serialises the whole tree and "the file wins as soon as it says
+        // anything" freezes the lot. Exactly the shape of the 63 frozen key
+        // bindings in step 7 → 8, one level wider.
+        //
+        // So a changed default has to be MIGRATED, not just changed. The three
+        // here are the ones that hurt on a real machine:
+        //
+        //   cursor.theme "Breeze_Dark" — that theme does not exist. The package
+        //     we install, breeze-cursor-theme, ships Breeze_Light and
+        //     breeze_cursors and nothing called Breeze_Dark (checked with
+        //     `rpm -ql`). niri was handed a name that resolves to nothing and
+        //     drew its own pointer at its own size: "far too big".
+        //   look.opacityPanel 0.78 and look.opacityApp 0.80 — his decision, in
+        //     his words: take the transparency out everywhere except the
+        //     terminal. It also turned out to be what he was calling "a strange
+        //     gradient in every menu": the wallpaper showing unevenly through a
+        //     half-transparent surface. Never a gradient in the theme at all.
+        //
+        // ⚠️ ONLY WHEN THE VALUE IS EXACTLY THE OLD DEFAULT, per key. A value
+        // somebody chose is a decision and stays. This cannot tell a deliberate
+        // 0.78 from a fossilised one — the same admitted cost as step 7 → 8, and
+        // the same reasoning: a transparency you did not ask for is a nuisance,
+        // a pointer you cannot read is a desktop you cannot use.
+        function (cfg) {
+            if (cfg.cursor && cfg.cursor.theme === "Breeze_Dark")
+                cfg.cursor.theme = "McMojave-cursors"
+            if (cfg.look) {
+                if (cfg.look.opacityPanel === 0.78)
+                    cfg.look.opacityPanel = 1.0
+                if (cfg.look.opacityApp === 0.80 || cfg.look.opacityApp === 0.8)
+                    cfg.look.opacityApp = 1.0
+            }
             return cfg
         },
 

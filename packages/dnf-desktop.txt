@@ -49,10 +49,23 @@ google-noto-sans-cjk-fonts
 jetbrains-mono-fonts
 
 # The five things quickshell genuinely cannot do, driven through Process.
-breeze-cursor-theme         # `Breeze_Dark` is look.cursor.theme's default,
-                            # and it was in no package list at all — the VM had
-                            # only Adwaita, so the shipped default named a theme
-                            # that did not exist on the machine
+# ⚠️⚠️ THIS PACKAGE DOES NOT CONTAIN `Breeze_Dark`. The comment here used to say
+# it did, and that claim was the whole of "the mouse pointer is far too big and
+# I cannot change it" on his laptop: cursor.theme shipped as "Breeze_Dark", niri
+# was handed a name that resolves to nothing, and it fell back to its own
+# pointer at its own size.
+#
+# Measured with `rpm -ql` on the installed package rather than assumed: it ships
+# `Breeze_Light` and `breeze_cursors` — the second one IS the dark variant,
+# despite the naming. `Breeze_Dark` is a name from somewhere else entirely.
+#
+# It stays because a second cursor theme costs nothing and gives the picker a
+# real alternative. The DEFAULT is now McMojave-cursors, which lib/50-fonts.sh
+# fetches pinned and by checksum, so it is the only one guaranteed to exist on
+# every machine this has run on. tests/config-shape.sh enforces exactly that:
+# a default that names something on the machine must be something WE place —
+# a package merely being listed proves nothing about the names inside it.
+breeze-cursor-theme
 brightnessctl               # no brightness API
 ddcutil                     # external monitor brightness
 cliphist                    # no clipboard-history API

@@ -316,6 +316,22 @@ ColumnLayout {
     // on the test machine and 99 keyboard layouts — as pills that is a wall, and
     // as a closed list it would refuse a name this machine does not have yet.
     // Typing filters; clicking picks; leaving it alone keeps what you typed.
+    //
+    // ⚠️⚠️ TWO FAULTS LIVED HERE AND TOGETHER THEY MADE EVERY LIST LOOK EMPTY.
+    // He reported it as "wherever there should be a choice you cannot change
+    // anything", and the service was innocent: a headless probe
+    // (tools/installed-check.qml) reports 4 cursor themes, 109 fonts and 99
+    // layouts on the same machine, at the same moment.
+    //
+    //   1. the suggestions were gated on `activeFocus`, so nothing was visible
+    //      until the field already had the keyboard. You could not see that
+    //      there WAS a choice, which is the one thing a list has to do.
+    //   2. the field shows the current value, and that value was used as the
+    //      search query. `cursor.theme` was "Breeze_Dark"; the four installed
+    //      themes are Adwaita, Breeze_Light, McMojave-cursors, breeze_cursors —
+    //      none of them contains that string. Zero matches, exactly when the
+    //      list was needed most, and it got worse the more wrong the current
+    //      value was.
     Component {
         id: pickControl
 
@@ -326,20 +342,30 @@ ColumnLayout {
             readonly property string current:
                 root.current === undefined || root.current === null ? "" : String(root.current)
 
-            readonly property var matches: {
-                if (!pickField.input.activeFocus)
-                    return []
+            // How many pills to draw before saying "and N more". Eight was the
+            // old cap and it is kept: it is about two rows, which is a list you
+            // can read rather than a wall you scroll.
+            readonly property int shown: 8
+
+            readonly property var all: {
                 var q = pickField.text.trim().toLowerCase()
+                // ⚠️ THE QUERY IS EMPTY WHILE THE FIELD STILL SHOWS THE VALUE
+                // IT WAS GIVEN. Anything else means the list filters itself by
+                // the answer instead of by the question. Typing a single
+                // character replaces it and filtering begins.
+                if (q === pick.current.trim().toLowerCase())
+                    q = ""
                 var out = []
-                for (var i = 0; i < root.options.length && out.length < 8; i++) {
+                for (var i = 0; i < root.options.length; i++) {
                     var o = String(root.options[i])
-                    if (o.toLowerCase() === q)
+                    if (o.toLowerCase() === pick.current.trim().toLowerCase())
                         continue
                     if (q.length === 0 || o.toLowerCase().indexOf(q) >= 0)
                         out.push(o)
                 }
                 return out
             }
+            readonly property var matches: pick.all.slice(0, pick.shown)
 
             TextField {
                 id: pickField
@@ -393,6 +419,20 @@ ColumnLayout {
                         }
                     }
                 }
+            }
+
+            // ⚠️ SAY WHAT IS NOT BEING SHOWN. With 109 fonts the eight pills
+            // above are a sample, and a sample that does not admit it is a list
+            // that looks complete and is not — the same fault as a check that
+            // passes on an empty corpus. It also tells you what to do about it,
+            // which "8 of 109" alone would not.
+            BarText {
+                Layout.fillWidth: true
+                visible: pick.all.length > pick.matches.length
+                text: "and " + (pick.all.length - pick.matches.length)
+                      + " more — type to narrow it down"
+                font.pixelSize: Theme.fontSizeSm
+                color: Theme.fgMuted
             }
         }
     }

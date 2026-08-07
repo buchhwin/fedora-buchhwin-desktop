@@ -101,6 +101,18 @@ except Exception:
 Description=buchhwin shell (quickshell)
 PartOf=graphical-session.target
 After=graphical-session.target
+# ⚠️ THESE THREE BELONG IN [Unit] AND WERE IN [Service], WHERE SYSTEMD IGNORES
+# THEM. Measured on his laptop, in the journal at every start:
+#   buchhwin-shell.service:27: Unknown key 'StartLimitIntervalSec' in section
+#   [Service], ignoring.   ... and the same for 'OnFailure'.
+# So the restart brake was OFF — a shell that crashes on startup would have
+# looped for ever instead of stopping after five tries — and
+# buchhwin-shell-failed.service, the terminal window whose whole job is to
+# explain why the shell died, could NEVER fire. A unit with a handler nothing
+# can reach is the same fault this project keeps finding one layer up.
+StartLimitIntervalSec=60
+StartLimitBurst=5
+OnFailure=buchhwin-shell-failed.service
 
 [Service]
 Type=simple
@@ -123,9 +135,6 @@ ExecStart=/usr/bin/qs -c buchhwin
 # comes back on its own — but not in a tight loop that would hide the cause.
 Restart=always
 RestartSec=2
-StartLimitIntervalSec=60
-StartLimitBurst=5
-OnFailure=buchhwin-shell-failed.service
 
 [Install]
 WantedBy=graphical-session.target
