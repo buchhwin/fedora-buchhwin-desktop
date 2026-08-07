@@ -228,3 +228,60 @@ will press. Neither is used for anything else.
   values pass silently, which is why `tests/niri-config.sh` also greps stderr.
 * **niri writes its own default config if none exists** — the one that starts
   waybar. The installer must generate ours before the first login.
+
+## What niri can do that we have never made a setting
+
+⚠️ **The whole niri manual is on the machine**, and this section exists because
+nobody had read it against our schema. `/usr/share/doc/niri/wiki/` carries a page
+per configuration area, and `/usr/share/doc/niri/default-config.kdl` is the
+tuned starting point its author ships. Both are better sources than memory, and
+they are why the animations section stopped restating what niri already knew.
+
+The question worth asking is not "which key is missing from our schema" —
+`tests/setting-rows.sh` already proves every key has a row. It is **which
+capability of niri we never turned into a key at all.** Held against the wiki's
+own list of sections, we generate: animations, binds, debug, environment, input,
+layout, layer-rules, misc, outputs, window-rules, workspaces.
+
+Four areas are untouched:
+
+| niri section | what it is | worth having? |
+|---|---|---|
+| **`switch-events`** | `lid-close`, `lid-open`, `tablet-mode-on/off` → run a command. **Executed even while the session is locked.** | ⚠️ **Yes, and it changes the Power page.** See below |
+| `gestures` | `hot-corners` (which corners, or `off`), `dnd-edge-view-scroll`, `dnd-edge-workspace-switch` with `trigger-width`, `delay-ms`, `max-speed` | Probably. We have our own hot corners in the shell, so the two need reconciling rather than adding blindly |
+| `overview` | zoom level, backdrop colour, workspace shadow | Cosmetic, and it is a surface he has not asked about |
+| `recent-windows` | the Alt-Tab-style switcher's own settings | Only if we bind it |
+
+### ⚠️ `switch-events` is a better home for the lid than logind
+
+The Power page currently sends the lid through
+`/etc/systemd/logind.conf.d/50-buchhwin.conf`, written by `bhctl power apply`.
+That works, and it has two costs: it needs root, and it only takes effect after a
+reboot or a logind restart.
+
+niri can do it itself:
+
+```kdl
+switch-events {
+    lid-close { spawn "systemctl" "suspend"; }
+    lid-open  { spawn "true"; }
+}
+```
+
+Which would make the lid setting behave like every other setting — regenerate
+`config.kdl` and it is live, no password, no reboot.
+
+Three things to know before building it:
+
+1. **Only `spawn` is supported**, not `spawn-sh`. Anything conditional has to be
+   spelled `spawn "sh" "-c" "…"` by hand.
+2. **niri cannot tell mains from battery**, and our schema keeps those apart on
+   purpose. The spawned command would have to ask — which is what the `sh -c`
+   form is for.
+3. ⚠️ **logind would still act too.** Its default is `HandleLidSwitch=suspend`,
+   so without setting it to `ignore` the lid would be handled twice. That is
+   still one `/etc` write — but **once**, instead of on every change.
+
+So the shape is: logind gets `ignore` at install time, and the behaviour itself
+lives in `config.kdl` where a settings change can reach it. The current design is
+not wrong, it is just the version that pays root on every change instead of once.
