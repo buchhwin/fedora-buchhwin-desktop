@@ -88,6 +88,12 @@ jobs:
       - name: install.sh runs from top to bottom
         run: bash tests/install-runs.sh
 
+      # What the installer thinks is a graphics card decides whether the NVIDIA
+      # branch runs at all. It builds its own /sys tree, so the runner's actual
+      # hardware — which has none — cannot make it pass or fail by accident.
+      - name: the GPU detector, against fake PCI trees
+        run: bash tests/gpu-detect.sh
+
   # qmllint cannot see a missing qmldir entry or a singleton shadowed by a Qt
   # type — both of which turned the whole desktop black during development.
   # So the linter runs AND the shell is actually started, headless.

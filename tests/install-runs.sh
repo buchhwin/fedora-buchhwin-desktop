@@ -100,7 +100,7 @@ done
 [[ -f "$src/install.sh" ]] || { echo "  the copy has no install.sh — cannot test"; exit 2; }
 chmod +x "$src/install.sh" "$src/bin/bhctl" 2>/dev/null
 
-run_installer() {   # $@ = extra install.sh arguments
+run_installer() {   # $@ = extra install.sh arguments; $SYSFS = fake /sys, if any
     env -i \
         PATH="$bin:/usr/bin:/bin" \
         HOME="$home" \
@@ -108,9 +108,15 @@ run_installer() {   # $@ = extra install.sh arguments
         XDG_DATA_HOME="$home/.local/share" \
         XDG_STATE_HOME="$home/.local/state" \
         XDG_RUNTIME_DIR="$tmp/run" \
+        BUCHHWIN_SYSFS="${SYSFS:-$tmp/sysfs-empty}" \
         TERM=dumb \
         bash "$src/install.sh" "$@"
 }
+# ⚠️ AN EMPTY FAKE /sys BY DEFAULT, not the real one. Reading the host's actual
+# PCI bus would make every assertion below depend on what the machine running
+# the test happens to contain — green on a laptop with no NVIDIA and red on one
+# with, for reasons that have nothing to do with the code.
+mkdir -p "$tmp/sysfs-empty/bus/pci/devices"
 
 # ------------------------------------------------- 1. it reaches the end
 printf '  %-44s ' "install.sh runs to the end"
@@ -134,8 +140,8 @@ fi
 # bytes on the line are `==>` `ESC[0m` ` ` `Base system` — a fixed-string search
 # for "==> Base system" finds nothing and reports ten phases missing on a run
 # that was perfectly fine. Measured with `cat -A` rather than guessed at.
-for sect in "Base system" "Desktop" "Applications" "Fonts" "Cursors" \
-            "Shell" "Theme" "Compositor" "Services" "Done"; do
+for sect in "Graphics" "Base system" "Desktop" "Applications" "Codecs" \
+            "Fonts" "Cursors" "Shell" "Theme" "Compositor" "Services" "Done"; do
     printf '  %-44s ' "phase reached: $sect"
     if printf '%s\n' "$out" | grep -qE "==>.* ${sect}\$"; then
         printf '\033[38;5;114mok\033[0m\n'
@@ -143,6 +149,50 @@ for sect in "Base system" "Desktop" "Applications" "Fonts" "Cursors" \
         printf '\033[38;5;203mnever printed its heading\033[0m\n'; fail=1
     fi
 done
+
+# ----------------------------------- 1b. the GPU phase, and its own control
+#
+# ⚠️ "IT INSTALLED NOTHING" IS NOT A RESULT ON ITS OWN. A phase that correctly
+# skips and a phase that does nothing at all look identical from the outside,
+# and the second one is what an untested branch usually is. So the skip is
+# measured against a run where the same code MUST take the other path.
+printf '  %-44s ' "no NVIDIA: the branch says so and stops"
+out_no="$(run_installer --only gpu 2>&1)"
+if grep -q 'no NVIDIA GPU' <<< "$out_no"; then
+    printf '\033[38;5;114mok\033[0m\n'
+else
+    printf '\033[38;5;203mdid not report an empty bus\033[0m\n'
+    printf '%s\n' "$out_no" | tail -6 | sed 's/^/      /'; fail=1
+fi
+
+printf '  %-44s ' "hybrid fixture: the branch runs"
+fx="$tmp/sysfs-hybrid"
+mkdir -p "$fx/bus/pci/devices/0000:c5:00.0" "$fx/bus/pci/devices/0000:01:00.0"
+printf '0x030000\n' > "$fx/bus/pci/devices/0000:c5:00.0/class"
+printf '0x1002\n'   > "$fx/bus/pci/devices/0000:c5:00.0/vendor"
+printf '0x030000\n' > "$fx/bus/pci/devices/0000:01:00.0/class"
+printf '0x10de\n'   > "$fx/bus/pci/devices/0000:01:00.0/vendor"
+out_yes="$(SYSFS="$fx" run_installer --only gpu 2>&1)"
+# It gets as far as RPM Fusion and stops there, because the `rpm` stub cannot
+# answer `rpm -E %fedora`. Reaching that point is the proof: it is past the
+# detector, past the hybrid message, and inside the branch that installs.
+if grep -q 'hybrid graphics' <<< "$out_yes" && grep -q 'RPM Fusion' <<< "$out_yes"; then
+    printf '\033[38;5;114mok\033[0m\n'
+else
+    printf '\033[38;5;203mnever entered the NVIDIA branch\033[0m\n'
+    printf '%s\n' "$out_yes" | tail -6 | sed 's/^/      /'; fail=1
+fi
+
+printf '  %-44s ' "a failed GPU phase still exits 0"
+# The rule this checks is the one that keeps a machine usable: nothing in
+# phase_gpu may `die`, because aborting the install to protect a GPU the desktop
+# does not draw on trades a working desktop for nothing.
+SYSFS="$fx" run_installer --only gpu >/dev/null 2>&1
+if (( $? == 0 )); then
+    printf '\033[38;5;114mok\033[0m\n'
+else
+    printf '\033[38;5;203mthe GPU phase took the installer down with it\033[0m\n'; fail=1
+fi
 
 # ------------------------------------------- 2. no phase hit an unbound name
 #

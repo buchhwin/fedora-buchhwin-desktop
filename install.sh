@@ -47,9 +47,18 @@ done
 run_phase() { should_run "$1" && "phase_$1"; return 0; }
 
 run_phase preflight
+# ⚠️ SECOND, and the position is the point. The akmod build is the slowest and
+# most failure-prone step in the installer; discovering after forty minutes that
+# the running kernel has no headers is worse than discovering it after one. It
+# needs nothing from `base` because the detector reads sysfs rather than lspci.
+run_phase gpu
 run_phase base
 run_phase desktop
 run_phase apps
+# ⚠️ AFTER `apps`, and it has to be: `dnf swap mesa-va-drivers ...` requires
+# mesa to already be installed, and mesa arrives with niri in `desktop`.
+# Both phases live in lib/10-gpu.sh — they share rpmfusion_enable().
+run_phase codecs
 run_phase fonts
 run_phase cursors
 run_phase shell

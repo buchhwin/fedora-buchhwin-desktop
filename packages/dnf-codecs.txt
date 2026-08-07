@@ -1,0 +1,20 @@
+# Multimedia codecs, from RPM Fusion.
+#
+# ⚠️ WHY THIS EXISTS. vlc is in packages/dnf-apps.txt and Fedora ships it
+# without the patent-encumbered decoders, so it plays about half of what it is
+# handed. RPM Fusion is already being enabled for the NVIDIA branch next door,
+# so this costs one more transaction rather than a new repository.
+#
+# The two SWAPS are not here — `read_list` has no syntax for them and each needs
+# a condition, so they live in lib/10-gpu.sh:
+#   ffmpeg-free      -> ffmpeg              the decoders themselves
+#   mesa-va-drivers  -> mesa-va-drivers-freeworld    hardware decode on AMD
+#
+# ⚠️ AND THE SECOND SWAP IS ON PROBATION. Fedora has been re-enabling codecs in
+# mesa as the patents expire, so it may already buy nothing. The check is
+# `vainfo` before and after — if the two lists are identical the swap comes back
+# out. Until that has been run on real hardware this is carried, not proven.
+
+libva-utils                 # vainfo — the instrument the claim above is measured with
+gstreamer1-plugin-openh264  # H.264 for anything on GStreamer
+libavcodec-freeworld        # the encumbered decoders Fedora's build leaves out
