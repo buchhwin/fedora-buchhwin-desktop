@@ -219,12 +219,18 @@ Singleton {
                 root.bindsPrint,
                 root.inputPrint,
                 root.programsPrint,
-                // ⚠️ Theme.durBase, not motion.speed — the generator reads the
-                // three DURATIONS, and those come from `look.profile` as well.
-                // Watching the raw key would miss the profile switch; watching
-                // the durations catches both, and it is the value the generated
-                // file actually contains.
-                Theme.durFast, Theme.durBase, Theme.durSlow,
+                // ⚠️ THESE WERE THE THREE DURATIONS, and they moved because the
+                // generator stopped reading them. It no longer restates niri's
+                // eight animations in our own numbers; it writes `slowdown` and
+                // lets niri's tuned defaults stand. So what has to be watched is
+                // what the file now actually depends on: the speed multiplier
+                // and whether animation happens at all. Both still resolve back
+                // through Theme to `motion.speed` and `look.profile`, so the
+                // profile switch is caught exactly as before.
+                //
+                // Watching the old three here would now be watching something
+                // for nothing, and fingerprint.sh checks that direction too.
+                Theme.motionSpeed, Theme.animate,
                 // ⚠️ BOTH GENERATORS READ THESE, so they belong here — the rule
                 // three lines up, applied on the way in this time instead of
                 // after somebody noticed the pointer never changed.

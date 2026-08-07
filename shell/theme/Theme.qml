@@ -235,8 +235,9 @@ Singleton {
     // all" is `look.profile`, above, and two ways to say one thing is how they
     // end up disagreeing.
     //
-    // It reaches niri's own window animations too, because tools/niri.qml
-    // generates those from these same three numbers.
+    // It reaches niri's own animations too, but no longer by restating them:
+    // tools/niri.qml writes `slowdown` from this one multiplier and leaves the
+    // compositor's tuned defaults alone.
     readonly property real motionSpeed: {
         var s = Config.motion ? Number(Config.motion.speed) : 1
         if (!(s > 0))
@@ -244,10 +245,32 @@ Singleton {
         return Math.max(0.25, Math.min(4, s))
     }
 
-    readonly property int durFast: animate ? Math.round(120 / motionSpeed) : 0
-    readonly property int durBase: animate ? Math.round(200 / motionSpeed) : 0
-    readonly property int durSlow: animate ? Math.round(320 / motionSpeed) : 0
-    readonly property int easing: Easing.OutCubic
+    // ⚠️ 120/200/320 WERE CHOSEN AGAINST A 60 Hz SCREEN and he works on a
+    // 144 Hz one, where 200 ms is 29 frames of waiting for something that has
+    // already been decided. The complaint was "0 snappy und 0 clean", and this   english-ok: quoted brief
+    // is the "snappy" half — it is a number, not a taste, so it gets one.
+    //
+    // The new numbers are not invented: 150 is what niri itself uses for
+    // window-open and window-close, so a panel of ours now takes exactly as
+    // long to arrive as a window does. The 0.67 : 1 : 1.67 ratio is kept,
+    // because the fade being faster than the settle is what makes content look
+    // like it arrives INSIDE a shape rather than after it.
+    readonly property int durFast: animate ? Math.round(100 / motionSpeed) : 0
+    readonly property int durBase: animate ? Math.round(150 / motionSpeed) : 0
+    readonly property int durSlow: animate ? Math.round(250 / motionSpeed) : 0
+
+    // ⚠️ AND THIS IS THE "CLEAN" HALF. OutCubic leaves 25 % of its distance in
+    // the last quarter of its time, so a shape drifts into place — visible at
+    // 144 Hz as motion that never quite lands. OutExpo puts most of the
+    // distance up front and lets the tail vanish, which reads as decisive
+    // rather than soft.
+    //
+    // It is niri's `ease-out-expo`, deliberately the same one: the compositor
+    // opens a window with that curve, and a panel of ours opening with a
+    // different one is two systems moving in front of each other. This is the
+    // only easing token in the shell, so every Behavior inherits it — which is
+    // also why it must never become a per-site choice.
+    readonly property int easing: Easing.OutExpo
 
     readonly property bool effects: Config.look.profile !== "minimal"
     readonly property bool blur:    Config.look.blur && effects

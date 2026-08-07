@@ -350,30 +350,56 @@ Scope {
     //
     // ⚠️ Durations, not springs. A spring overshoots by definition, and the
     // brief rules overshoot out: fluid, not springy.
+    // ⚠️ THIS SECTION USED TO OVERRIDE EVERY ANIMATION NIRI HAS, and that was
+    // the whole complaint: "die Animationen ruckeln", "0 snappy und 0 clean".      english-ok: quoted brief
+    //
+    // What it wrote was `duration-ms <ours>` + `curve "ease-out-cubic"` for all
+    // eight. Held against what niri actually ships
+    // (/usr/share/doc/niri/wiki/Configuration:-Animations.md), every single one
+    // was a downgrade:
+    //
+    //   workspace-switch          spring 1.0/1000   -> flat 200 ms cubic
+    //   window-open               150 ms ease-out-EXPO -> 200 ms cubic
+    //   window-close              150 ms ease-out-quad -> 120 ms cubic
+    //   horizontal-view-movement  spring 1.0/800    -> flat 200 ms cubic
+    //   window-movement/-resize   spring 1.0/800    -> flat 200 ms cubic
+    //   config-notification       spring 0.6/1000   -> flat 320 ms cubic
+    //   overview-open-close       spring 1.0/800    -> flat 200 ms cubic
+    //
+    // A spring accelerates and settles; a fixed ease-out-cubic starts soft and
+    // stops dead. That is precisely the difference between "clean" and not, and
+    // 200 ms where niri wanted 150 ms of expo is precisely "not snappy". We were
+    // not tuning the compositor, we were flattening it — with numbers picked for
+    // a 60 Hz screen, on a 144 Hz one.
+    //
+    // ⚠️ AND THE BLUR WAS NOT IT. Measured first, because it was the obvious
+    // suspect at blurPasses 3: the GPU sat at 5 % while opening and closing the
+    // quick panel, and 4 % with blur off entirely — 1 % apart, 6 % peak either
+    // way. The machine was never working. Turning blur down would have been a
+    // confident fix for a cause that did not exist.
+    //
+    // So: keep niri's own animations, and keep only the two things that are
+    // genuinely ours to say.
     function animationsSection() {
         if (Config.look.profile === "minimal") {
             // One line, and every animation in the compositor stops. This is the
             // switch to reach for on a slow machine.
             return "animations {\n    off\n}\n"
         }
-        var fast = Theme.durFast, base = Theme.durBase, slow = Theme.durSlow
-        function anim(name, ms) {
-            return "    " + name + " {\n" +
-                   "        duration-ms " + ms + "\n" +
-                   "        curve \"ease-out-cubic\"\n" +
-                   "    }\n"
-        }
-        var s = "animations {\n"
-        s += anim("workspace-switch", base)
-        s += anim("window-open", base)
-        s += anim("window-close", fast)
-        s += anim("horizontal-view-movement", base)
-        s += anim("window-movement", base)
-        s += anim("window-resize", base)
-        s += anim("config-notification-open-close", slow)
-        s += anim("overview-open-close", base)
-        s += "}\n"
-        return s
+        // `slowdown` is niri's own one-number knob for exactly what motion.speed
+        // means, so it replaces eight overrides with one line. It is inverted
+        // against ours on purpose — niri slows down where we speed up — and it
+        // was probed on this machine before being relied on: `slowdown 0.5` and
+        // `slowdown 2.0` validate, a string and an invented `speedup` are both
+        // rejected.
+        var slowdown = 1 / Theme.motionSpeed
+        // At the default speed there is nothing to say, and saying nothing is
+        // the point: an empty section leaves niri's tuned defaults standing
+        // rather than restating them, which would freeze today's values into
+        // this file the next time niri improves them.
+        if (Math.abs(slowdown - 1) < 0.001)
+            return ""
+        return "animations {\n    slowdown " + slowdown.toFixed(3) + "\n}\n"
     }
 
     // ------------------------------------------------------------- rules
