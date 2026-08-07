@@ -209,6 +209,10 @@ jobs:
       #                           runs against the machine, not the repository
       #   tests/ipc-effect.sh     calls a verb and asks the running shell which
       #                           page it landed on; it exits 2 without one
+      #   tests/surfaces.sh       opens and closes all fourteen surfaces and
+      #                           then counts instances and reads the journal
+      #   tests/settings-survive.sh  stops the shell, edits shell.json, starts
+      #                           it again — there is no shell to stop here
       - name: the lock screen builds, and without complaints
         run: bash tests/lock.sh
 
@@ -224,6 +228,15 @@ jobs:
       # remembered, not whenever the code changed.
       - name: every palette resolves to a full token set
         run: bash tests/all-palettes.sh
+      # ⚠️ AXIS 8, AND IT NEEDED NOTHING BUT qs. It asks the question the two
+      # suites either side of it do not: all-palettes proves each palette
+      # resolves, reachable proves each generated file is pointed at — neither
+      # asks whether SWITCHING actually arrives. The control is a file that must
+      # NOT change (config.kdl: niri's colours live in the include), and the
+      # provenance header is masked so "it changed" cannot mean "it rewrote its
+      # own first line".
+      - name: switching the palette reaches every program
+        run: bash tests/palette-reach.sh
       - name: the generated niri config parses, cleanly
         run: bash tests/niri-config.sh
       - name: every icon name exists in the real font
