@@ -70,6 +70,15 @@ ColumnLayout {
                 { value: "no-scroll",      label: "None" }
             ]
         }
+
+        SettingRow {
+            Layout.fillWidth: true
+            key: "input.touchpad.scrollFactor"
+            label: "Scrolling speed"
+            hint: "⚠️ There was no speed here at all — the schema had natural scroll, pointer acceleration and scroll method, so \"scrolling is too fast\" had no answer anywhere. 1.0 is niri's own; below 1 is slower."
+            kind: "slider"
+            from: 0.1; to: 3.0; step: 0.1; decimals: 1
+        }
         SettingRow {
             Layout.fillWidth: true
             key: "input.touchpad.clickMethod"
@@ -105,6 +114,15 @@ ColumnLayout {
             label: "Acceleration"
             kind: "choice"
             choices: root.accelProfiles
+        }
+
+        SettingRow {
+            Layout.fillWidth: true
+            key: "input.mouse.scrollFactor"
+            label: "Scrolling speed"
+            hint: "Separate from the touchpad's on purpose: a wheel notch and two fingers on glass are not the same gesture and almost never want the same number."
+            kind: "slider"
+            from: 0.1; to: 3.0; step: 0.1; decimals: 1
         }
     }
 }

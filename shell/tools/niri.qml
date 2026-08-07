@@ -116,11 +116,13 @@ Scope {
         s += "        accel-profile " + q(t.accelProfile) + "\n"
         s += "        scroll-method " + q(t.scrollMethod) + "\n"
         s += "        click-method " + q(t.clickMethod) + "\n"
+        s += "        scroll-factor " + t.scrollFactor + "\n"
         s += "    }\n"
         s += "    mouse {\n"
         s += flag("natural-scroll", m.naturalScroll, "        ")
         s += "        accel-speed " + m.accelSpeed + "\n"
         s += "        accel-profile " + q(m.accelProfile) + "\n"
+        s += "        scroll-factor " + m.scrollFactor + "\n"
         s += "    }\n"
         s += flag("focus-follows-mouse", Config.input.focusFollowsMouse, "    ")
         s += flag("warp-mouse-to-focus", Config.input.warpMouseToFocus, "    ")

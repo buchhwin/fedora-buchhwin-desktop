@@ -106,6 +106,7 @@ Singleton {
         return [k.layout, k.variant, k.options, k.repeatDelay, k.repeatRate,
                 t.tap, t.dwt, t.naturalScroll, t.middleEmulation,
                 t.accelSpeed, t.accelProfile, t.scrollMethod, t.clickMethod,
+                t.scrollFactor, m.scrollFactor,
                 m.naturalScroll, m.accelSpeed, m.accelProfile,
                 i.focusFollowsMouse, i.warpMouseToFocus].join("\u0000")
     }

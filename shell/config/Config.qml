@@ -1611,12 +1611,31 @@ Singleton {
                     property real accelSpeed: 0.2
                     property string accelProfile: "adaptive"
                     property string scrollMethod: "two-finger"
+
+                    // ⚠️ THE SCHEMA HAD naturalScroll, accelSpeed AND
+                    // scrollMethod BUT NO SPEED, so "scrolling is too fast" had
+                    // no answer anywhere in the settings. niri can do it, per
+                    // device, and it was probed on niri 26.04 with a control: a
+                    // `scroll-factor` in this block validates, an invented key
+                    // in the same block is rejected as an unexpected node — so
+                    // the block really is parsed and this is not a name being
+                    // quietly swallowed.
+                    //
+                    // 1.0 is niri's own default, so the generator writes it
+                    // always rather than conditionally; there is no "off" for a
+                    // multiplier.
+                    property real scrollFactor: 1.0
                     property string clickMethod: "clickfinger"
                 }
                 property JsonObject mouse: JsonObject {
                     property bool naturalScroll: false
                     property real accelSpeed: 0.0
                     property string accelProfile: "flat"
+
+                    // The same knob for the mouse. Separate from the touchpad's
+                    // on purpose: a wheel notch and two fingers on glass are not
+                    // the same gesture and almost never want the same number.
+                    property real scrollFactor: 1.0
                 }
                 property bool focusFollowsMouse: false
                 property bool warpMouseToFocus: false
