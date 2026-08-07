@@ -2,15 +2,20 @@ pragma ComponentBehavior: Bound
 
 // The inside of the settings window, laid out from his reference.
 //
-// Left: a search field over ten named rows. Right: back and forward, then the
-// page's symbol, heading and one explaining line, then the settings themselves
-// as rows separated by space rather than by lines.
+// Left: a search field over named rows gathered under headings. Right: back and
+// forward, then the page's symbol, heading and one explaining line, then the
+// settings themselves as rows separated by space rather than by lines.
 //
-// ⚠️ THE TEN PAGES AND THEIR ORDER ARE THE SPECIFICATION, not a starting point.
-// They are named in the reference, in this order, and they are the same ten the
-// brief lists. All ten exist, and between them every one of the 135 settings in
-// shell.json has exactly one row — which is what tests/setting-rows.sh counts,
-// so "everything is settable" is a number rather than a belief.
+// ⚠️ THE TEN PAGES OF THE REFERENCE BECAME TWENTY-ONE, and that is the fix
+// rather than a departure. The reference named ten; two of them then grew to 55
+// and 43 rows, which is two thirds of every setting in the shell sitting in two
+// unstructured columns. "aktuell ist alles unübersichtlich und echt schlecht"    // english-ok: quoted brief
+// was about those two pages. Nothing here is longer than seventeen rows now.
+//
+// Between them every setting in shell.json still has exactly one row — which is
+// what tests/setting-rows.sh counts by reading and tests/pages.sh counts by
+// building, so "everything is settable" is two numbers that have to agree
+// rather than a belief.
 import QtQuick
 import QtQuick.Layouts
 // ⚠️ NO `import "pages"`. The pages are reached by URL now, not by type name,
@@ -46,56 +51,80 @@ FocusScope {
     // (`source: "ui/Shell.qml"`). A wrong path is now loud: Loader.status goes
     // to Error and says so on screen, instead of drawing an empty page.
     //
-    // It also buys the row search: a page's rows only exist once it is built,
-    // and a URL is something the search can build off-screen and throw away.
-    // A Component id could not have been handed around like that.
+    // ⚠️ TEN PAGES BECAME TWENTY-ONE, and `section` is why that is an
+    // improvement rather than a longer list. Appearance carried 55 rows and
+    // System 43 — two pages holding two thirds of every setting, each an
+    // unstructured column. Nothing here is longer than seventeen rows, and the
+    // sidebar gathers them under three headings.
     //
-    // ⚠️ Every icon name goes through tests/icons.sh. "Material Icons Round" is
-    // missing more names than anyone expects — the quick panel ended up on
-    // `dashboard` because `grid_view` and `space_dashboard` are both absent.
+    // ⚠️ Every icon name goes through tests/icons.sh, which MEASURES THE GLYPH
+    // rather than trusting the name: "Material Icons Round" is missing more
+    // names than anyone expects, and a missing one renders as an 800 px
+    // fallback box instead of failing.
     readonly property var pages: [
-        { id: "bar",      icon: "view_agenda",   title: "Bar & Island",
-          source: "pages/BarIslandPage.qml",
+        { id: "colours", section: "Look", icon: "palette",
+          title: "Colours", source: "pages/ColoursPage.qml",
+          blurb: "The palette, the accent, and when the light one takes over." },
+        { id: "wallpaper", section: "Look", icon: "wallpaper",
+          title: "Wallpaper", source: "pages/WallpaperSettingsPage.qml",
+          blurb: "Which picture, from where, and how it is fitted." },
+        { id: "shape", section: "Look", icon: "straighten",
+          title: "Size & Shape", source: "pages/ShapePage.qml",
+          blurb: "One number for the size of everything, the corner radius, the gaps, the per-monitor scale." },
+        { id: "effects", section: "Look", icon: "blur_on",
+          title: "Effects", source: "pages/EffectsPage.qml",
+          blurb: "Blur, shadows, and how much you can see through." },
+        { id: "type", section: "Look", icon: "text_fields",
+          title: "Type & Pointer", source: "pages/TypePage.qml",
+          blurb: "The fonts, their size, and the mouse cursor." },
+        { id: "theming", section: "Look", icon: "format_paint",
+          title: "App Theming", source: "pages/AppThemingPage.qml",
+          blurb: "One state per program we colour: follow the scheme, neutral grey, or leave it alone." },
+        { id: "bar", section: "Shell", icon: "view_agenda",
+          title: "Bar & Island", source: "pages/BarIslandPage.qml",
           blurb: "Shape and size of the island, the notch, and the bar." },
-        { id: "media",    icon: "music_note",    title: "Media",
-          source: "pages/MediaPage.qml",
-          blurb: "Which player the island follows, and where the track is shown." },
-        { id: "clock",    icon: "schedule",      title: "Clock & Date",
-          source: "pages/ClockPage.qml",
-          blurb: "How the time and the date are written, everywhere they are." },
-        { id: "look",     icon: "palette",       title: "Appearance",
-          source: "pages/AppearancePage.qml",
-          blurb: "Colours, the wallpaper, shape, transparency, effects, type, and one state per themed program." },
-        // ⚠️ `speed`, and the obvious name was wrong: "Material Icons Round"
-        // has no `animation` at all. tests/icons.sh caught it by measuring the
-        // glyph — 800 px wide where a real one is about 70, which is the
-        // fallback box. Asked the font for sixteen candidates rather than
-        // guessing a second time.
-        { id: "motion",   icon: "speed",         title: "Motion",
-          source: "pages/MotionPage.qml",
-          blurb: "Whether things move, and how much else is drawn." },
-        { id: "launcher", icon: "apps",          title: "Launcher",
-          source: "pages/LauncherPage.qml",
-          blurb: "The program list and how it opens." },
-        { id: "notify",   icon: "notifications", title: "Notifications",
-          source: "pages/NotifyPage.qml",
-          blurb: "Arriving messages, how long they stay, and where." },
-        { id: "control",  icon: "tune",          title: "Control Center",
-          source: "pages/ControlCenterPage.qml",
+        { id: "control", section: "Shell", icon: "tune",
+          title: "Control Center", source: "pages/ControlCenterPage.qml",
           blurb: "Brightness, night light, the work timer and the clipboard." },
-        { id: "lock",     icon: "lock",          title: "Lock Screen",
-          source: "pages/LockPage.qml",
+        { id: "launcher", section: "Shell", icon: "apps",
+          title: "Launcher", source: "pages/LauncherPage.qml",
+          blurb: "The program list and how it opens." },
+        { id: "notify", section: "Shell", icon: "notifications",
+          title: "Notifications", source: "pages/NotifyPage.qml",
+          blurb: "Arriving messages, how long they stay, and where." },
+        { id: "clock", section: "Shell", icon: "schedule",
+          title: "Clock & Date", source: "pages/ClockPage.qml",
+          blurb: "How the time and the date are written, everywhere they are." },
+        { id: "media", section: "Shell", icon: "music_note",
+          title: "Media", source: "pages/MediaPage.qml",
+          blurb: "Which player the island follows, and where the track is shown." },
+        { id: "lock", section: "Shell", icon: "lock",
+          title: "Lock Screen", source: "pages/LockPage.qml",
           blurb: "What the screen shows while the session is locked." },
-        // ⚠️ `battery_full`, which NotchWide already draws — so it is a name
-        // this font is known to have. tests/icons.sh measures the glyph rather
-        // than trusting the name, and a missing one comes out as an 800 px
-        // fallback box.
-        { id: "power",    icon: "battery_full",  title: "Power",
-          source: "pages/PowerPage.qml",
+        { id: "motion", section: "Shell", icon: "speed",
+          title: "Motion", source: "pages/MotionPage.qml",
+          blurb: "Whether things move, and how much else is drawn." },
+        { id: "keyboard", section: "System", icon: "keyboard",
+          title: "Keyboard", source: "pages/KeyboardPage.qml",
+          blurb: "Layout, variant, options, and how fast a held key repeats." },
+        { id: "keys", section: "System", icon: "vpn_key",
+          title: "Shortcuts", source: "pages/KeysPage.qml",
+          blurb: "All sixty-three key bindings, and the way back to the built-in set." },
+        { id: "pointing", section: "System", icon: "mouse",
+          title: "Mouse & Touchpad", source: "pages/PointingPage.qml",
+          blurb: "Tapping, scrolling, and pointer speed." },
+        { id: "windows", section: "System", icon: "web_asset",
+          title: "Windows", source: "pages/WindowsPage.qml",
+          blurb: "How focus follows the pointer, and which windows float." },
+        { id: "power", section: "System", icon: "battery_full",
+          title: "Power", source: "pages/PowerPage.qml",
           blurb: "When the screen goes off, when the session locks, when it sleeps, and what the lid does." },
-        { id: "system",   icon: "computer",      title: "System",
-          source: "pages/SystemPage.qml",
-          blurb: "Keyboard, touchpad, graphics, windows, programs, the session and the key bindings." }
+        { id: "programs", section: "System", icon: "widgets",
+          title: "Programs", source: "pages/ProgramsPage.qml",
+          blurb: "Which terminal, browser and editor the keys reach for, and how the terminal behaves." },
+        { id: "machine", section: "System", icon: "computer",
+          title: "This Machine", source: "pages/MachinePage.qml",
+          blurb: "The graphics card, what the session does, and where it is." }
     ]
 
     // ---------------------------------------------------------------- history
@@ -103,7 +132,7 @@ FocusScope {
     // A plain stack: everything after the current position is dropped when you
     // go somewhere new, which is what makes forward mean "where I came back
     // from" rather than "somewhere I have been at some point".
-    property var history: ["bar"]
+    property var history: ["colours"]
     property int historyIndex: 0
 
     readonly property string currentId: root.history[root.historyIndex]
@@ -194,17 +223,54 @@ FocusScope {
                 onAccepted: if (root.shown.length > 0) root.navigate(root.shown[0].id)
             }
 
-            SettingsRail {
-                id: rail
+            // ⚠️ THE SIDEBAR HAS TO SCROLL NOW, and it did not before. Ten rows
+            // fitted; twenty-one under three headings do not, and the first
+            // screenshot after the split showed the list cut off at "Keyboard"
+            // with everything below it — Shortcuts, Mouse, Windows, Power,
+            // Programs, This Machine — simply unreachable. Splitting the pages
+            // to make things findable, and hiding a third of them in the doing,
+            // would have been a worse state than the one it replaced.
+            Flickable {
+                id: railScroll
                 Layout.fillWidth: true
-                entries: root.shown
-                currentIndex: {
-                    for (var i = 0; i < root.shown.length; i++)
-                        if (root.shown[i].id === root.currentId)
-                            return i
-                    return -1
+                Layout.fillHeight: true
+                clip: true
+                contentWidth: width
+                contentHeight: rail.implicitHeight
+                boundsBehavior: Flickable.StopAtBounds
+
+                SettingsRail {
+                    id: rail
+                    // ⚠️ `width`, not `Layout.fillWidth` — a Flickable is not a
+                    // layout and silently ignores attached Layout properties, so
+                    // the rail would have kept its implicit width and the rows
+                    // would no longer reach the edge.
+                    width: railScroll.width
+                    entries: root.shown
+                    currentIndex: {
+                        for (var i = 0; i < root.shown.length; i++)
+                            if (root.shown[i].id === root.currentId)
+                                return i
+                        return -1
+                    }
+                    onActivated: function (i) { root.navigate(root.shown[i].id) }
                 }
-                onActivated: function (i) { root.navigate(root.shown[i].id) }
+
+                // The same narrow bar the content area uses, and hidden the same
+                // way when everything fits: a bar that is always full height
+                // says nothing and takes up room.
+                Rectangle {
+                    anchors.right: parent.right
+                    width: Theme.space1
+                    radius: Theme.radiusPill
+                    color: Theme.outlineStrong
+
+                    visible: railScroll.contentHeight > railScroll.height
+                    height: railScroll.height
+                          * (railScroll.height / Math.max(1, railScroll.contentHeight))
+                    y: railScroll.contentY
+                     * (railScroll.height / Math.max(1, railScroll.contentHeight))
+                }
             }
 
             // Nothing matched. One sentence, per the brief — not an empty box
@@ -216,8 +282,6 @@ FocusScope {
                 color: Theme.fgMuted
                 wrapMode: Text.WordWrap
             }
-
-            Item { Layout.fillHeight: true }
         }
 
         // ------------------------------------------------------------ content

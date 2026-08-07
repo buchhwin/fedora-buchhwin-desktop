@@ -1,7 +1,12 @@
 pragma ComponentBehavior: Bound
 
-// The sidebar of the settings window: ten named rows, each with its symbol in a
-// rounded square.
+// The sidebar of the settings window: named rows, each with its symbol in a
+// rounded square, gathered under headings.
+//
+// ⚠️ THE HEADINGS ARRIVED WITH THE TWENTY-ONE PAGES. Ten unlabelled rows are a
+// list; twenty-one are a wall. The grouping is what makes the length usable —
+// together with a search that reaches the rows themselves, which is the other
+// half and lives in SettingsContent.
 //
 // ⚠️ IT IS NOT `IconRail`, AND THAT NEEDS SAYING, because IconRail's own header
 // says the settings window would take it. Held against his reference, it cannot:
@@ -28,7 +33,8 @@ import "../../theme"
 ColumnLayout {
     id: root
 
-    // [{ icon: "view_agenda", title: "Bar & Island" }, …]
+    // [{ icon: "view_agenda", title: "Bar & Island", section: "Shell" }, …]
+    // `section` is optional; an entry without one simply opens no heading.
     property var entries: []
     property int currentIndex: 0
     signal activated(int index)
@@ -38,70 +44,107 @@ ColumnLayout {
     Repeater {
         model: root.entries
 
-        Rectangle {
-            id: row
+        // ⚠️ THE HEADING IS PART OF THE ENTRY, not a row of its own in the model.
+        // Twenty-one pages need grouping, and the obvious way to get it is to
+        // push synthetic {header: true} items into the list — which makes every
+        // index a lie: `currentIndex`, the search filter and the keyboard
+        // navigation would all have to know which entries are not pages.
+        //
+        // An entry draws its section's heading when it is the first entry
+        // carrying that section. Filtering the list cannot then leave a heading
+        // stranded above nothing, because the heading only exists as part of a
+        // page that survived the filter.
+        ColumnLayout {
+            id: cell
             required property int index
             required property var modelData
 
-            readonly property bool current: root.currentIndex === row.index
-
             Layout.fillWidth: true
-            // ⚠️ THE NATURAL WIDTH IS REPORTED, and that is what pins the
-            // sidebar. `line` is anchored to both sides so its WIDTH follows
-            // the row, but its implicitWidth is still the sum of what is in it —
-            // so the column can ask "how wide does the longest entry need to
-            // be" and stop being a number somebody guessed.
-            implicitWidth: line.implicitWidth + Theme.space2 + Theme.space3
-            implicitHeight: line.implicitHeight + Theme.space2
+            spacing: Theme.space1
 
-            radius: Theme.radiusSm
-            color: row.current ? Theme.accent
-                 : hover.hovered ? Theme.pillHover
-                 : "transparent"                 // literal-ok: absence of colour
+            readonly property string section:
+                cell.modelData.section === undefined ? "" : cell.modelData.section
+            readonly property bool opensSection:
+                cell.section.length > 0
+                && (cell.index === 0
+                    || root.entries[cell.index - 1].section !== cell.section)
 
-            // ⚠️ IT USED TO DIM A `ready: false` ENTRY, and that is gone with
-            // the last unfinished page. A property whose every writer says the
-            // same thing is not a property; it is a constant with somewhere to
-            // hide. If a page ever ships unfinished again, this comes back with
-            // it rather than sitting here being always true.
-
-            Behavior on color {
-                enabled: Theme.animate
-                ColorAnimation { duration: Theme.durFast; easing.type: Theme.easing }
+            BarText {
+                visible: cell.opensSection
+                Layout.fillWidth: true
+                // Air above a heading, but not above the first one — that would
+                // be a gap at the top of the sidebar with nothing over it.
+                Layout.topMargin: cell.index === 0 ? 0 : Theme.space3
+                Layout.leftMargin: Theme.space2
+                text: cell.section
+                font.pixelSize: Theme.fontSizeSm
+                font.weight: Theme.weightSemibold
+                color: Theme.fgDim
             }
 
-            HoverHandler { id: hover }
-            TapHandler { onTapped: root.activated(row.index) }
+            Rectangle {
+                id: row
 
-            RowLayout {
-                id: line
-                anchors.left: parent.left
-                anchors.right: parent.right
-                anchors.verticalCenter: parent.verticalCenter
-                anchors.leftMargin: Theme.space2
-                anchors.rightMargin: Theme.space3
-                spacing: Theme.space3
+                readonly property bool current: root.currentIndex === cell.index
 
-                // The symbol in its rounded square, as the reference draws it.
-                Rectangle {
-                    implicitWidth: Theme.space5
-                    implicitHeight: Theme.space5
-                    radius: Theme.radiusXs
-                    color: row.current ? Theme.accentFg : Theme.surfaceHigh
+                Layout.fillWidth: true
+                // ⚠️ THE NATURAL WIDTH IS REPORTED, and that is what pins the
+                // sidebar. `line` is anchored to both sides so its WIDTH follows
+                // the row, but its implicitWidth is still the sum of what is in it —
+                // so the column can ask "how wide does the longest entry need to
+                // be" and stop being a number somebody guessed.
+                implicitWidth: line.implicitWidth + Theme.space2 + Theme.space3
+                implicitHeight: line.implicitHeight + Theme.space2
 
-                    Icon {
-                        anchors.centerIn: parent
-                        text: row.modelData.icon
-                        size: Theme.fontSize
-                        color: row.current ? Theme.accent : Theme.fgMuted
-                    }
+                radius: Theme.radiusSm
+                color: row.current ? Theme.accent
+                     : hover.hovered ? Theme.pillHover
+                     : "transparent"                 // literal-ok: absence of colour
+
+                // ⚠️ IT USED TO DIM A `ready: false` ENTRY, and that is gone with
+                // the last unfinished page. A property whose every writer says the
+                // same thing is not a property; it is a constant with somewhere to
+                // hide. If a page ever ships unfinished again, this comes back with
+                // it rather than sitting here being always true.
+
+                Behavior on color {
+                    enabled: Theme.animate
+                    ColorAnimation { duration: Theme.durFast; easing.type: Theme.easing }
                 }
 
-                BarText {
-                    Layout.fillWidth: true
-                    text: row.modelData.title
-                    color: row.current ? Theme.accentFg : Theme.fg
-                    font.weight: row.current ? Theme.weightMedium : Theme.weightNormal
+                HoverHandler { id: hover }
+                TapHandler { onTapped: root.activated(cell.index) }
+
+                RowLayout {
+                    id: line
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    anchors.verticalCenter: parent.verticalCenter
+                    anchors.leftMargin: Theme.space2
+                    anchors.rightMargin: Theme.space3
+                    spacing: Theme.space3
+
+                    // The symbol in its rounded square, as the reference draws it.
+                    Rectangle {
+                        implicitWidth: Theme.space5
+                        implicitHeight: Theme.space5
+                        radius: Theme.radiusXs
+                        color: row.current ? Theme.accentFg : Theme.surfaceHigh
+
+                        Icon {
+                            anchors.centerIn: parent
+                            text: cell.modelData.icon
+                            size: Theme.fontSize
+                            color: row.current ? Theme.accent : Theme.fgMuted
+                        }
+                    }
+
+                    BarText {
+                        Layout.fillWidth: true
+                        text: cell.modelData.title
+                        color: row.current ? Theme.accentFg : Theme.fg
+                        font.weight: row.current ? Theme.weightMedium : Theme.weightNormal
+                    }
                 }
             }
         }

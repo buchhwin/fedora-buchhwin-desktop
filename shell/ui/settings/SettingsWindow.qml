@@ -31,11 +31,17 @@ FloatingWindow {
 
     title: "Settings"
 
-    // A working size on the 4 px grid, and one that fits the 1280x800 the test
-    // machine runs at. niri decides where it lands; the window rule makes it
+    // A working size on the 4 px grid, and one that still fits the 1280x800 the
+    // lab VM runs at. niri decides where it lands; the window rule makes it
     // float rather than joining the scrolling row.
-    implicitWidth: Theme.space6 * 26
-    implicitHeight: Theme.space6 * 19
+    //
+    // ⚠️ IT GREW WITH THE PAGE SPLIT. Twenty-one entries under three headings is
+    // a taller sidebar than ten unlabelled ones, and One UI's spacing is airier
+    // than what it replaced — at the old height the list scrolled before the
+    // window was even full, which is the opposite of what splitting the pages
+    // was for. 960x704 still leaves room on the 1280-wide machine.
+    implicitWidth: Theme.space6 * 30
+    implicitHeight: Theme.space6 * 22
     minimumSize: Qt.size(Theme.space6 * 18, Theme.space6 * 12)
 
     // ⚠️ The window is CREATED when the settings open and destroyed when they

@@ -1,5 +1,9 @@
-# One file per page of the settings window, in the order the reference lists
-# them. All ten are here.
+# One file per page of the settings window.
+#
+# ⚠️ THE TEN BECAME TWENTY-ONE. Appearance carried 55 rows and System 43 —
+# two pages holding two thirds of every setting in the shell, each a long list
+# with no structure. "alles unübersichtlich und echt schlecht" was about those
+# two. No page here is longer than seventeen rows.
 #
 # ⚠️ The last four needed NEW keys — `clock`, `motion`, `media` and `lock` did
 # not exist in shell.json at all — and every one of those keys was given a real
@@ -15,11 +19,21 @@
 BarIslandPage 1.0 BarIslandPage.qml
 MediaPage 1.0 MediaPage.qml
 ClockPage 1.0 ClockPage.qml
-AppearancePage 1.0 AppearancePage.qml
 MotionPage 1.0 MotionPage.qml
 LauncherPage 1.0 LauncherPage.qml
 NotifyPage 1.0 NotifyPage.qml
 ControlCenterPage 1.0 ControlCenterPage.qml
 LockPage 1.0 LockPage.qml
 PowerPage 1.0 PowerPage.qml
-SystemPage 1.0 SystemPage.qml
+ColoursPage 1.0 ColoursPage.qml
+WallpaperSettingsPage 1.0 WallpaperSettingsPage.qml
+ShapePage 1.0 ShapePage.qml
+EffectsPage 1.0 EffectsPage.qml
+TypePage 1.0 TypePage.qml
+AppThemingPage 1.0 AppThemingPage.qml
+KeyboardPage 1.0 KeyboardPage.qml
+KeysPage 1.0 KeysPage.qml
+PointingPage 1.0 PointingPage.qml
+WindowsPage 1.0 WindowsPage.qml
+ProgramsPage 1.0 ProgramsPage.qml
+MachinePage 1.0 MachinePage.qml
