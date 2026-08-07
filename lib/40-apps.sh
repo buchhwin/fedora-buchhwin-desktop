@@ -47,6 +47,46 @@ phase_apps() {
 POLICY
     ok "brave policy"
 
+    # ⚠️ AND THE COLOURS, which the policy above does not touch. His reference
+    # is 2026-08-07/vorlage-brave-gefaerbt.png: the whole browser chrome — tab
+    # strip, navigation row, empty content — in the palette's dark green, not
+    # Brave's own grey. "bei brave soll das theme genau so greifen."
+    #
+    # ⚠️ ONE SETTING, NOT A GENERATOR. `extensions.theme.system_theme = 1` is
+    # Chromium's "follow the GTK theme", and we ALREADY generate a GTK theme
+    # from the palette. So Brave follows the palette for free, on every change,
+    # for ever — where a colour written into a policy or a generated theme
+    # extension would have to be rewritten on each switch, and /etc needs root
+    # that the renderer does not have.
+    #
+    # ⚠️ ONLY WHILE BRAVE IS NOT RUNNING. Chromium keeps Preferences in memory
+    # and writes it out on exit, so editing it under a live browser is edited
+    # away again a minute later. Refusing is better than doing nothing visible.
+    step "brave follows the theme"
+    local bravePrefs="$CONFIG_HOME/BraveSoftware/Brave-Browser/Default/Preferences"
+    if pgrep -x brave >/dev/null || pgrep -f brave-browser >/dev/null; then
+        warn "brave is running — close it and re-run, or its colours stay grey"
+    else
+        mkdir -p "$(dirname "$bravePrefs")"
+        python3 - "$bravePrefs" <<'PYEOF'
+import json, os, sys
+path = sys.argv[1]
+try:
+    with open(path) as fh:
+        prefs = json.load(fh)
+except Exception:
+    # No profile yet: a Preferences file with only this in it is valid, and
+    # Brave fills in the rest on first run.
+    prefs = {}
+prefs.setdefault("extensions", {}).setdefault("theme", {})["system_theme"] = 1
+tmp = path + ".buchhwin-tmp"
+with open(tmp, "w") as fh:
+    json.dump(prefs, fh, separators=(",", ":"))
+os.replace(tmp, path)
+PYEOF
+        ok "brave follows the theme"
+    fi
+
     sudo dnf install -y flatpak >/dev/null 2>&1
     sudo flatpak remote-add --if-not-exists flathub \
         https://flathub.org/repo/flathub.flatpakrepo >/dev/null 2>&1
