@@ -204,6 +204,32 @@ ColumnLayout {
         }
     }
 
+    // The external monitor, and ONLY when one answered. It is a second row
+    // rather than a mode on the first because both screens can be lit at once
+    // and both are worth reaching — a single slider would have to pick one and
+    // be wrong half the time. The symbol differs so the two rows are telling
+    // apart at a glance rather than by position.
+    //
+    // ⚠️ `onReleased` when Config says not to send live: a DDC write is slow
+    // and many monitors flash their own menu for each one. See the head of
+    // services/Brightness.qml for what is measured here and what is not.
+    LevelRow {
+        Layout.fillWidth: true
+        visible: Services.Brightness.externalAvailable
+        icon: "desktop_windows"
+        value: Services.Brightness.externalFraction
+        onMoved: function (f) { Services.Brightness.setExternal(f) }
+        onReleased: function (f) { Services.Brightness.commitExternal() }
+        onNudged: function (d) {
+            Services.Brightness.setExternal(Math.max(0, Math.min(1,
+                Services.Brightness.externalFraction + d / steps)))
+            // A wheel notch has no "release" of its own — it is a whole gesture
+            // in one event, so it commits itself. Without this the monitor
+            // would ignore the wheel entirely whenever live sending is off.
+            Services.Brightness.commitExternal()
+        }
+    }
+
     BarText {
         Layout.fillWidth: true
         visible: !Services.Audio.available && !Services.Brightness.available

@@ -22,6 +22,13 @@ RowLayout {
     signal moved(real fraction)       // absolute, from a tap or drag
     signal nudged(int direction)      // +1 / -1, from the wheel
 
+    // The end of a drag, with the value it ended on. Volume and the laptop
+    // panel have no use for it — they are fast enough to follow the finger —
+    // but an external monitor over DDC/CI is not, and a caller that can only
+    // afford to send once needs to know WHEN once is. Emitted after the last
+    // `moved`, and after a tap too: a tap is a drag with no middle.
+    signal released(real fraction)
+
     spacing: Theme.space3
 
     WheelHandler {
@@ -62,11 +69,26 @@ RowLayout {
         }
 
         TapHandler {
-            onTapped: function (p) { root.moved(p.position.x / track.width) }
+            onTapped: function (p) {
+                var f = p.position.x / track.width
+                root.moved(f)
+                root.released(f)
+            }
         }
         DragHandler {
+            id: drag
             target: null
-            onCentroidChanged: if (active) root.moved(centroid.position.x / track.width)
+            property real last: 0
+            onCentroidChanged: if (active) {
+                last = centroid.position.x / track.width
+                root.moved(last)
+            }
+            // ⚠️ `onActiveChanged`, not a handler on the release itself. A
+            // DragHandler has no "let go" signal; it has an `active` that goes
+            // false — and it also goes false when the drag is CANCELLED, which
+            // is the same thing for our purposes: the finger is gone and the
+            // last value it named is the one that counts.
+            onActiveChanged: if (!active) root.released(last)
         }
     }
 

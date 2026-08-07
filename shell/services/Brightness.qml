@@ -9,9 +9,48 @@ pragma Singleton
 // `available` is false on a desktop and in the VM (no backlight device at all),
 // and the quick settings page leaves the row out rather than showing a slider
 // that moves nothing.
+//
+// ─────────────────────────────────────────────────────────────────────────────
+// TWO SCREENS, TWO ENTIRELY DIFFERENT MECHANISMS.
+//
+// The laptop panel is a file in /sys — reading it is free and writing it is
+// instant. An external monitor is a device on the graphics card's I²C bus,
+// spoken to in DDC/CI through `ddcutil`, and it is slow, per-model odd, and
+// sometimes absent even when the monitor is plugged in. Pretending they are the
+// same thing behind one number would mean the slow one setting the pace for
+// both, so they stay apart: `available`/`value`/`set()` for the panel,
+// `externalAvailable`/`externalValue`/`setExternal()` for the monitor.
+//
+// ⚠️ WHY THERE IS NO PERMISSION SETUP ANYWHERE — measured, because the earlier
+// note in the plan said the opposite. `ddcutil` ships
+// /lib/udev/rules.d/60-ddcutil-i2c.rules itself:
+//
+//     SUBSYSTEM=="i2c-dev", KERNEL=="i2c-[0-9]*", ATTRS{class}=="0x030000",
+//     TAG+="uaccess"
+//
+// `uaccess` hands the logged-in user an ACL on the device. No group to join, no
+// rule to write, no privilege change to ask anybody for — installing the
+// package IS the setup, and it is already in packages/dnf-desktop.txt. The
+// `class == 0x030000` clause limits it to display controllers, which is why
+// /dev/i2c-0 on the test VM stays root-only: that one is the mainboard's SMBus,
+// and it is right that nobody may poke it.
+//
+// ⚠️ AND THE PROBE IS FREE WHEN THERE IS NOTHING TO FIND. Measured three times
+// on a machine with no DDC monitor: 0.01 s, and the same 0.01 s as root — so
+// the quick answer was not the permission check bailing out. ddcutil decides
+// from /sys/bus/i2c before it opens any device: "No display adapters with i2c
+// buses appear to exist." That is what makes running it once at startup
+// acceptable on a laptop that usually has no monitor attached.
+//
+// ⚠️ WHAT IS NOT MEASURED, said plainly: how long a `getvcp`/`setvcp` takes on
+// a real monitor. No external screen exists on the test VM, and there is no way
+// to fake one. The design assumes it is slow — one write in flight, coalesced,
+// on release by default — which is the right assumption to be wrong about.
+// ─────────────────────────────────────────────────────────────────────────────
 import QtQuick
 import Quickshell
 import Quickshell.Io
+import "../config"
 
 Singleton {
     id: root
@@ -100,5 +139,129 @@ Singleton {
             var v = parseInt(text().trim())
             if (!isNaN(v)) root.value = v
         }
+    }
+
+    // ───────────────────────────────────────────────── the external monitor
+    property bool externalAvailable: false
+    property int externalValue: 0
+    property int externalMax: 100
+    readonly property real externalFraction:
+        externalAvailable && externalMax > 0 ? externalValue / externalMax : 0
+
+    // Which I²C bus the monitor sits on, as a bare number. Kept, rather than
+    // letting ddcutil find the display again on every call, because finding it
+    // is the expensive half: `--bus N` goes straight to the device, while a
+    // bare `getvcp` walks every bus first.
+    property int _bus: -1
+
+    // ⚠️ ONE WRITE IN FLIGHT, AND THE NEWEST VALUE WINS. A drag produces
+    // dozens of values a second; a DDC write may take a tenth of a second or
+    // worse. Firing one process per value would leave a queue draining long
+    // after the finger stopped, and the monitor would still be marching to a
+    // brightness chosen half a second ago. So a write that arrives while
+    // another is running does not spawn anything — it replaces `_pending`, and
+    // the running one sends it when it finishes. Bounded by construction: at
+    // most one process, at most one waiting number.
+    property int _pending: -1
+    // The last value actually handed to the monitor, so `commitExternal()` can
+    // tell "the drag ended somewhere new" from "the drag ended where the live
+    // updates already put it" and skip a pointless round trip over I²C.
+    property int _sent: -1
+
+    // ⚠️ THE SLIDER ALWAYS MOVES; only the SENDING is conditional. Whether a
+    // value goes out while the finger is still down is a property of the
+    // hardware, not of the widget, so the decision lives here rather than in
+    // three call sites that would each have to remember it. The caller's
+    // contract is simple: `setExternal` on every change, `commitExternal` when
+    // the gesture ends.
+    function setExternal(f) {
+        if (!externalAvailable) return
+        var pct = Math.round(Math.max(0, Math.min(1, f)) * root.externalMax)
+        root.externalValue = pct        // optimistic, as with the panel
+        if (Config.brightness.externalLive) root._queue(pct)
+    }
+
+    function commitExternal() {
+        if (!externalAvailable) return
+        if (root.externalValue !== root._sent) root._queue(root.externalValue)
+    }
+
+    function _queue(pct) {
+        if (ddcSet.running) { root._pending = pct; return }
+        root._send(pct)
+    }
+
+    function _send(pct) {
+        root._sent = pct
+        ddcSet.command = ["ddcutil", "--bus", String(root._bus),
+                          "setvcp", "10", String(pct)]
+        ddcSet.running = true
+    }
+
+    Process {
+        id: ddcSet
+        onExited: {
+            if (root._pending >= 0) {
+                var p = root._pending
+                root._pending = -1
+                root._send(p)
+            }
+        }
+    }
+
+    // ⚠️ RUN ONCE, NEVER ON A TIMER — the same rule the panel above follows,
+    // and it matters more here: this one spawns a process that talks to
+    // hardware. It runs when the shell starts and when something says a
+    // monitor arrived, and at no other time.
+    Process {
+        id: ddcDetect
+        running: Config.brightness.external
+        command: ["ddcutil", "detect", "--brief"]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                // --brief prints one indented `I2C bus:   /dev/i2c-4` line per
+                // display it can talk to. Nothing at all means no DDC monitor,
+                // ddcutil missing, or a machine with no graphics i2c bus — all
+                // three deserve the same answer, which is to show no slider.
+                var m = /\/dev\/i2c-(\d+)/.exec(text)
+                if (!m) { root.externalAvailable = false; root._bus = -1; return }
+                root._bus = parseInt(m[1])
+                ddcGet.command = ["ddcutil", "--bus", String(root._bus),
+                                  "getvcp", "10", "--brief"]
+                ddcGet.running = true
+            }
+        }
+    }
+
+    Process {
+        id: ddcGet
+        stdout: StdioCollector {
+            onStreamFinished: {
+                // --brief answers `VCP 10 C 45 100`: feature, type, current,
+                // max. A monitor that does not implement feature 10 prints
+                // something else entirely, and then there is nothing to show.
+                var p = text.trim().split(/\s+/)
+                if (p.length < 5 || p[0] !== "VCP") {
+                    root.externalAvailable = false
+                    return
+                }
+                var cur = parseInt(p[3]), mx = parseInt(p[4])
+                if (isNaN(cur) || isNaN(mx) || mx <= 0) {
+                    root.externalAvailable = false
+                    return
+                }
+                root.externalValue = cur
+                root.externalMax = mx
+                root.externalAvailable = true
+            }
+        }
+    }
+
+    // For whoever learns that a monitor was plugged in. Nothing calls it yet —
+    // niri's output events are the obvious source and that is a separate piece
+    // of work — but the alternative to having it is a poll timer, and this
+    // project does not get to have one of those.
+    function refreshExternal() {
+        if (Config.brightness.external) ddcDetect.running = true
     }
 }

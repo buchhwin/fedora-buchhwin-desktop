@@ -30,6 +30,7 @@ Singleton {
     readonly property alias surfaces: adapter.surfaces
     readonly property alias notifications: adapter.notifications
     readonly property alias nightlight: adapter.nightlight
+    readonly property alias brightness: adapter.brightness
     readonly property alias timer: adapter.timer
     readonly property alias clipboard: adapter.clipboard
     readonly property alias notch: adapter.notch
@@ -639,6 +640,34 @@ Singleton {
                 // 6500 K is neutral by definition; below it goes warm. 4000 is
                 // a clear change without turning the screen orange.
                 property int temperature: 4000
+            }
+
+            // Brightness on a screen that is not the laptop's own. The internal
+            // backlight needs no settings — it either exists or it does not —
+            // but an external monitor is talked to over I²C, and that is slow
+            // enough and odd enough per model to deserve two switches.
+            property JsonObject brightness: JsonObject {
+                // Whether to look for DDC/CI monitors at all. Measured on a
+                // machine with none: `ddcutil detect` answers in 0.01 s and
+                // never opens a device — it rules the whole thing out from
+                // /sys/bus/i2c first. So the probe is not what this is for.
+                // It is for the monitor that answers DDC badly, where the
+                // honest fix is to stop asking.
+                property bool external: true
+
+                // ⚠️ FALSE, i.e. SEND ONCE ON RELEASE, and that is the careful
+                // choice rather than the measured one. A DDC write takes as
+                // long as the monitor feels like taking, and many pop their own
+                // on-screen menu up for every one — a slider dragged live would
+                // strobe that menu across the picture. No external monitor
+                // exists on the test VM, so the honest state of this is: not
+                // verified on real hardware, defaulted to the quiet side.
+                //
+                // Turning it on is safe from the shell's side either way:
+                // Brightness.qml keeps at most ONE write in flight and
+                // overwrites the pending value, so a fast bus feels live and a
+                // slow one simply arrives late. It never queues up a drag.
+                property bool externalLive: false
             }
 
             property JsonObject look: JsonObject {
