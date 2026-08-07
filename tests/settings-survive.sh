@@ -39,12 +39,16 @@ restore() {
 }
 trap restore EXIT
 
-# path : value (JSON) : what shape it is
-CASES='cursor.size:41:int
-look.blur:false:bool
-look.opacityPanel:0.77:real
-input.keyboard.layout:"fr":string
-windows.floating:["buchhwin-probe"]:list'
+# The five, and the shape each one is there to cover. They are written out in
+# both python blocks below rather than driven from a list here: a shell array
+# feeding two heredocs would need quoting for JSON values, and quoting a test's
+# own fixtures is how a test starts measuring its quoting.
+#
+#   cursor.size            41                  int
+#   look.blur              false               bool
+#   look.opacityPanel      0.77                real
+#   input.keyboard.layout  "fr"                string
+#   windows.floating       ["buchhwin-probe"]  list<string>
 
 # ⚠️ THE SHELL IS STOPPED FIRST, AND THE FIRST VERSION OF THIS TEST WAS WRONG
 # FOR NOT DOING IT. Writing while the shell runs means the live watcher applies
