@@ -171,10 +171,14 @@ else
         got="$(radius_of "$ns")"
         [[ "$got" == "$drawn" ]] || bad+="$ns=$got (drawn $drawn) "
     done
-    for ns in buchhwin-notch; do
-        got="$(radius_of "$ns")"
-        [[ "$got" == "11" ]] || bad+="$ns=$got (notch corner 11) "
-    done
+    # The notch and the bar each stand alone — one namespace, one expected
+    # number — so neither is a loop. It used to be `for ns in buchhwin-notch`,
+    # over a list of exactly one, and shellcheck was right to call it out
+    # (SC2043): a one-element loop reads as the start of a list somebody meant
+    # to extend, and the next person adding a namespace would have put it here
+    # rather than in the group above, where the rule is different.
+    got="$(radius_of buchhwin-notch)"
+    [[ "$got" == "11" ]] || bad+="buchhwin-notch=$got (notch corner 11) "
     got="$(radius_of buchhwin-bar)"
     [[ "$got" == "0" ]] || bad+="buchhwin-bar=$got (draws nothing rounded) "
 fi

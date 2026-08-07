@@ -23,7 +23,28 @@ Item {
 
     signal unlocked()
 
-    readonly property string user: Quickshell.env("USER") || ""
+    // ⚠️ THREE SOURCES, NOT ONE, AND CI FOUND IT. This was `Quickshell.env
+    // ("USER")` alone. `USER` is set by login shells and by systemd user
+    // services, so it is there on the real machine — but it is NOT set inside a
+    // bare container, which is where tests/lock.sh runs (ci.yml, job `qml`,
+    // `container: fedora:44`). The check "it knows who is logged in" went red,
+    // and it was right to: the lock screen would have shown "?" for an avatar
+    // and no name at all.
+    //
+    // `LOGNAME` is the POSIX spelling of the same thing and is set in places
+    // `USER` is not. `HOME` is set essentially everywhere, and its last segment
+    // is the account name on any normal layout — a guess, but the right kind:
+    // it is only ever reached when the two authoritative answers are missing,
+    // and a plausible name beats a question mark on the screen you have to
+    // recognise yourself in.
+    readonly property string user: {
+        var named = Quickshell.env("USER") || Quickshell.env("LOGNAME") || ""
+        if (named.length > 0)
+            return named
+        var home = String(Quickshell.env("HOME") || "")
+        var cut = home.lastIndexOf("/")
+        return cut >= 0 ? home.slice(cut + 1) : home
+    }
 
     // Nothing but the clock until a key is pressed — which is also the "press
     // any key" the brief asks for, rather than an instruction printed under a
