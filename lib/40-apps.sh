@@ -118,6 +118,25 @@ except Exception:
 # `browser.theme.user_color`: an explicit colour, which Chromium DOES persist
 # because it is not a default. That one has to be written per palette, so it
 # belongs in tools/render.qml and in the Theming fingerprint — not here.
+# ⚠️ THE THIRD KEY IS THE ONE THAT STICKS — measured 07.08.2026. Written as a
+# signed 32-bit SkColor (0xFFRRGGBB, wrapped into negative), together with
+# `is_grayscale`, and after a full restart Brave STILL HAS THEM:
+#
+#     {'is_grayscale': False, 'user_color': -5783424}
+#
+# The two before it were dropped on every start. This one persists because it is
+# not a default — which is exactly the argument for choosing it.
+#
+# ⚠️ AND THE COLOUR IS NOT PROVEN YET, said plainly. The screenshot taken to
+# check it caught Brave's ONBOARDING page — the purple splash with the lion —
+# not the browser chrome, so the [97 57 119] reading measured the wrong thing.
+# What is established is that the key survives; whether the chrome takes the
+# palette still needs a shot past the first-run flow, against
+# 2026-08-07/vorlage-brave-gefaerbt.png.
+#
+# ⚠️ AND WHEN IT IS PROVEN IT MOVES OUT OF HERE. A colour has to be rewritten on
+# every palette change, so it belongs in tools/render.qml and in the Theming
+# fingerprint. This installer step only seeds a profile that does not exist yet.
 prefs.setdefault("browser", {}).setdefault("theme", {})["follows_system_colors"] = True
 tmp = path + ".buchhwin-tmp"
 with open(tmp, "w") as fh:
