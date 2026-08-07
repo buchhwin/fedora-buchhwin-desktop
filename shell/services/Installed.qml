@@ -26,7 +26,13 @@ import Quickshell.Io
 Singleton {
     id: root
 
-    readonly property bool ready: root._done
+    // ⚠️ `available`, NOT `ready` — this said `ready`, nothing in the whole
+    // shell read it, and services/qmldir states that every service carries
+    // `available` "without exception". So the rule had a hole in it and the
+    // hole had no reader: two faults sharing one line. tools/smoke.qml never
+    // caught it because this service was not in its list either, which is the
+    // second half of the same omission and is fixed alongside.
+    readonly property bool available: root._done
     property bool _done: false
     property bool _running: false
 

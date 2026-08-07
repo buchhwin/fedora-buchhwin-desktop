@@ -338,6 +338,15 @@ Scope {
             root.service("Calculator", Services.Calculator)
             root.service("Countdown", Services.Countdown)
 
+            // ⚠️ AND THE TWO THAT ANSWER QUESTIONS ABOUT THE MACHINE. Installed
+            // was missing from this list from the day it was written, and it
+            // carried `ready` instead of `available` the whole time — the rule
+            // in services/qmldir and the list that enforces it had the same
+            // hole, so neither could catch the other. Gpu is added with it
+            // rather than after somebody notices the same thing twice.
+            root.service("Installed", Services.Installed)
+            root.service("Gpu", Services.Gpu)
+
             note(root.failures === 0
                  ? "smoke: all good"
                  : "ABORT: " + root.failures + " check(s) failed")

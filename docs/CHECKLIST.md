@@ -419,3 +419,61 @@ demonstrably right first — points 3 to 6 above.
 - [ ] **A machine with a lot of programs.** The test VM has sixteen; a laptop
       with a full Fedora has several hundred, and scrolling and search behave
       differently at that size.
+
+---
+
+# Hybrid graphics, Secure Boot, and the second monitor
+
+The target machine is a Ryzen 7 7840HS with a Radeon 780M and an RTX 4060.
+niri draws on the 780M — `amdgpu` is in the kernel and needs no signature — so
+**the desktop does not depend on any of this**. What depends on it is offloading
+and any monitor wired to the discrete card.
+
+## Proven on the test VM
+
+| | |
+|---|---|
+| The detector | six fake `/sys` trees in `tests/gpu-detect.sh`, including an NVIDIA HDMI audio function that must NOT count as a GPU. Removing the class test makes exactly that fixture red |
+| The branch skips, and can run | `--only gpu` on the VM says "no NVIDIA GPU — nothing to install"; the same code with a hybrid fixture reaches RPM Fusion. Without the second half, "installed nothing" and "does nothing" are the same output |
+| A failing GPU phase exits 0 | nothing in `phase_gpu` may `die` — an abort trades a working desktop for a card the desktop does not use |
+| `debug { render-drm-device }` | accepted by niri 26.04. An invented key inside the block **is** rejected, so the name is real |
+| ⚠️ A device that does not exist | **validates without a warning.** `niri validate` cannot tell a working device from a wrong one |
+| An empty value | writes no `debug` block at all — measured, not assumed |
+| The device list | `/dev/dri/by-path/pci-0000:00:01.0-render` + `virtio-pci`, by-path form preferred |
+| The Secure Boot card | drawn under `BUCHHWIN_GPU_FAKE=needs-enrolment`, text read off the screenshot; **absent** without it, which is the control |
+| `bhctl doctor` | prints the graphics block on a machine with no NVIDIA too — a doctor that goes quiet is indistinguishable from one that forgot the check |
+
+⚠️ **Not verified: the "Show steps" button.** `ydotool` clicks do not reach
+Quickshell windows on this VM — hover arrives, the button press does not, with
+the settings window focused and with press and release sent separately. Proven
+with a control: clicking a sidebar entry, which certainly works for a human,
+does nothing either. So this is the instrument, not the card. **Press it once by
+hand on the laptop.**
+
+## What only you can check
+
+- [ ] **`mokutil --test-key …` before and after the blue screen.** Paste both
+      outputs here. "is not enrolled" then "already enrolled" is the whole proof.
+- [ ] **`sudo modprobe nvidia` before enrolment fails, and `dmesg | grep -i
+      'Key was rejected'` says why.** ⚠️ This is the control that separates
+      "Secure Boot blocked it" from "the module was never built" — from
+      userspace the two look identical.
+- [ ] **The safety claim itself.** With the module NOT loaded: niri starts, the
+      shell runs, `bhctl doctor` is green apart from the graphics block. Then the
+      same session with it loaded. If anything else differs, "the desktop does
+      not depend on NVIDIA" is wrong and the Secure Boot design changes.
+- [ ] **The card disappears after enrolment.** A condition that is narrow going
+      in and sticky coming out is not narrow.
+- [ ] **`render-drm-device` on the external monitor.** `wf-recorder` for ten
+      seconds against a fixed animation, `ffprobe -count_frames`, with the key
+      set and cleared. Frame counts, not impressions.
+- [ ] **What that costs.** `upower … energy-rate`, five minutes idle, both ways.
+      It has to be a number, not "it uses more".
+- [ ] **`vainfo` before and after the codec swap.** ⚠️ If the two lists are the
+      same, the mesa swap bought nothing and comes back out — Fedora has been
+      re-enabling codecs as patents expire.
+- [ ] **Lid close and resume with the module loaded**, and again with
+      `nvidia-suspend.service` disabled. That is what
+      `xorg-x11-drv-nvidia-power` is in the package list for.
+- [ ] **The MUX switch in the firmware stays on Hybrid.** "Discrete" costs
+      battery and is only the fallback if the external monitor stutters.

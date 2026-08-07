@@ -442,6 +442,98 @@ print(len(b) if isinstance(b,list) else 0)" "$cfg" 2>/dev/null || echo -1)"
     # started is printed after the @ character" as though it were a measurement.
     # A number that is not a number is worse than no number.
     printf 'startup     %s\n' "$(systemd-analyze --user critical-chain buchhwin-shell.service 2>/dev/null | grep -m1 '^buchhwin-shell\.service' | sed 's/^ *//' || echo 'not measured')"
+    # ---------------------------------------------------------------- graphics
+    #
+    # ⚠️ PRINTED ON EVERY MACHINE, INCLUDING ONES WITH NO NVIDIA. A doctor that
+    # goes silent when there is nothing to report is indistinguishable from one
+    # that forgot the check — and this section is also the only place, over SSH,
+    # where the value for `gpu.renderDevice` can be looked up.
+    #
+    # Every command here answers as an ordinary user: sysfs reads and
+    # `mokutil --sb-state`. `doctor` must never need a password.
+    gpus=""; nvaddr=""; othergpu=0
+    for d in /sys/bus/pci/devices/*; do
+        [[ -r "$d/class" && -r "$d/vendor" ]] || continue
+        # 0x03xxxx is a display controller. The class test is what keeps an
+        # NVIDIA card's HDMI audio function — same vendor, class 0x0403 — from
+        # being counted as a second GPU. tests/gpu-detect.sh has that fixture.
+        [[ "$(<"$d/class")" == 0x03* ]] || continue
+        v="$(<"$d/vendor")"
+        case "$v" in
+            0x10de) n=NVIDIA; nvaddr="$(basename "$d")" ;;
+            0x1002) n=AMD;    othergpu=$(( othergpu + 1 )) ;;
+            0x8086) n=Intel;  othergpu=$(( othergpu + 1 )) ;;
+            *)      n="$v";   othergpu=$(( othergpu + 1 )) ;;
+        esac
+        gpus+="${gpus:+ · }$n ($(basename "$d"))"
+    done
+    if [[ -n "$nvaddr" && $othergpu -gt 0 ]]; then
+        printf 'gpu         %s — hybrid\n' "$gpus"
+    else
+        printf 'gpu         %s\n' "${gpus:-none detected}"
+    fi
+
+    # The certificate akmods signs modules with. Named once because it appears
+    # three times below, and because a path is not a place for a line break.
+    mokkey=/etc/pki/akmods/certs/public_key.der   # english-ok: .der is the certificate encoding
+    if [[ -n "$nvaddr" ]]; then
+        nvver="$(cat /proc/driver/nvidia/version 2>/dev/null | head -1 \
+                 | grep -oE '[0-9]+\.[0-9]+(\.[0-9]+)?' | head -1)"
+        if [[ -d /sys/module/nvidia ]]; then
+            printf 'nvidia      module loaded%s\n' "${nvver:+ ($nvver)}"
+        elif compgen -G "/lib/modules/$(uname -r)/extra/nvidia/nvidia.ko*" >/dev/null; then
+            printf 'nvidia      built for %s, NOT loaded\n' "$(uname -r)"
+        else
+            printf 'nvidia      no module built for %s\n' "$(uname -r)"
+        fi
+
+        # ⚠️ THE FOUR-PART CONDITION, same as the card in the settings window,
+        # so the two can never disagree about whether there is a problem.
+        if command -v mokutil >/dev/null; then
+            if mokutil --sb-state 2>/dev/null | grep -q "SecureBoot enabled"; then
+                if [[ -d /sys/module/nvidia ]]; then
+                    printf 'secureboot  enabled, and the module loads\n'
+                elif mokutil --test-key "$mokkey" 2>/dev/null \
+                        | grep -q "already enrolled"; then
+                    printf 'secureboot  enabled, key enrolled — but the module is not loaded\n'
+                elif [[ -n "$(mokutil --list-new 2>/dev/null)" ]]; then
+                    printf 'secureboot  enabled, an enrolment is WAITING — reboot and answer the blue screen\n'
+                else
+                    printf 'secureboot  enabled, akmods key NOT enrolled\n'
+                    printf '            run: sudo mokutil --import %s\n' "$mokkey"
+                fi
+                # Said every time, because the report is read by somebody who
+                # has just seen the word "blocking" and needs to know how much
+                # it costs before deciding to care.
+                printf '            (the desktop is unaffected: niri draws on the integrated GPU)\n'
+            else
+                printf 'secureboot  off — the module needs no signature\n'
+            fi
+        else
+            printf 'secureboot  unknown (mokutil is not installed)\n'
+        fi
+    fi
+
+    # The value `gpu.renderDevice` takes, with the driver beside each one — the
+    # settings window shows the same pairing, and this is how to find it over a
+    # connection that has no settings window.
+    rd="$(python3 -c 'import json,sys
+try:
+    print(json.load(open(sys.argv[1])).get("gpu",{}).get("renderDevice",""))
+except Exception:
+    print("")' "$CONFIG_HOME/buchhwin/shell.json" 2>/dev/null)"
+    printf 'render      %s\n' "${rd:-niri chooses}"
+    for n in /dev/dri/renderD*; do
+        [[ -e "$n" ]] || continue
+        b="$(basename "$n")"
+        p="$(readlink -f "/sys/class/drm/$b/device" 2>/dev/null)"
+        drv="$(basename "$(readlink -f "/sys/class/drm/$b/device/driver" 2>/dev/null)")"
+        path="$n"
+        [[ -n "$p" && -e "/dev/dri/by-path/pci-$(basename "$p")-render" ]] \
+            && path="/dev/dri/by-path/pci-$(basename "$p")-render"
+        printf '            %s  (%s)\n' "$path" "${drv:-unknown}"
+    done
+
     # ⚠️ THE PRICE OF THE TWO COPRs, paid where it can be seen.
     #
     # starship and lazygit are the only two packages here that Fedora does not

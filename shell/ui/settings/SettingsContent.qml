@@ -22,6 +22,17 @@ import "../../theme"
 FocusScope {
     id: root
 
+    // ⚠️ ONE PROCESS, THE FIRST TIME THIS WINDOW OPENS, AND NEVER AT STARTUP.
+    // Services.Gpu answers a question that changes at most twice in a machine's
+    // life — is Secure Boot standing in the way of the NVIDIA module — so
+    // asking on every login would be a fork on the start path for nothing, and
+    // `bhctl doctor` measures that path. The service guards itself against a
+    // second run, so opening the window ten times still costs one.
+    //
+    // The other two routes to the same answer already exist: the installer says
+    // it on the terminal, and `bhctl doctor` says it over SSH.
+    Component.onCompleted: Services.Gpu.probe()
+
     // ⚠️ Every icon name goes through tests/icons.sh. "Material Icons Round" is
     // missing more names than anyone expects — the quick panel ended up on
     // `dashboard` because `grid_view` and `space_dashboard` are both absent.
@@ -246,6 +257,99 @@ FocusScope {
                             color: Theme.fg
                         }
                         onClicked: Services.Theming.retry()
+                    }
+                }
+            }
+
+            // ⚠️ THE ONE HARDWARE STATE THE DESKTOP CAN SEE AND THE USER CANNOT.
+            // Four conditions at once, deliberately: an NVIDIA card is here, its
+            // module has been built, Secure Boot is on, and the module is not
+            // loaded. That combination has exactly one cause — the akmods
+            // signing key was never enrolled, because the blue firmware screen
+            // at the next boot has a short timeout and is easy to miss.
+            //
+            // ⚠️ AND THE FIRST LINE OF THE TEXT IS THAT IT DOES NOT MATTER MUCH.
+            // A warning that reads like a broken machine, on a machine that is
+            // working perfectly, is how people learn to click warnings away.
+            // niri draws on the integrated GPU; this costs the second card.
+            //
+            // Same shape as the banner above rather than a new one: same
+            // rounded pill background, same `warning` glyph — which tests/
+            // icons.sh has already proven exists in the font.
+            Rectangle {
+                Layout.fillWidth: true
+                visible: Services.Gpu.needsEnrolment
+                implicitHeight: mok.implicitHeight + Theme.space3 * 2
+                radius: Theme.radiusSm
+                color: Theme.pillBg
+
+                ColumnLayout {
+                    id: mok
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    anchors.verticalCenter: parent.verticalCenter
+                    anchors.leftMargin: Theme.space3
+                    anchors.rightMargin: Theme.space3
+                    spacing: Theme.space1
+
+                    // Local state, not an IPC verb: nothing outside this card
+                    // needs to know whether the steps are open, and a verb
+                    // nobody calls is a verb that rots.
+                    property bool stepsOpen: false
+
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: Theme.space2
+                        Icon { text: "warning"; size: Theme.fontSize; color: Theme.warn }
+                        BarText {
+                            Layout.fillWidth: true
+                            text: "Secure Boot is blocking the NVIDIA driver"
+                            color: Theme.warn
+                            font.weight: Theme.weightMedium
+                        }
+                    }
+                    BarText {
+                        Layout.fillWidth: true
+                        text: "Nothing on this desktop depends on it: niri draws with the built-in "
+                            + "graphics. Only offloading and any monitor wired to the second card "
+                            + "are affected."
+                        font.pixelSize: Theme.fontSizeSm
+                        color: Theme.fgMuted
+                        wrapMode: Text.WordWrap
+                    }
+                    BarText {
+                        Layout.fillWidth: true
+                        visible: mok.stepsOpen
+                        // ⚠️ TWO DIFFERENT ANSWERS, because the useful one
+                        // depends on whether an enrolment is already waiting.
+                        // Telling somebody to run a command they ran an hour ago
+                        // is how a correct message becomes a useless one.
+                        text: Services.Gpu.enrolmentPending
+                            ? "An enrolment is already scheduled.\n\n"
+                              + "1. Reboot.\n"
+                              + "2. A blue screen appears: choose Enroll MOK, Continue, Yes.\n"
+                              + "3. Type the one-time password you chose during installation.\n\n"
+                              + "The screen times out, so answer it when it appears."
+                            : "In a terminal:\n\n"
+                              // The trailing marker sits on the string's own line because
+                              // tests/english.sh reads line by line. Safe here: the next
+                              // line begins with `+`, so no semicolon can be inferred.
+                              + "    sudo mokutil --import /etc/pki/akmods/certs/public_key.der\n\n"   // english-ok: .der is the certificate encoding
+                              + "It asks for a one-time password twice. Then reboot: a blue screen "
+                              + "appears, choose Enroll MOK, Continue, Yes, and type that password.\n\n"
+                              + "The screen times out, so answer it when it appears."
+                        font.pixelSize: Theme.fontSizeSm
+                        font.family: Theme.fontMono
+                        color: Theme.fgMuted
+                        wrapMode: Text.WordWrap
+                    }
+                    Pill {
+                        interactive: true
+                        BarText {
+                            text: mok.stepsOpen ? "Hide steps" : "Show steps"
+                            color: Theme.fg
+                        }
+                        onClicked: mok.stepsOpen = !mok.stepsOpen
                     }
                 }
             }
