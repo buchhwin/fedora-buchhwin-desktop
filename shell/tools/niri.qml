@@ -150,6 +150,35 @@ Scope {
         return s
     }
 
+    // ------------------------------------------------------------------ debug
+    //
+    // niri's own fix for the hybrid laptop, from its FAQ.md:43-55: the external
+    // display connectors are usually wired to the discrete GPU, so niri renders
+    // on the integrated one and copies each frame across for that screen.
+    // Naming the discrete card here removes the copy — and costs battery,
+    // because that card then never idles.
+    //
+    // ⚠️ AN EMPTY VALUE WRITES NO BLOCK AT ALL, and that is deliberate rather
+    // than tidy. `debug` is a section niri itself documents as unsupported and
+    // subject to change; emitting an empty one on every machine that has no
+    // opinion would put us inside it for nothing.
+    //
+    // ⚠️ MEASURED ON niri 26.04, WITH CONTROLS, because "the docs say so" is not
+    // the same as "this build accepts it":
+    //   probe      debug { render-drm-device "/dev/dri/renderD128" }  -> valid
+    //   control A  an invented key inside the same block              -> REJECTED
+    //   control B  a device path that does not exist                  -> valid
+    // Control A is what proves the key name is real and not being silently
+    // dropped. Control B is the warning: `niri validate` cannot tell a working
+    // device from a wrong one, so the file being valid is not the same as the
+    // compositor being able to start. The row that sets it carries that weight.
+    function debugSection() {
+        var dev = Config.gpu && Config.gpu.renderDevice ? String(Config.gpu.renderDevice) : ""
+        if (!dev.length)
+            return "// No render-drm-device: niri picks the GPU it draws on.\n"
+        return "debug {\n    render-drm-device " + q(dev) + "\n}\n"
+    }
+
     // ----------------------------------------------------------------- layout
     function layoutSection() {
         var L = Config.look
@@ -643,6 +672,7 @@ Scope {
         parts.push(header)
         parts.push(inputSection())
         parts.push(outputsSection())
+        parts.push(debugSection())
         parts.push(layoutSection())
         parts.push(animationsSection())
         // AFTER layout, on purpose: an include overrides what came before it,

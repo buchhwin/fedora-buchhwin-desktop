@@ -37,6 +37,19 @@ ColumnLayout {
         { value: "flat",     label: "Flat" }
     ]
 
+    // The render nodes this machine actually has, labelled by their driver —
+    // because "which of these is the NVIDIA" is the only question anybody has
+    // when they look at /dev/dri. The empty entry comes first and is the
+    // default: letting niri choose is right on every machine that is not a
+    // hybrid laptop with an external monitor plugged in.
+    readonly property var renderChoices: {
+        var out = [{ value: "", label: "niri chooses" }]
+        var d = Services.Installed.renderDevices
+        for (var i = 0; i < d.length; i++)
+            out.push({ value: d[i].path, label: d[i].driver ? d[i].driver : d[i].path })
+        return out
+    }
+
     SettingGroup {
         Layout.fillWidth: true
         title: "Keyboard"
@@ -233,6 +246,38 @@ ColumnLayout {
             label: "Hide from screen sharing"
             kind: "strings"
             placeholder: "None"
+        }
+    }
+
+    SettingGroup {
+        Layout.fillWidth: true
+        title: "Graphics"
+
+        // ⚠️ A CLOSED LIST, NOT A FIELD WITH SUGGESTIONS — and it is the one row
+        // in the window where that is the right way round. `niri validate`
+        // accepts a device path that does not exist (measured on 26.04, with a
+        // control: an invented KEY in the same block is rejected, a missing
+        // DEVICE is not), and a config naming a device niri cannot open means
+        // niri does not start. Everywhere else a typed value that this machine
+        // does not have is merely wrong; here it costs the session, and a
+        // "Not installed here" caption under a text box would be a warning
+        // shown after the damage was already typed.
+        //
+        // ⚠️ AND IT IS NOT GATED ON THE NVIDIA MODULE, which was the first
+        // idea and is worse: renderDevice is not an NVIDIA setting. Naming the
+        // integrated card is legitimate, and a machine with two AMD GPUs has
+        // the same question. The list itself is the guarantee — every entry is
+        // a render node that exists here with a driver bound to it.
+        //
+        // The way out, if it is ever reached by editing shell.json by hand: a
+        // TTY, clear gpu.renderDevice, `bhctl niri apply`. Also in docs/NIRI.md.
+        SettingRow {
+            Layout.fillWidth: true
+            key: "gpu.renderDevice"
+            label: "Render on"
+            hint: "Which GPU niri draws with. On a hybrid laptop the external display sockets usually belong to the second card, so niri renders on the built-in one and copies each frame across for that screen — naming the second card here removes the copy, and costs battery, because that card then never idles."
+            kind: "choice"
+            choices: root.renderChoices
         }
     }
 

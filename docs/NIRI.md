@@ -39,6 +39,51 @@ shipped niri config does with waybar.
 
 **No colours.** See above.
 
+## The `debug` block, and the one setting that can stop niri from starting
+
+`gpu.renderDevice` is the only key in `shell.json` that generates a `debug {}`
+block, and it is empty by default. Set, it writes:
+
+```kdl
+debug {
+    render-drm-device "/dev/dri/by-path/pci-0000:01:00.0-render"
+}
+```
+
+**What it is for.** On a hybrid laptop the external display sockets are usually
+wired to the discrete GPU. niri renders on the integrated one and copies each
+frame across for that screen, which costs frames — niri's own `FAQ.md:43-55`
+names both the effect and this remedy. It also costs battery, because the card
+named here then never idles. That is why the default is *let niri choose*.
+
+**An empty value writes no block at all**, not an empty one. `debug` is a
+section niri documents as unsupported and subject to change; sitting inside it
+on every machine that has no opinion would be a standing risk taken for nothing.
+
+### ⚠️ If niri does not start after setting it
+
+`niri validate` **cannot** catch a bad value here. Measured on niri 26.04 with
+two controls: an invented key inside the block *is* rejected, so the name is
+real — but a device path that does not exist validates perfectly happily. A
+config that parses is therefore not the same as a compositor that can start.
+
+The way out, from a TTY (`Ctrl+Alt+F3`):
+
+```sh
+# clear the key, then regenerate
+sed -i 's|"renderDevice": *"[^"]*"|"renderDevice": ""|' ~/.config/buchhwin/shell.json
+bhctl niri apply
+```
+
+The settings row is a **closed list** built from the render nodes this machine
+actually has — every entry in it is a device that exists and whose driver is
+loaded, so the failure above cannot be reached from the window. Editing
+`shell.json` by hand can still reach it, and so can moving the settings file to
+a different machine.
+
+`bhctl doctor` prints the same list with each device's driver beside it, which
+is also how to find the right value over SSH.
+
 ## Environment variables are written twice, on purpose
 
 niri's `environment {}` block does **not** reach the systemd and D-Bus

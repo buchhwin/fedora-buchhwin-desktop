@@ -31,6 +31,7 @@ Singleton {
     readonly property alias notifications: adapter.notifications
     readonly property alias nightlight: adapter.nightlight
     readonly property alias cursor: adapter.cursor
+    readonly property alias gpu: adapter.gpu
     readonly property alias brightness: adapter.brightness
     readonly property alias clock: adapter.clock
     readonly property alias motion: adapter.motion
@@ -847,6 +848,45 @@ Singleton {
                 // drawn by the compositor at its own size and does not follow
                 // the shell's grid.
                 property int size: 24
+            }
+
+            // ⚠️ WHICH CHIP DRAWS THE DESKTOP, and it exists for one specific
+            // machine shape: a hybrid laptop. On most of them the external
+            // display connectors are wired to the discrete GPU, so niri renders
+            // on the integrated one and copies every frame across for that
+            // screen. niri's own FAQ.md:43-55 names this and names the remedy —
+            // `debug { render-drm-device }`, pointed at the discrete card.
+            //
+            // ⚠️ IT IS NOT FREE. Naming the discrete GPU means it never idles,
+            // which on a laptop is watts. That is why the default is "let niri
+            // choose" and not "be clever".
+            //
+            // A separate group rather than a field on `outputs`: `outputs` is
+            // one entry per monitor, and this is a single global choice with no
+            // per-output meaning in niri. Not in `look` either — `look` is
+            // appearance, and this is hardware.
+            property JsonObject gpu: JsonObject {
+                // "" means niri decides, following `outputs: []` — the mark for
+                // "set by hand" is the entry existing, so there is one state
+                // rather than a value plus a flag that can disagree with it.
+                //
+                // ⚠️ THE by-path FORM IS THE ONE TO USE:
+                //   /dev/dri/by-path/pci-0000:01:00.0-render
+                // renderD128/renderD129 are assigned in probe order and are not
+                // guaranteed to mean the same card after a reboot. Both forms
+                // are offered by the settings row; the stable one is offered
+                // first.
+                //
+                // ⚠️⚠️ A PATH niri CANNOT OPEN IS NOT CAUGHT BY `niri validate`.
+                // Measured on niri 26.04 with three controls: the block is
+                // accepted, an invented key inside it IS rejected (so the name
+                // is real and not silently ignored), and a device that does not
+                // exist validates perfectly happily. The safeguards are
+                // therefore elsewhere — the settings row is a CLOSED list built
+                // from the render nodes this machine really has, an empty value
+                // writes no block at all, and docs/NIRI.md carries the way out
+                // from a TTY.
+                property string renderDevice: ""
             }
 
             property JsonObject brightness: JsonObject {

@@ -36,6 +36,10 @@ Singleton {
     property var monoFonts: []
     property var keyboardLayouts: []
     property var keyboardVariants: []
+    // The render nodes this machine has, stable form first. Feeds the one row
+    // that can stop niri from starting if it is given a path that does not
+    // resolve, so offering the real ones is not a convenience here.
+    property var renderDevices: []
 
     function scan() {
         if (root._done || root._running)
@@ -72,6 +76,34 @@ Singleton {
             echo "--variants"
             awk '/^! variant/{f=1;next} /^!/{f=0} f&&NF{print $1}' \\
                 /usr/share/X11/xkb/rules/base.lst 2>/dev/null | sort -u
+            echo "--drm"
+            for n in /dev/dri/renderD*; do
+                [ -e "$n" ] || continue
+                b=$(basename "$n")
+                p=$(readlink -f "/sys/class/drm/$b/device" 2>/dev/null)
+                d=$(basename "$(readlink -f "/sys/class/drm/$b/device/driver" 2>/dev/null)")
+                # ⚠️ ONE ENTRY PER DEVICE, and the by-path form when there is
+                # one — not both forms. renderD128/renderD129 are handed out in
+                # probe order, so on a hybrid machine they can swap between
+                # boots and the setting would then quietly name the other card.
+                # The by-path name is the PCI address, which does not move.
+                # Offering both would also put two pills with the same driver
+                # label next to each other, which answers nothing.
+                path="$n"
+                if [ -n "$p" ] && [ -e "/dev/dri/by-path/pci-$(basename "$p")-render" ]; then
+                    path="/dev/dri/by-path/pci-$(basename "$p")-render"
+                fi
+                # ⚠️ NOT \${d:-unknown}. This whole command is a JavaScript
+                # template literal, so \${...} is an INTERPOLATION and QML tries
+                # to parse the shell default-value syntax as JavaScript —
+                # "Expected token ','" at this line, and every singleton that
+                # imports this one then reports as unavailable, which makes it
+                # look like a qmldir problem three files away. Plain "$d" is
+                # safe because it has no brace; the fallback moves to a line of
+                # its own.
+                [ -n "$d" ] || d=unknown
+                echo "$path	$d"
+            done
             echo "--end"
         `]
         stdout: StdioCollector { id: collected }
@@ -79,7 +111,7 @@ Singleton {
         onExited: function (code) {
             root._running = false
             var buckets = { "cursors": [], "fonts": [], "mono": [],
-                            "layouts": [], "variants": [] }
+                            "layouts": [], "variants": [], "drm": [] }
             var cur = ""
             var lines = String(collected.text || "").split("\n")
             for (var i = 0; i < lines.length; i++) {
@@ -96,6 +128,19 @@ Singleton {
             root.monoFonts = buckets.mono
             root.keyboardLayouts = buckets.layouts
             root.keyboardVariants = buckets.variants
+            // ⚠️ The driver name rides along on the same line, separated by a
+            // tab, because "which of these is the NVIDIA" is the only question
+            // anybody has when they open this list — and answering it here
+            // costs nothing, where a second lookup per entry would be a process
+            // per row. Split into {path, driver} so the path can never end up
+            // in the settings file with a label glued to it.
+            var drm = []
+            for (var j = 0; j < buckets.drm.length; j++) {
+                var parts = String(buckets.drm[j]).split("\t")
+                if (parts[0] && parts[0].length)
+                    drm.push({ path: parts[0], driver: parts.length > 1 ? parts[1] : "" })
+            }
+            root.renderDevices = drm
             // ⚠️ `_done` even on a non-zero exit, and even on an empty answer.
             // A machine without fontconfig is a machine where the list stays
             // empty and the field stays typable — retrying forever would be a

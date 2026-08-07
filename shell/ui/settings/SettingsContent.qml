@@ -50,7 +50,7 @@ FocusScope {
         { id: "lock",     icon: "lock",          title: "Lock Screen",
           blurb: "What the screen shows while the session is locked." },
         { id: "system",   icon: "computer",      title: "System",
-          blurb: "Keyboard, touchpad, windows, programs, the session and the key bindings." }
+          blurb: "Keyboard, touchpad, graphics, windows, programs, the session and the key bindings." }
     ]
 
     // ---------------------------------------------------------------- history

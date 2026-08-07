@@ -85,6 +85,38 @@ check "extra autostart + floating rule" \
 # A program that is not configured must DROP its key rather than emit a binding
 # to nothing — and the result still has to parse.
 check "no terminal configured" '{"version":1,"programs":{"terminal":[]}}'
+# ⚠️ THE `debug` BLOCK, and the path deliberately does NOT exist on the machine
+# running this. Measured on niri 26.04 with two controls: an invented key inside
+# the block IS rejected, so the name is real; a device that does not exist is
+# accepted WITHOUT a warning, so this case is safe for a suite that fails on any
+# warning — and that acceptance is exactly why the settings row is a closed list
+# rather than a text field. A config naming a device niri cannot open parses
+# perfectly and then does not start.
+check "render device set" \
+      '{"version":1,"gpu":{"renderDevice":"/dev/dri/by-path/pci-0000:01:00.0-render"}}'
+
+# ⚠️ AND THE OTHER HALF OF THE SAME KEY, which is the half that would rot
+# silently. An empty renderDevice must write NO `debug` block at all — not an
+# empty one. `debug` is a section niri documents as unsupported and subject to
+# change, so being inside it on every machine that has no opinion is a standing
+# risk taken for nothing. A green "it parses" would not notice the difference.
+printf '  %-34s ' "empty render device writes no block"
+tmp="$(mktemp -d)"; mkdir -p "$tmp/buchhwin" "$tmp/niri" "$tmp/environment.d" "$tmp/share"
+printf '{"version":1,"gpu":{"renderDevice":""}}\n' > "$tmp/buchhwin/shell.json"
+XDG_CONFIG_HOME="$tmp" XDG_DATA_HOME="$tmp/share" BUCHHWIN_TOOL=niri QT_QPA_PLATFORM=offscreen \
+    timeout 60 qs -p shell >/dev/null 2>&1
+# ⚠️ `grep -c ... || echo 0` IS WRONG HERE, and it was written that way first:
+# grep -c prints 0 AND exits 1 when it matches nothing, so the fallback fires on
+# top of the answer and the variable holds two lines. The message read "wrote 0
+# 0 debug block(s)", which is the check reporting on its own arithmetic rather
+# than on the file. `|| true` keeps the single number grep already printed.
+n="$(grep -c '^debug {' "$tmp/niri/config.kdl" 2>/dev/null || true)"
+if [[ "${n:-0}" == "0" ]]; then
+    printf '\033[38;5;114mok\033[0m\n'
+else
+    printf '\033[38;5;203mwrote %s debug block(s) for an empty value\033[0m\n' "$n"; fail=1
+fi
+rm -rf "$tmp"
 
 # Regenerating must be a no-op: niri live-reloads on every write, so a rewrite
 # that changes nothing still costs a full compositor reload.

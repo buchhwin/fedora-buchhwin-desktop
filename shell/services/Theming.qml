@@ -219,6 +219,13 @@ Singleton {
                 // three lines up, applied on the way in this time instead of
                 // after somebody noticed the pointer never changed.
                 Config.cursor.theme, Config.cursor.size,
+                // ⚠️ THE GPU niri DRAWS ON. tools/niri.qml reads it, so it
+                // belongs here — the same rule as the two lines above, applied
+                // on the way in for the sixth time. The `Config.gpu ?` guard is
+                // not decoration: `settled` goes true one event-loop step before
+                // the adapter has built its sub-objects, which is why every
+                // neighbour below is written the same way.
+                Config.gpu ? Config.gpu.renderDevice : "",
                 // ⚠️ The light/dark schedule. Scheme decides the palette from
                 // these three, so a change to any of them has to move the
                 // fingerprint or the generators keep yesterday's colours until
