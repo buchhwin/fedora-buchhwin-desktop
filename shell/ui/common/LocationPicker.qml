@@ -128,9 +128,25 @@ ColumnLayout {
                     font.pixelSize: Theme.fontSizeSm
                     elide: Text.ElideRight
                 }
+                // ⚠️ THE ORDER IS THE FIX, AND IT IS NOT COSMETIC. This used to
+                // call `choose()` first and then set `root.editing = false`, and
+                // it threw "ReferenceError: root is not defined" on every single
+                // use — the error he reported.
+                //
+                // `Location.choose()` ends with `matches = []`. That is this
+                // Repeater's model, so the delegate whose handler is RUNNING is
+                // destroyed inside the call, and every statement after it
+                // executes in a context that has been torn down. Singletons
+                // still resolve, because they are global — which is exactly why
+                // the failure looked so strange: `Services.Location` worked on
+                // the line above and `root` did not on the line below.
+                //
+                // So: read what is needed off the delegate, let go of it, and
+                // only then call the thing that deletes it.
                 onClicked: {
-                    Services.Location.choose(hit.modelData)
+                    var picked = hit.modelData
                     root.editing = false
+                    Services.Location.choose(picked)
                 }
             }
         }
