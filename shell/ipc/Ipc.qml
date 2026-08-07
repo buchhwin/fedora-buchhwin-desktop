@@ -60,18 +60,23 @@ Singleton {
     // ---------------------------------------------------- the quick panel's tab
     //
     // Which of the quick panel's four views is showing. It lives here rather
-    // than in the page because two different things point at it from outside:
-    // the gear on the bar opens the panel already on the settings view, and the
-    // page itself is rebuilt every time the surface opens, so a property of its
-    // own would forget which tab you were on between openings.
+    // than in the page because things point at it from outside — the bar's
+    // network, sound and gear pills all open the panel on the overview, where
+    // the switches are — and the page itself is rebuilt every time the surface
+    // opens, so a property of its own would forget which tab you were on
+    // between openings.
     readonly property int quickOverview: 0
     readonly property int quickMedia: 1
     readonly property int quickNotifications: 2
-    // ⚠️ The timer sits BEFORE settings, so settings is 4 rather than 3 now.
-    // Named constants rather than numbers everywhere is what makes that a
-    // one-line change instead of a hunt through five files.
     readonly property int quickTimer: 3
-    readonly property int quickSettings: 4
+    // ⚠️ `quickSettings` IS GONE — the switches moved into the overview beside
+    // the calendar on 06.08.2026, because the space there was empty and the
+    // deep settings are going to M8 anyway. Five tabs became four.
+    //
+    // Named constants are what made that a small change: everything that used
+    // to point at the settings tab now points at `quickOverview`, and the
+    // compiler found every one of them. Numbers scattered through five files
+    // would not have.
     property int quickTab: quickOverview
 
     // Open the panel on a named tab — or, if it is already open on that tab,

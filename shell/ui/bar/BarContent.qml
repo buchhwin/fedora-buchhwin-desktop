@@ -231,7 +231,7 @@ Item {
                 }
             }
 
-            onClicked: Ipc.showQuick(Ipc.quickSettings)
+            onClicked: Ipc.showQuick(Ipc.quickOverview)
         }
 
         Pill {
@@ -244,7 +244,7 @@ Item {
                 color: Services.Bt.connectedDevices.length > 0 ? Theme.fg : Theme.fgDim
             }
 
-            onClicked: Ipc.showQuick(Ipc.quickSettings)
+            onClicked: Ipc.showQuick(Ipc.quickOverview)
         }
 
         Pill {
@@ -304,12 +304,12 @@ Item {
         // --------------------------------------------------- settings
         Pill {
             interactive: true
-            active: Ipc.page === "quick" && Ipc.quickTab === Ipc.quickSettings
+            active: Ipc.page === "quick" && Ipc.quickTab === Ipc.quickOverview
             Icon { text: "settings"; size: Theme.fontSizeLg }
             // The settings WINDOW is still M8. What this opens is the quick
             // panel's settings view — network, bluetooth, sound, brightness —
             // which is a real answer rather than the nothing it did before.
-            onClicked: Ipc.showQuick(Ipc.quickSettings)
+            onClicked: Ipc.showQuick(Ipc.quickOverview)
         }
     }
 }

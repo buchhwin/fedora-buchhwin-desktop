@@ -47,14 +47,23 @@ ColumnLayout {
     // forget the tab between openings.
     readonly property int tab: Ipc.quickTab
 
-    // ⚠️ ONE WIDTH FOR ALL FIVE TABS, and it is a bug fix rather than tidiness.
+    // ⚠️ ONE WIDTH FOR ALL FOUR TABS, and it is a bug fix rather than tidiness.
     // Measured on the running VM: the panel was 669 px wide on Overview and
     // 619 px on Settings, so it changed size by 50 px every time you touched a
     // tab. Each view was simply asking for whatever its own contents wanted,
     // and the surface follows the content on both axes (see NotchContent).
     //
-    // The number is the widest view — the month grid beside the weather column
-    // needs about 621 px — rounded up onto the 32 px grid with a little air.
+    // ⚠️ It went from 20 to 24 grid units when the switches moved in beside the
+    // calendar. Measured, one step at a time: at 20 the tile read "Do not
+    // dis…", at 22 "Do not distu…", at 24 the whole name fits. A switch whose
+    // name is cut off is a switch you have to guess at.
+    //
+    // ⚠️ Widening the PANEL is the fix rather than the tile, because the tile
+    // cannot ask for what it needs: its label is `Layout.fillWidth` with
+    // `elide: Text.ElideRight` (ui/quick/Tile.qml), so it silently accepts
+    // whatever it is given and cuts the text. Making it demand its natural
+    // width instead would break the grid on a narrow screen, where eliding is
+    // the correct behaviour.
     // ⚠️ It is deliberately MORE than `notch.minExpandedWidth` (619): that key
     // is a FLOOR from the reference screenshot, not a ceiling, and the quick
     // panel is the one page whose job is to gather things rather than show one.
@@ -63,7 +72,7 @@ ColumnLayout {
     // `implicitWidth`. A Layout computes its own implicit size and writes it,
     // so assigning it means whoever writes last wins — which is a size that
     // changes on rearrange.
-    readonly property int contentWidth: Theme.space6 * 20
+    readonly property int contentWidth: Theme.space6 * 24
 
     // ------------------------------------------------------------------- tabs
     RowLayout {
@@ -75,7 +84,7 @@ ColumnLayout {
         spacing: Theme.space2
 
         Repeater {
-            model: ["Overview", "Media", "Notifications", "Timer", "Settings"]
+            model: ["Overview", "Media", "Notifications", "Timer"]
 
             Pill {
                 id: tabPill
@@ -155,14 +164,6 @@ ColumnLayout {
         sourceComponent: timerTab
     }
 
-    Loader {
-        Layout.fillWidth: true
-        active: root.tab === Ipc.quickSettings
-        visible: active
-        asynchronous: true
-        sourceComponent: settingsTab
-    }
-
     // ⚠️ COMPONENTS, NOT INSTANCES — the same trap NotchContent.qml already
     // names, and it was walked into here anyway. `sourceComponent: QuickSettings
     // {}` writes an OBJECT into a property that wants a recipe: the object is
@@ -174,7 +175,6 @@ ColumnLayout {
     // screen, but only sometimes".
     Component { id: notificationsTab; NotificationsPage {} }
     Component { id: timerTab; TimerPage {} }
-    Component { id: settingsTab; QuickSettings {} }
 
     // --------------------------------------------------------------- overview
     RowLayout {
@@ -243,42 +243,20 @@ ColumnLayout {
             }
         }
 
-        // ------------------------------------------------------------ sliders
-        // Rows appear only where the hardware does. On a machine with no
-        // backlight the brightness row is absent rather than dead — a slider
-        // that moves nothing is worse than no slider.
-        LevelRow {
+        // ------------------------------------------- the switches and levels
+        // ⚠️ THE SAME QuickSettings THE SETTINGS TAB USED TO BE, PUT HERE —
+        // not a copy. Two sets of tiles would drift: one would learn about a
+        // new switch and the other would not, and they would sit on one screen
+        // disagreeing about whether the wifi is on.
+        //
+        // It brings its own volume and brightness rows, which is why the two
+        // this column used to carry are gone rather than kept: the panel would
+        // otherwise have shown each slider twice.
+        //
+        // His decision on 06.08.2026 — the space beside the calendar was empty,
+        // and the deep settings are going to M8 anyway. Five tabs became four.
+        QuickSettings {
             Layout.fillWidth: true
-            visible: Services.Audio.available
-            icon: Services.Audio.muted ? "volume_off"
-                : Services.Audio.volume > 0.5 ? "volume_up" : "volume_down"
-            value: Services.Audio.volume
-            live: !Services.Audio.muted
-            onMoved: function (f) { Services.Audio.setVolume(f) }
-            onNudged: function (d) {
-                Services.Audio.setVolume(Math.max(0, Math.min(1,
-                    Services.Audio.volume + d / steps)))
-            }
-        }
-
-        LevelRow {
-            Layout.fillWidth: true
-            visible: Services.Brightness.available
-            icon: "brightness_6"
-            value: Services.Brightness.fraction
-            onMoved: function (f) { Services.Brightness.set(f) }
-            onNudged: function (d) {
-                Services.Brightness.set(Math.max(0.01, Math.min(1,
-                    Services.Brightness.fraction + d / steps)))
-            }
-        }
-
-        BarText {
-            Layout.fillWidth: true
-            visible: !Services.Audio.available && !Services.Brightness.available
-            text: "No controls on this machine"
-            color: Theme.fgMuted
-            font.pixelSize: Theme.fontSizeSm
         }
 
         }
