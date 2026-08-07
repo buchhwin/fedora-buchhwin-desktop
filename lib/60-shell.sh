@@ -59,6 +59,28 @@ phase_shell() {
     mkdir -p "$CONFIG_HOME/buchhwin"
     if [[ -f "$CONFIG_HOME/buchhwin/shell.json" ]]; then
         ok "settings kept (shell.json exists)"
+
+        # ⚠️ AND THE FOLDER STAYED EMPTY FOREVER ON THAT PATH. Both wallpaper
+        # keys were only ever written by the seeding branch below, which runs
+        # exactly once — when this file does not exist yet. Every machine that
+        # had settings before wallpapers were copied kept `folder: ""`, and the
+        # picker had nothing to show: reported as "wallpapers cannot be set".
+        #
+        # Filling a value that is EMPTY is not overwriting a decision, which is
+        # the rule this file otherwise keeps. A folder somebody chose stays.
+        if command -v jq >/dev/null && [[ -d "$wp_dir" ]]; then
+            local f="$CONFIG_HOME/buchhwin/shell.json"
+            if [[ -z "$(jq -r '.wallpaper.folder // ""' "$f" 2>/dev/null)" ]]; then
+                local tmp
+                tmp="$(mktemp)"
+                if jq --arg d "$wp_dir" '.wallpaper.folder = $d' "$f" > "$tmp" 2>/dev/null; then
+                    mv "$tmp" "$f"
+                    ok "wallpaper folder filled in ($wp_dir)"
+                else
+                    rm -f "$tmp"
+                fi
+            fi
+        fi
     elif [[ -n "$wp_first" ]]; then
         # The default scheme is derived from the wallpaper, not shipped. Which
         # image it is does not matter — any of them produces a palette, and the
