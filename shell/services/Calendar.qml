@@ -185,6 +185,29 @@ Singleton {
                     // a fresh one instead of retrying with the same bad value.
                     root._token = ""
                     root.status = "Sign-in refused — reconnect the account"
+                } else if (x.status === 403) {
+                    // ⚠️ 403 IS NOT 401 AND THE DIFFERENCE IS THE WHOLE
+                    // DIAGNOSIS. This fell into "Calendar not found", which is
+                    // wrong in the most expensive way: the account is there, the
+                    // token is valid, and Google is refusing this particular
+                    // request. Measured with `bhctl calendar` on his machine —
+                    // the token's scopes are email, profile, userinfo.* and
+                    // openid, with NO calendar scope at all.
+                    //
+                    // Online Accounts reports the calendar as enabled for the
+                    // account, so nothing in the UI contradicts it; the grant
+                    // Google actually issued simply does not cover a calendar.
+                    // Retrying, re-signing in, or refreshing the token cannot
+                    // change that — only consenting again with Calendar ticked.
+                    //
+                    // ⚠️ THE TOKEN IS NOT DROPPED HERE, unlike on 401. It is a
+                    // perfectly good token; throwing it away would start a
+                    // refresh loop against a wall.
+                    root.status = "Google refused the calendar (403) — the "
+                                + "account is connected but was never granted "
+                                + "calendar access. Add it again in Online "
+                                + "Accounts with Calendar ticked, or run "
+                                + "`bhctl calendar` to see the scopes."
                 } else {
                     root.status = "Calendar not found (HTTP " + x.status + ")"
                 }

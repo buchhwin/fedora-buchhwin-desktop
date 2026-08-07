@@ -189,11 +189,99 @@ calendar)
     # diagnostic that leaks one is worse than no diagnostic.
     echo "token:     ok, valid for $(jq -r '.data[1]' <<<"$tok")s"
 
-    url="https://apidata.googleusercontent.com/caldav/v2/$name/events/"
-    code="$(curl -s -o /dev/null -w '%{http_code}' -X PROPFIND -H "Depth: 0" \
-            -H "Authorization: Bearer $(jq -r '.data[0]' <<<"$tok")" "$url" 2>/dev/null)"
-    echo "calendar:  HTTP $code  $url"
-    [[ "$code" == "207" || "$code" == "200" ]] && echo "reachable" || echo "NOT reachable"
+    bearer="$(jq -r '.data[0]' <<<"$tok")"
+
+    # ⚠️ THE SCOPES ARE THE ANSWER, AND NOTHING ASKED FOR THEM. The symptom was
+    # HTTP 403 on CalDAV with a token GOA said was valid and an account GOA said
+    # had the calendar switched on — so "reconnect the account" was the obvious
+    # advice and it was wrong twice over. A 403 with a good token is not an
+    # authentication problem, it is a permission one, and the permissions are on
+    # the token.
+    #
+    # Google publishes them: tokeninfo takes the access token and says what it
+    # is allowed to do. The token itself is never printed — a diagnostic that
+    # leaks a bearer credential is worse than no diagnostic — but its scopes are
+    # not secret, and they are the whole diagnosis.
+    # ⚠️ THE SCOPES ARE THE ANSWER, AND NOTHING EVER ASKED FOR THEM. The symptom
+    # was HTTP 403 on CalDAV with a token GOA called valid, on an account GOA
+    # said had the calendar switched on — so "reconnect the account" was the
+    # obvious advice and there was no way to tell whether it was right.
+    #
+    # A 403 with a good token is not an authentication problem, it is a
+    # permission one, and the permissions are on the token. Google publishes
+    # them: tokeninfo says what an access token is allowed to do. The token
+    # itself is never printed — a diagnostic that leaks a bearer credential is
+    # worse than no diagnostic — but its scopes are not secret and they are the
+    # whole diagnosis.
+    scopes="$(curl -s "https://www.googleapis.com/oauth2/v3/tokeninfo?access_token=$bearer" \
+              | jq -r '.scope // empty' 2>/dev/null)"
+    echo "scopes:"
+    if [[ -n "$scopes" ]]; then
+        tr ' ' '\n' <<<"$scopes" | sed 's/^/           /'
+    else
+        echo "           (could not read them)"
+    fi
+
+    # ⚠️ THE CALENDAR ID IS A PATH SEGMENT, so the address has to be
+    # percent-encoded. That is the cheap explanation for a 403 and it gets ruled
+    # out before the expensive one.
+    enc="$(jq -rn --arg s "$name" '$s|@uri')"
+
+    # ⚠️ THE CODE COMES BACK IN A VARIABLE, NOT ON STDOUT. The first version of
+    # this returned it by echoing, and every caller wrapped it in `$( )` — which
+    # swallowed the human-readable line along with it, so the whole "endpoints"
+    # section printed nothing at all while looking like it had run.
+    probe_code=""
+    probe() {   # probe <label> <method> <url>
+        local label="$1" method="$2" url="$3"
+        if [[ "$method" == "PROPFIND" ]]; then
+            probe_code="$(curl -s -o /dev/null -w '%{http_code}' -X PROPFIND \
+                          -H "Depth: 0" -H "Authorization: Bearer $bearer" "$url" 2>/dev/null)"
+        else
+            probe_code="$(curl -s -o /dev/null -w '%{http_code}' \
+                          -H "Authorization: Bearer $bearer" "$url" 2>/dev/null)"
+        fi
+        printf '  %-26s HTTP %s\n' "$label" "$probe_code"
+    }
+
+    echo "endpoints:"
+    probe "caldav, address as-is" PROPFIND \
+          "https://apidata.googleusercontent.com/caldav/v2/$name/events/"
+    raw="$probe_code"
+    probe "caldav, address encoded" PROPFIND \
+          "https://apidata.googleusercontent.com/caldav/v2/$enc/events/"
+    encoded="$probe_code"
+    probe "calendar api v3" GET \
+          "https://www.googleapis.com/calendar/v3/users/me/calendarList?maxResults=1"
+    rest="$probe_code"
+
+    # The verdict, rather than three numbers to interpret.
+    #
+    # ⚠️ The message this replaces said "no Google account with the calendar
+    # switched on", which is FALSE when the account is there and answering 403.
+    # A message that names the wrong cause costs more time than no message.
+    if [[ "$raw" == "207" || "$raw" == "200" ]]; then
+        echo "reachable"
+    elif [[ "$encoded" == "207" || "$encoded" == "200" ]]; then
+        echo "NOT reachable — but the ENCODED address works, so the shell is"
+        echo "asking with an unencoded '@' in the path. That one is ours."
+    elif [[ "$scopes" != *"auth/calendar"* ]]; then
+        echo "NOT reachable, and the reason is in the scope list above: the token"
+        echo "carries no calendar scope at all. GOA says the calendar is enabled"
+        echo "for this account, but the grant Google actually issued covers only"
+        echo "sign-in and profile — so 403 is the correct answer to the question"
+        echo "we are asking, and no amount of retrying will change it."
+        echo
+        echo "Remove the account and add it again, and tick Calendar during the"
+        echo "consent step:  gnome-online-accounts-gtk"
+    elif [[ "$rest" == "200" ]]; then
+        echo "NOT reachable over CalDAV, though the REST API answers and the"
+        echo "token does carry a calendar scope. Google is refusing CalDAV"
+        echo "specifically — the endpoint wants the full auth/calendar scope."
+    else
+        echo "NOT reachable, and neither is the REST API. Reconnect the account:"
+        echo "  gnome-online-accounts-gtk"
+    fi
     ;;
 power)
     # ⚠️ THE LID IS THE ONE THING ON THE POWER PAGE THE SHELL CANNOT DO. Idle,
