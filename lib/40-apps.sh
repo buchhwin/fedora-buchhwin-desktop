@@ -104,6 +104,20 @@ except Exception:
 #     browser.theme.follows_system_colors
 #     browser.theme.user_color
 #     browser.theme.color_scheme / color_variant / is_grayscale
+#
+# ⚠️ AND THIS ONE DOES NOT VISIBLY WORK EITHER — measured 07.08.2026, said here
+# rather than left for the next person to rediscover. Written to a settled
+# Preferences file with Brave not running, then started: the key is absent again
+# and the chrome measures [35 35 39], a neutral grey, where the palette's window
+# colour is (45 53 59). Either Brave drops it because `true` is already the
+# default (Chromium omits prefs at their default), in which case following is on
+# and simply does nothing under niri — or it is not honoured at all.
+#
+# It stays because it is at worst harmless and at best correct, and because the
+# key it replaced was provably wrong. The route that remains is
+# `browser.theme.user_color`: an explicit colour, which Chromium DOES persist
+# because it is not a default. That one has to be written per palette, so it
+# belongs in tools/render.qml and in the Theming fingerprint — not here.
 prefs.setdefault("browser", {}).setdefault("theme", {})["follows_system_colors"] = True
 tmp = path + ".buchhwin-tmp"
 with open(tmp, "w") as fh:
