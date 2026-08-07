@@ -193,7 +193,7 @@ Singleton {
 
     function _send(pct) {
         root._sent = pct
-        ddcSet.command = ["ddcutil", "--bus", String(root._bus),
+        ddcSet.command = ["timeout", "5", "ddcutil", "--bus", String(root._bus),
                           "setvcp", "10", String(pct)]
         ddcSet.running = true
     }
@@ -216,17 +216,70 @@ Singleton {
     Process {
         id: ddcDetect
         running: Config.brightness.external
-        command: ["ddcutil", "detect", "--brief"]
+        // ⚠️ `timeout` IN FRONT OF IT, and it is not belt-and-braces. ddcutil
+        // retries a bus that does not answer — measured on his laptop, three
+        // tries a second apart per bus, and the journal filled with
+        // "Checking EDID failed after 3 tries". Nothing in a desktop shell may
+        // block for that long; five seconds is far more than a healthy probe
+        // needs (0.1 s here) and far less than a person waits.
+        command: ["timeout", "5", "ddcutil", "detect", "--brief"]
         stdout: StdioCollector {
             onStreamFinished: {
-                // --brief prints one indented `I2C bus:   /dev/i2c-4` line per
-                // display it can talk to. Nothing at all means no DDC monitor,
-                // ddcutil missing, or a machine with no graphics i2c bus — all
-                // three deserve the same answer, which is to show no slider.
-                var m = /\/dev\/i2c-(\d+)/.exec(text)
-                if (!m) { root.externalAvailable = false; root._bus = -1; return }
-                root._bus = parseInt(m[1])
-                ddcGet.command = ["ddcutil", "--bus", String(root._bus),
+                // ⚠️⚠️ THE OLD PARSER TOOK THE FIRST /dev/i2c-N IT COULD FIND,
+                // ANYWHERE IN THE OUTPUT, and that is what he reported as "the
+                // quick panel sometimes hangs everything". Measured on his
+                // laptop, where `ddcutil detect --brief` says:
+                //
+                //     Invalid display
+                //        I2C bus:          /dev/i2c-1
+                //        DRM connector:    card1-eDP-1
+                //     Invalid display
+                //        I2C bus:          /dev/i2c-7
+                //        DRM connector:    card1-eDP-1
+                //
+                // Both blocks are INVALID and both are the built-in panel. The
+                // regex matched i2c-1 out of a block ddcutil had just refused,
+                // and the getvcp that followed spent four to five seconds
+                // retrying a bus with nothing on it.
+                //
+                // Two conditions now, and each one alone would have been enough:
+                //
+                //   1. the block must be a real display. `Invalid display` is
+                //      ddcutil saying so in as many words.
+                //   2. the connector must not be internal. eDP, LVDS and DSI are
+                //      the built-in panel, and that one belongs to
+                //      brightnessctl through /sys/class/backlight — talking DDC
+                //      to it is asking the wrong interface for an answer the
+                //      right one already has. It would also have drawn a second
+                //      slider for the same screen.
+                root.externalAvailable = false
+                root._bus = -1
+
+                var lines = String(text).split("\n")
+                var bus = -1, conn = "", valid = false
+                for (var i = 0; i <= lines.length; i++) {
+                    var ln = i < lines.length ? lines[i] : ""
+                    var isHeader = i === lines.length || /^\S/.test(ln)
+                    if (isHeader) {
+                        // A block just ended — judge it before starting the next.
+                        if (valid && bus >= 0 && !/-(eDP|LVDS|DSI)/i.test(conn)) {
+                            root._bus = bus
+                            break
+                        }
+                        valid = /^Display\s/.test(ln)
+                        bus = -1
+                        conn = ""
+                        continue
+                    }
+                    var mb = /\/dev\/i2c-(\d+)/.exec(ln)
+                    if (mb) bus = parseInt(mb[1])
+                    var mc = /DRM connector:\s*(\S+)/.exec(ln)
+                    if (mc) conn = mc[1]
+                }
+
+                if (root._bus < 0)
+                    return
+                ddcGet.command = ["timeout", "5", "ddcutil", "--bus", String(root._bus),
                                   "getvcp", "10", "--brief"]
                 ddcGet.running = true
             }
