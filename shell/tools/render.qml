@@ -294,33 +294,25 @@ Scope {
     // ⚠️ And it is written per COLOUR, not as one blanket rule on `window`.
     // libadwaita paints several surfaces — the window, the view, the sidebar —
     // and a single translucent rule underneath opaque ones changes nothing.
-    // ⚠️ HALFWAY BETWEEN TWO PALETTE COLOURS, and it exists because his Nautilus
-    // reference asks for a step the palette does not contain.
+    // ⚠️ THERE IS NO `mix()` HELPER HERE ANY MORE, AND THE REASON IS WORTH
+    // KEEPING. His report was "und nautilus ist links die leiste immer noch     english-ok: the report, quoted
+    // dunkel", so the sidebar was moved half a palette step towards the window  english-ok: the report, quoted
+    // colour to soften the difference. Then it was measured, and the change was
+    // wrong in both size and direction:
     //
-    // Measured off 2026-08-06/vorlage-nautilus.png, sidebar against content:
+    //   his reference (vorlage-nautilus.png)   sidebar -3.6 against the content
+    //   `mantle`, i.e. what shipped            sidebar -2.2
+    //   the half step "fix"                    sidebar +2.6   <- lighter!
     //
-    //   reference    [10, 21, 25]  vs  [13, 24, 28]   ->  -3 per channel
-    //   ours         mantle #15191e   vs  base #1b2027 ->  -6 per channel
+    // The sidebar in the reference is slightly DARKER than the content, and
+    // `mantle` already put it within 1.4 units of that — below anything anyone
+    // perceives, and well inside the error of measuring a screenshot of a
+    // different palette. So the shipped value was right and the fix was not.
     //
-    // Twice the separation the picture has, which is exactly his report:
-    // "und nautilus ist links die leiste immer noch dunkel". The note beside     english-ok: the report, quoted
-    // the image says the same in words — the sidebar is set off "nur durch die   english-ok: the reference note, quoted
-    // Fläche, nicht durch eine Linie", a step you barely notice.                 english-ok: the reference note, quoted
-    //
-    // There is no palette name half a step from `base`, so it is computed. Still
-    // no literal anywhere: both ends come from the palette, and a different
-    // palette moves both.
-    function mix(hexA, hexB, t) {
-        var a = Qt.color(hexA), b = Qt.color(hexB)
-        // ⚠️ Returns a STRING, because `alphaOf` below takes one and hands it
-        // to Qt.color(). Handing it a colour object instead is the kind of
-        // mismatch QML answers with `undefined` rather than an error, and an
-        // undefined colour renders as transparent black — a hole where the
-        // sidebar should be.
-        return Qt.rgba(a.r + (b.r - a.r) * t,
-                       a.g + (b.g - a.g) * t,
-                       a.b + (b.b - a.b) * t, 1).toString()
-    }
+    // The helper went with it: a function nothing calls is the same debt as a
+    // key nothing reads. Fifth reading this week that turned out to have no
+    // control behind it — the first one caught before it shipped rather than
+    // after.
 
     function alphaOf(hex, a) {
         var c = Qt.color(hex)
@@ -341,9 +333,7 @@ Scope {
             "@define-color popover_fg_color " + col(m, "text") + ";\n" +
             "@define-color card_bg_color " + col(m, "surface0") + ";\n" +
             "@define-color card_fg_color " + col(m, "text") + ";\n" +
-            // Half a step, not a whole one — see mix() above for the measurement.
-            "@define-color sidebar_bg_color "
-            + alphaOf(mix(col(m, "base"), col(m, "mantle"), 0.5), a) + ";\n" +
+            "@define-color sidebar_bg_color " + alphaOf(col(m, "mantle"), a) + ";\n" +
             "@define-color sidebar_fg_color " + col(m, "text") + ";\n" +
             "@define-color dialog_bg_color " + col(m, "surface0") + ";\n" +
             "@define-color dialog_fg_color " + col(m, "text") + ";\n" +
