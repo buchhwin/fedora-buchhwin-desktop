@@ -5,8 +5,21 @@
 // one gets a thinner track, the other keeps the old step size, and nobody
 // notices until they are side by side in the quick settings.
 //
-// Small on purpose. This is a readout, not a control to grab: it lives on a
-// page you GLANCE at, and the wheel is the way it is meant to be used.
+// ⚠️ THE TRACK USED TO BE FOUR PIXELS TALL in everything except the control
+// centre, and it was reported as "die Regler sind extrem blöd gemacht". Four     // english-ok: quoted brief
+// pixels at scale 1 is a hairline: you cannot see where the value is without
+// looking for it, and you cannot grab it at all — the handlers had already been
+// moved onto a taller invisible item precisely because the visible thing was
+// unusable. That is the shape of a control that has given up.
+//
+// The reference for the new one is One UI 8, asked for by name: a thick rounded
+// track where THE FILL ITSELF IS THE HANDLE. There is no knob, because a knob
+// is a small target inside a large one — the same fault this repo fixed in Pill
+// — and because a bar that is entirely filled reads as "all the way" far more
+// directly than a dot at the right-hand end.
+//
+// It grows while you hold it. That is not decoration: it is the only feedback a
+// control without a knob can give that it has you, and One UI does exactly this.
 import QtQuick
 import QtQuick.Layouts
 import "../../theme"
@@ -22,11 +35,9 @@ RowLayout {
     // ⚠️ TWO SHAPES, ONE COMPONENT. The reference
     // (2026-08-06/vorlage-control-center.png) draws the control-centre levels
     // as tall rounded bars with the symbol INSIDE them and no percentage at
-    // all; the thin track with the icon beside it is still right where a level
-    // is a readout rather than a control — the media page, the small pages the
-    // volume keys raise. Building the fat one separately is how volume and
-    // brightness drift apart, which is the thing the head of this file exists
-    // to prevent, so it is a property instead.
+    // all; the settings rows are the same control at a calmer size. Building the
+    // fat one separately is how volume and brightness drift apart, which is the
+    // thing the head of this file exists to prevent, so it is a property.
     property bool fat: false
 
     // Whether the percentage is written at the end. Off for the track position
@@ -45,6 +56,17 @@ RowLayout {
     signal released(real fraction)
 
     spacing: Theme.space3
+
+    // Held: by a finger on the track, or by a drag in progress. Both, because a
+    // tap that never becomes a drag still deserves the same acknowledgement.
+    readonly property bool held: press.pressed || drag.active
+
+    // ⚠️ EVERY NUMBER HERE IS A TOKEN, including the ones that only exist as a
+    // sum. tests/no-literals.sh would catch a bare radius; it would NOT catch a
+    // bare height, and a hand-typed 48 is how one of these two shapes ends up
+    // scaling with uiScale and the other not.
+    readonly property int thickness: root.fat ? Theme.space6 + Theme.space4
+                                              : Theme.space4
 
     WheelHandler {
         // The whole row, not just the track. Aiming is the thing being removed
@@ -70,17 +92,31 @@ RowLayout {
     Rectangle {
         id: track
         Layout.fillWidth: true
-        implicitHeight: root.fat ? Theme.space6 : Theme.space1
+        Layout.alignment: Qt.AlignVCenter
+        implicitHeight: root.thickness + (root.held ? Theme.space1 : 0)
         radius: Theme.radiusPill
         color: Theme.surfaceHigh
 
+        // The grow, and the shrink back. Short, because this is an answer to a
+        // touch rather than a movement of its own — anything slower reads as the
+        // control being late.
+        Behavior on implicitHeight {
+            enabled: Theme.animate
+            NumberAnimation { duration: Theme.durFast; easing.type: Theme.easing }
+        }
+
         Rectangle {
             id: fill
-            width: Math.max(root.fat ? track.height : 0,
+            // ⚠️ NEVER NARROWER THAN IT IS TALL. Below that the pill radius has
+            // no room to round and the fill degenerates into a lozenge that
+            // looks like a rendering fault — and in fat mode the symbol inside
+            // would be sitting on bare grey. At a true zero the control still
+            // has to look like a control set to zero.
+            width: Math.max(track.height,
                             track.width * Math.max(0, Math.min(1, root.live ? root.value : 0)))
             height: parent.height
             radius: parent.radius
-            color: Theme.accent
+            color: root.live ? Theme.accent : Theme.surfaceHigher
 
             // The fill follows the value rather than jumping to it, which is
             // what makes a key held down feel continuous instead of stepped.
@@ -88,14 +124,17 @@ RowLayout {
                 enabled: Theme.animate
                 NumberAnimation { duration: Theme.durFast; easing.type: Theme.easing }
             }
+            Behavior on color {
+                enabled: Theme.animate
+                ColorAnimation { duration: Theme.durBase; easing.type: Theme.easing }
+            }
         }
 
         // ⚠️ SITS ON THE TRACK, NOT ON THE FILL, and it is the fill that moves
         // under it. Anchored into the fill it would slide off the left end as
         // the level dropped; anchored here it stays where the symbol belongs
         // and simply stops being on the accent when the fill retreats past it.
-        // That is why the fill has a minimum width of one track height in fat
-        // mode — at zero the symbol would sit on bare grey and read as broken.
+        // That is what the fill's minimum width above is protecting.
         Icon {
             visible: root.fat
             anchors.verticalCenter: parent.verticalCenter
@@ -106,23 +145,22 @@ RowLayout {
             color: root.live ? Theme.accentFg : Theme.fgDim
         }
 
-        // ⚠️ THE HANDLERS SIT ON A TALLER, INVISIBLE ITEM RATHER THAN ON THE
-        // TRACK, and the thin shape is why. `Theme.space1` is four pixels at
-        // scale 1; four pixels is not something you grab, it is something you
-        // miss, and the same handlers now serve a settings page where the level
-        // IS a control rather than a readout you nudge with the wheel.
-        //
-        // Nothing about the drawing changes — the item is transparent and
-        // exactly as wide as the track, so the fractions below are identical to
-        // what they were. Only what answers is bigger, and it is centred on the
-        // track so the thing you see and the thing you hit share a middle.
+        // ⚠️ THE HANDLERS STILL SIT ON THEIR OWN ITEM, even now that the track is
+        // big enough to hit. It is what keeps the answering area a rectangle of
+        // constant height while the drawn track grows and shrinks underneath —
+        // otherwise the control would change size under the finger that is
+        // holding it, and the fraction would shift with it.
         Item {
             id: grab
             anchors.verticalCenter: parent.verticalCenter
             width: parent.width
-            height: Math.max(parent.height, Theme.space5)
+            height: Math.max(root.thickness + Theme.space1, Theme.space5)
 
+            // Pressed-state only. The tap itself is below, because a HoverHandler
+            // and a TapHandler answer different questions and sharing one would
+            // make "held" true for a pointer that is merely passing over.
             TapHandler {
+                id: press
                 onTapped: function (p) {
                     var f = p.position.x / grab.width
                     root.moved(f)

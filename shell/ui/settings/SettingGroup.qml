@@ -61,28 +61,66 @@ ColumnLayout {
             BarText {
                 Layout.fillWidth: true
                 text: root.title
-                font.pixelSize: Theme.fontSizeSm
+                // ⚠️ Was fontSizeSm and muted — a heading quieter than the rows
+                // it heads, which is why the long pages read as one undivided
+                // list. One UI puts real weight on the section name; the colour
+                // stays calm so it groups rather than shouts.
+                font.pixelSize: Theme.fontSize
                 font.weight: Theme.weightSemibold
                 color: headHover.hovered ? Theme.fg : Theme.fgMuted
+
+                Behavior on color {
+                    enabled: Theme.animate
+                    ColorAnimation { duration: Theme.durFast; easing.type: Theme.easing }
+                }
             }
         }
     }
 
     // --------------------------------------------------------------- the card
+    // ⚠️ IT USED TO VANISH RATHER THAN CLOSE. `visible: !collapsed` is a card
+    // that is simply not there on the next frame, and everything below it jumps
+    // up the page — which reads as a glitch rather than as a group closing, and
+    // loses you the place you were reading.
+    //
+    // Height and opacity, clipped, so the rows slide out of a shrinking card
+    // instead of being cut off mid-air. This is the standing rule for everything
+    // in this shell now: nothing appears or disappears without moving.
     Rectangle {
+        id: card
         Layout.fillWidth: true
-        visible: !root.collapsed
-        implicitHeight: holder.implicitHeight + Theme.space4 * 2
-        radius: Theme.radiusMd
+        clip: true
+
+        readonly property int full: holder.implicitHeight + Theme.space5 * 2
+        implicitHeight: root.collapsed ? 0 : card.full
+        opacity: root.collapsed ? 0 : 1
+
+        // One UI's cards are large-radius, flat and opaque. `radiusLg` existed
+        // and nothing used it.
+        radius: Theme.radiusLg
         color: Theme.cardBg
+
+        Behavior on implicitHeight {
+            enabled: Theme.animate
+            NumberAnimation { duration: Theme.durBase; easing.type: Theme.easing }
+        }
+        Behavior on opacity {
+            enabled: Theme.animate
+            NumberAnimation { duration: Theme.durFast; easing.type: Theme.easing }
+        }
 
         ColumnLayout {
             id: holder
             anchors.left: parent.left
             anchors.right: parent.right
-            anchors.verticalCenter: parent.verticalCenter
-            anchors.leftMargin: Theme.space4
-            anchors.rightMargin: Theme.space4
+            // ⚠️ TOP, NOT verticalCenter. Centring is invisible at full height
+            // and wrong at every height in between: while the card animates
+            // shut, centred content crawls upward at half the speed of the card
+            // and the rows appear to slide out of the wrong edge.
+            anchors.top: parent.top
+            anchors.topMargin: Theme.space5
+            anchors.leftMargin: Theme.space5
+            anchors.rightMargin: Theme.space5
             // Wider than the gap inside a row, so a row reads as one thing and
             // the gap between two rows reads as the join.
             spacing: Theme.space4
