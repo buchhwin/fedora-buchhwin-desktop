@@ -34,6 +34,37 @@ Singleton {
     readonly property bool canNext: available && player.canGoNext
     readonly property bool canPrevious: available && player.canGoPrevious
 
+    // ───────────────────────────────────────────────── where we are in the track
+    // Read from the type description on the machine rather than from memory
+    // (Quickshell/Services/Mpris/quickshell-service-mpris.qmltypes): `position`
+    // is a read/write double with a `positionChanged` notify, `length` is
+    // read-only, and each has its own `…Supported` flag because plenty of
+    // players implement neither.
+    //
+    // ⚠️ NOTHING POLLS THIS HERE, and that is the whole design. A progress bar
+    // wants a new number every second, and a service that fetched one every
+    // second would be doing it for the twenty-three hours a day nobody is
+    // looking at it — the same idle work the brightness poll was deleted for.
+    // So the service only exposes the values; whichever surface DRAWS the bar
+    // owns the timer and runs it while it is on screen and the track is moving.
+    // See MediaPage.qml, which states the same rule from the other side.
+    readonly property bool positionSupported: available && player.positionSupported
+    readonly property bool lengthSupported: available && player.lengthSupported
+    readonly property real position: available ? player.position : 0
+    readonly property real length: available ? player.length : 0
+    readonly property bool canSeek: available && player.canSeek
+
+    // 0..1, and 0 when there is nothing to divide by — a bar that jumps to full
+    // because the length came back as zero is worse than one that stays empty.
+    readonly property real progress:
+        root.positionSupported && root.lengthSupported && root.length > 0
+        ? Math.max(0, Math.min(1, root.position / root.length)) : 0
+
+    function seek(f) {
+        if (!root.canSeek || root.length <= 0) return
+        root.player.position = Math.max(0, Math.min(1, f)) * root.length
+    }
+
     function next() { if (root.canNext) root.player.next() }
     function previous() { if (root.canPrevious) root.player.previous() }
 

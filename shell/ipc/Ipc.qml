@@ -169,7 +169,19 @@ Singleton {
         // the gear on the bar calls, and what the settings key is bound to —
         // the bar's gear used to have no handler at all and was, in the words of
         // the report, "stumm": it did nothing and did not say so either.
-        function settings(): void { root.showQuick(root.quickSettings) }
+        // ⚠️ `quickOverview`, and it said `quickSettings` until 07.08.2026 —
+        // a name that had been deleted the day before, when the switches moved
+        // into the overview. QML does not complain about reading a property
+        // that is not there, so this passed every check and shipped: pressing
+        // the gear logged `Cannot assign [undefined] to int` at showQuick's
+        // one assignment and left the panel shut. Measured, not reasoned:
+        // `qs -c buchhwin ipc call notch settings` then `… notch state`
+        // answered with an empty line.
+        //
+        // The comment on `quickSettings` claims "the compiler found every one
+        // of them". It did not find this one, because there is no compiler
+        // here — which is what tests/ipc-names.sh now checks instead.
+        function settings(): void { root.showQuick(root.quickOverview) }
         function collapse(): void { root.collapse() }
         function state(): string { return root.page }
     }

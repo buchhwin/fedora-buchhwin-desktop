@@ -29,6 +29,11 @@ RowLayout {
     // to prevent, so it is a property instead.
     property bool fat: false
 
+    // Whether the percentage is written at the end. Off for the track position
+    // in the media card, where two clocks say it better — and off implicitly on
+    // the fat shape, which the reference draws without one.
+    property bool showValue: true
+
     signal moved(real fraction)       // absolute, from a tap or drag
     signal nudged(int direction)      // +1 / -1, from the wheel
 
@@ -54,7 +59,9 @@ RowLayout {
     // Beside the track when thin, inside it when fat — so it is the same Icon
     // either way rather than one of two that could drift.
     Icon {
-        visible: !root.fat
+        // An empty name would still reserve a glyph's width, so the check is on
+        // the content rather than only on the shape.
+        visible: !root.fat && root.icon.length > 0
         text: root.icon
         size: Theme.fontSizeLg
         color: root.live ? Theme.fg : Theme.fgDim
@@ -127,7 +134,7 @@ RowLayout {
     // that fills most of the panel already says how far along it is, and "62 %"
     // is a precision nobody sets a volume to.
     BarText {
-        visible: !root.fat
+        visible: !root.fat && root.showValue
         text: Math.round(root.value * 100) + "%"
         font.pixelSize: Theme.fontSizeSm
         color: Theme.fgMuted
