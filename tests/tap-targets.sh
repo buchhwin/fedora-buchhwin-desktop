@@ -27,7 +27,15 @@ fail=0
 # Same fallback as tests/english.sh, and for the same reason: the working copy
 # on the test machine has no .git, and a check that cannot enumerate there is a
 # check that never runs where the code runs.
-files=$(git ls-files 'shell/ui/*.qml' 'shell/ui/**/*.qml' 2>/dev/null)
+# ⚠️ `--others --exclude-standard` IS NOT OPTIONAL. Plain `git ls-files` lists
+# TRACKED files only, so a brand-new file — the most likely place for a mistake
+# to be — is silently left out. Found on 07.08.2026 when a new shell/common/
+# singleton became the sole reader of four settings and key-readers.sh reported
+# all four as having none: the advice it printed was "delete the key", which
+# would have deleted four working settings. Untracked-but-not-ignored is the
+# corpus that matches what is actually on disk.
+files=$(git ls-files --cached --others --exclude-standard \
+               'shell/ui/*.qml' 'shell/ui/**/*.qml' 2>/dev/null)
 [[ -n "$files" ]] || files=$(find shell/ui -name '*.qml' -type f 2>/dev/null)
 [[ -n "$files" ]] || { echo "  found no ui files to check"; exit 2; }
 

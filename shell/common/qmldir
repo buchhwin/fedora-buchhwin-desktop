@@ -6,3 +6,8 @@
 # The singletons in theme/ and config/ carry the same warning for the same
 # reason — this is the third time the project has paid for it.
 WaitFor 1.0 WaitFor.qml
+# ⚠️ A SINGLETON, and the `singleton` word is not optional — without it QML
+# hands out a new instance per import and every reader gets its own idea of what
+# the clock format is. theme/qmldir and config/qmldir carry the same line for the
+# same reason.
+singleton Clock 1.0 Clock.qml

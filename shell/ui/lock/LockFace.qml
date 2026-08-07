@@ -16,7 +16,9 @@ import QtQuick.Effects
 import Quickshell
 import Quickshell.Services.Pam    // services-ok: authentication is not a device, and there is nothing sensible to wrap it in
 import "../../theme"
+import "../../config"
 import "../common"
+import "../../common"
 
 Item {
     id: root
@@ -101,10 +103,12 @@ Item {
 
     SystemClock {
         id: clock
-        // ⚠️ Minutes, not seconds. A lock screen is on for hours; a
+        // ⚠️ Minutes unless asked otherwise, and the warning belongs with the
+        // setting rather than here: a lock screen is on for hours, so a
         // second-precision clock is a redraw every second for a digit nobody
-        // reads, on battery, with the lid possibly shut.
-        precision: SystemClock.Minutes
+        // reads, on battery, with the lid possibly shut. The row in the
+        // settings window says exactly that.
+        precision: Clock.precision
     }
 
     ColumnLayout {
@@ -114,10 +118,7 @@ Item {
         // ------------------------------------------------------------- clock
         BarText {
             Layout.alignment: Qt.AlignHCenter
-            text: {
-                function p(n) { return n < 10 ? "0" + n : "" + n }
-                return p(clock.hours) + ":" + p(clock.minutes)
-            }
+            text: Clock.time(clock.date)
             font.pixelSize: Theme.fontSizeDisplay
             font.weight: Theme.weightNormal
         }
@@ -125,13 +126,10 @@ Item {
         BarText {
             Layout.alignment: Qt.AlignHCenter
             Layout.topMargin: -Theme.space4
-            // Qt's own formatter, not JS. Quickshell's JS engine has no `Intl`,
-            // so anything going through toLocaleDateString comes back in a
-            // format nobody asked for — Qt.formatDate is Qt's, and it takes the
-            // day and month names from the system locale. An explicit pattern
-            // rather than a format enum, because those were renamed between Qt
-            // 5 and 6 and a wrong one fails silently to an empty string.
-            text: Qt.formatDate(clock.date, "dddd, d MMMM")
+            visible: Config.lock ? Config.lock.showDate : true
+            // The pattern comes from common/Clock.qml, which is also where the
+            // reason for using Qt's formatter rather than JS is written down.
+            text: Clock.date(clock.date)
             color: Theme.fgMuted
             font.pixelSize: Theme.fontSizeLg
         }
@@ -140,6 +138,11 @@ Item {
         Item {
             Layout.alignment: Qt.AlignHCenter
             Layout.topMargin: Theme.space5
+            // ⚠️ `visible: false` on a Layout child removes it from the layout
+            // entirely, gap included — which is what is wanted here. It is the
+            // opposite of a Loader with `active: false`, which stays visible at
+            // zero height and keeps its spacing.
+            visible: Config.lock ? Config.lock.showAvatar : true
             implicitWidth: Theme.space6 * 3
             implicitHeight: Theme.space6 * 3
 

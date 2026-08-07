@@ -131,9 +131,9 @@ RowLayout {
         Layout.preferredWidth: root.contentWidth
         spacing: Theme.space4
 
-    // The way out of the panel entirely — the full settings WINDOW, which is M8
-    // and does not exist yet. On its own row now that the tabs have left the
-    // top, right-aligned so it does not read as a fifth entry.
+    // The way out of the panel entirely — the full settings window. On its own
+    // row now that the tabs have left the top, right-aligned so it does not
+    // read as a fifth entry.
     RowLayout {
         Layout.fillWidth: true
         Item { Layout.fillWidth: true }
@@ -291,25 +291,23 @@ RowLayout {
         }
     }
 
-    // Why the gear does not open anything yet. One line, and it clears itself.
-    BarText {
-        Layout.fillWidth: true
-        visible: root.note.length > 0
-        text: root.note
-        font.pixelSize: Theme.fontSizeSm
-        color: Theme.fgMuted
-        wrapMode: Text.WordWrap
-    }
-
-    // The full settings window is still M8. The difference now is that the
-    // everyday switches are one tab away rather than nowhere, so this says what
-    // is missing instead of standing in for it.
+    // The everyday switches stay here: the panel is what you reach for while
+    // working, and the window is where you go to change how the desktop is
+    // built. Two places on purpose, not a duplication.
     }   // body
 
-    property string note: ""
+    // ⚠️ THE PLACEHOLDER IS GONE, AND SO IS EVERYTHING THAT SERVED IT. This used
+    // to set a `note` property to "The settings window is still to come", show
+    // it in a small line under the panel, and clear it again after four seconds
+    // on a Timer. With a window to open, none of those three has a writer any
+    // more — and a property nothing writes, a line nothing fills and a timer
+    // nothing starts are the same debt as a config key nothing reads, which
+    // this project has now found six times. They went out with the placeholder.
+    //
+    // Opening the window also shuts the panel: leaving both up would put two
+    // ways to change the same setting on screen at once.
     function openSettings() {
-        root.note = "The settings window is still to come — the switches are under Settings"
-        forget.restart()
+        Ipc.collapse()
+        Ipc.showSettings()
     }
-    Timer { id: forget; interval: 4000; onTriggered: root.note = "" }
 }

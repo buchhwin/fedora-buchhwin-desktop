@@ -106,27 +106,45 @@ RowLayout {
             color: root.live ? Theme.accentFg : Theme.fgDim
         }
 
-        TapHandler {
-            onTapped: function (p) {
-                var f = p.position.x / track.width
-                root.moved(f)
-                root.released(f)
+        // ⚠️ THE HANDLERS SIT ON A TALLER, INVISIBLE ITEM RATHER THAN ON THE
+        // TRACK, and the thin shape is why. `Theme.space1` is four pixels at
+        // scale 1; four pixels is not something you grab, it is something you
+        // miss, and the same handlers now serve a settings page where the level
+        // IS a control rather than a readout you nudge with the wheel.
+        //
+        // Nothing about the drawing changes — the item is transparent and
+        // exactly as wide as the track, so the fractions below are identical to
+        // what they were. Only what answers is bigger, and it is centred on the
+        // track so the thing you see and the thing you hit share a middle.
+        Item {
+            id: grab
+            anchors.verticalCenter: parent.verticalCenter
+            width: parent.width
+            height: Math.max(parent.height, Theme.space5)
+
+            TapHandler {
+                onTapped: function (p) {
+                    var f = p.position.x / grab.width
+                    root.moved(f)
+                    root.released(f)
+                }
             }
-        }
-        DragHandler {
-            id: drag
-            target: null
-            property real last: 0
-            onCentroidChanged: if (active) {
-                last = centroid.position.x / track.width
-                root.moved(last)
+            DragHandler {
+                id: drag
+                target: null
+                property real last: 0
+                onCentroidChanged: if (active) {
+                    last = centroid.position.x / grab.width
+                    root.moved(last)
+                }
+                // ⚠️ `onActiveChanged`, not a handler on the release itself. A
+                // DragHandler has no "let go" signal; it has an `active` that
+                // goes false — and it also goes false when the drag is
+                // CANCELLED, which is the same thing for our purposes: the
+                // finger is gone and the last value it named is the one that
+                // counts.
+                onActiveChanged: if (!active) root.released(last)
             }
-            // ⚠️ `onActiveChanged`, not a handler on the release itself. A
-            // DragHandler has no "let go" signal; it has an `active` that goes
-            // false — and it also goes false when the drag is CANCELLED, which
-            // is the same thing for our purposes: the finger is gone and the
-            // last value it named is the one that counts.
-            onActiveChanged: if (!active) root.released(last)
         }
     }
 

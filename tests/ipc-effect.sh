@@ -46,8 +46,13 @@ brightness:brightness
 calculator:calculator
 timer:timer
 session:session
-clipboard:clipboard
-settings:quick"
+clipboard:clipboard"
+
+# ⚠️ `settings` IS NOT IN THAT LIST ANY MORE, and it is not an omission. It was
+# `settings:quick` while the gear opened the quick panel for want of anywhere
+# else to go. M8 gave it somewhere: it is its own IPC target now and opens a
+# real niri window, so it sets no page at all and `notch state` is the wrong
+# question to ask about it. The check for it is below, in its own terms.
 
 bad=""
 while IFS=: read -r verb want; do
@@ -62,22 +67,50 @@ done <<< "$pairs"
 
 qs -c buchhwin ipc call notch collapse >/dev/null 2>&1
 
-if [[ -z "$bad" ]]; then
-    printf '\033[38;5;114mok\033[0m  %s verbs\n' "$(wc -l <<< "$pairs")"
-    exit 0
-fi
-
-printf '\033[38;5;203mfound\033[0m\n'
-sed 's/^/      /' <<< "${bad%$'\n'}"
-cat <<'WHY'
+if [[ -n "$bad" ]]; then
+    printf '\033[38;5;203mfound\033[0m\n'
+    sed 's/^/      /' <<< "${bad%$'\n'}"
+    cat <<'WHY'
 
   The verb answered and the page did not appear. That is the shape the gear on
   the bar had: reachable, listed, silent. Look for a constant that was renamed
   or removed — QML reads a property that does not exist as `undefined` and says
   nothing, so the failure surfaces wherever the value is used rather than where
   the mistake is.
+WHY
+    exit 1
+fi
+printf '\033[38;5;114mok\033[0m  %s verbs\n' "$(wc -l <<< "$pairs")"
 
-  `settings` is expected to land on `quick`, not on a page of its own: the
-  switches moved into the overview when five tabs became four.
+# ─────────────────────────────────────────────────────────────────────────────
+# The settings window answers in its own terms.
+#
+# It reports `open`/`closed` rather than a page name, so it needs its own check
+# — and it needs one for exactly the reason the list above exists: the gear was
+# reachable, listed and silent for a day, and nothing noticed.
+printf '  %-34s ' "settings toggles its window"
+
+qs -c buchhwin ipc call settings hide >/dev/null 2>&1
+sleep 0.4
+before="$(qs -c buchhwin ipc call settings state 2>/dev/null | tr -d '\r\n')"
+qs -c buchhwin ipc call settings toggle >/dev/null 2>&1
+sleep 0.8
+after="$(qs -c buchhwin ipc call settings state 2>/dev/null | tr -d '\r\n')"
+qs -c buchhwin ipc call settings hide >/dev/null 2>&1
+
+if [[ "$before" == "closed" && "$after" == "open" ]]; then
+    printf '\033[38;5;114mok\033[0m\n'
+    exit 0
+fi
+
+printf '\033[38;5;203mfound\033[0m\n'
+printf '      expected closed -> open, got %s -> %s\n' \
+       "${before:-<nothing>}" "${after:-<nothing>}"
+cat <<'WHY'
+
+  An empty answer means the target is not registered at all — check that
+  `settings` is in Ipc's `targets` map, which is what the smoke test asks.
+  An answer that never changes means the window is not loaded on
+  `Ipc.settingsOpen` in ui/Shell.qml.
 WHY
 exit 1

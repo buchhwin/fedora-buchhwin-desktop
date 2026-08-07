@@ -19,6 +19,7 @@ import QtQuick
 import QtQuick.Layouts
 import "../../../theme"
 import "../../../services" as Services
+import "../../../config"
 import "../../common"
 
 Rectangle {
@@ -31,7 +32,14 @@ Rectangle {
     // The cover is cropped to the card, so the corners have to actually cut.
     clip: true
 
-    readonly property bool hasArt: Services.Media.artUrl.length > 0
+    // ⚠️ TWO CONDITIONS, AND THE SETTING IS THE SECOND. The reference draws
+    // the cover filling the card behind the words, which is right on the dark
+    // covers it was drawn from and wrong on a bright one — the scrim below
+    // carries a lot of contrast on its own. Off puts the card back to its own
+    // surface colour; the cover still exists, it simply is not the background.
+    readonly property bool hasArt:
+        Services.Media.artUrl.length > 0
+        && (Config.media ? Config.media.artworkAsBackground : true)
 
     Image {
         anchors.fill: parent

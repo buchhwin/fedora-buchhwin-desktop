@@ -22,13 +22,14 @@ import "../../../theme"
 import "../../../ipc"
 import "../../../services" as Services
 import "../../common"
+import "../../../common"
 
 ColumnLayout {
     id: root
     spacing: Theme.space3
     implicitWidth: Theme.space6 * 18
 
-    SystemClock { id: clock; precision: SystemClock.Minutes }
+    SystemClock { id: clock; precision: Clock.precision }
 
     // The month on display. Kept as year+month rather than a Date so that
     // stepping over a year boundary is arithmetic instead of a special case.
@@ -48,16 +49,22 @@ ColumnLayout {
         return Qt.formatDate(new Date(root.shownYear, m, 1), "MMMM")
     }
 
-    // Monday first. Qt.locale().firstDayOfWeek would follow the machine, and
-    // that is the right answer for a calendar somebody reads at a glance — but
-    // the grid below is built on a fixed Monday offset, so changing it here
-    // without changing that is how a calendar quietly shows the wrong weekday.
-    // The names come from Qt; the order does not.
-    readonly property var dayNames: [
-        Qt.locale().dayName(1, Locale.ShortFormat), Qt.locale().dayName(2, Locale.ShortFormat),
-        Qt.locale().dayName(3, Locale.ShortFormat), Qt.locale().dayName(4, Locale.ShortFormat),
-        Qt.locale().dayName(5, Locale.ShortFormat), Qt.locale().dayName(6, Locale.ShortFormat),
-        Qt.locale().dayName(0, Locale.ShortFormat)]
+    // ⚠️ THE HEADINGS AND THE BLANK CELLS ARE ONE DECISION, and the comment
+    // that used to be here said so as a warning: "the grid below is built on a
+    // fixed Monday offset, so changing it here without changing that is how a
+    // calendar quietly shows the wrong weekday." It is a setting now, so both
+    // read `Clock.mondayFirst` — this list and `leading` below — and neither can
+    // be changed without the other.
+    //
+    // The NAMES still come from Qt in whatever language the machine is set to;
+    // only the order is ours.
+    readonly property var dayNames: {
+        var out = []
+        var first = Clock.mondayFirst ? 1 : 0
+        for (var i = 0; i < 7; i++)
+            out.push(Qt.locale().dayName((first + i) % 7, Locale.ShortFormat))
+        return out
+    }
 
     // Which day's appointments are listed below the grid. -1 = today's, so the
     // page opens on the question you actually had.
@@ -106,7 +113,11 @@ ColumnLayout {
 
     // Blank cells before the 1st. getDay() is 0=Sunday, so Monday-first needs
     // the shift — the classic off-by-one that puts every date on the wrong day.
-    readonly property int leading: (new Date(shownYear, shownMonth, 1).getDay() + 6) % 7
+    // Sunday-first needs none, which is the whole difference between the two.
+    readonly property int leading: {
+        var d = new Date(root.shownYear, root.shownMonth, 1).getDay()
+        return Clock.mondayFirst ? (d + 6) % 7 : d
+    }
     readonly property int daysInMonth: new Date(shownYear, shownMonth + 1, 0).getDate()
 
     Keys.onLeftPressed: root.step(-1)

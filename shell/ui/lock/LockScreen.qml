@@ -15,6 +15,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Wayland
 import "../../theme"
+import "../../config"
 
 Scope {
     id: root
@@ -31,7 +32,37 @@ Scope {
             // Behind the face, and drawn even before it: a lock surface that
             // starts transparent shows the desktop through it for as long as
             // the first frame takes.
+            //
+            // ⚠️ THE OPAQUE COLOUR STAYS EVEN WITH A WALLPAPER ON TOP. The
+            // image loads asynchronously — it has to, a 4K photo decoded
+            // synchronously is a visibly late lock — so for those frames this
+            // colour is the only thing between the screen and the desktop
+            // underneath. It is not a fallback; it is the floor.
             color: Theme.bgDeep
+
+            // The wallpaper, off by default. ⚠️ This is a SEPARATE PROCESS
+            // (BUCHHWIN_MODE=lock): it reads shell.json itself and learns
+            // nothing from the running shell, so it reads the same key the
+            // desktop wallpaper does rather than being told.
+            Image {
+                anchors.fill: parent
+                visible: Config.lock ? Config.lock.wallpaper : false
+                source: visible && Config.wallpaper ? Config.wallpaper.current : ""
+                fillMode: Image.PreserveAspectCrop
+                asynchronous: true
+                // Read at screen size, not at whatever the file happens to be.
+                sourceSize.width: width
+                sourceSize.height: height
+            }
+
+            // Over the picture, under the face. A photograph is not a
+            // background for a clock until something takes the contrast out of
+            // it — and the same scrim over the plain colour costs nothing,
+            // because `scrim` is transparent enough to leave it alone.
+            Rectangle {
+                anchors.fill: parent
+                color: Theme.scrim
+            }
 
             LockFace {
                 anchors.fill: parent

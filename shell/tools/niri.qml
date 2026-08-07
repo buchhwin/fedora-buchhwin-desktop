@@ -398,6 +398,39 @@ Scope {
             s += "    block-out-from \"screencast\"\n"
             s += "}\n"
         }
+
+        // ---------------------------------------------------- our own window
+        //
+        // The settings window is the shell's only REAL window rather than a
+        // layer surface, so it is the only thing of ours that a window rule can
+        // reach. It floats, it has the big corner its inside paints, and the
+        // blur goes behind it because its background carries `opacityPanel`.
+        //
+        // ⚠️ THE APP-ID WAS READ OFF THE RUNNING MACHINE, NOT INVENTED.
+        // `niri msg -j windows` with the window open answers `org.quickshell` —
+        // quickshell 0.2.1's `FloatingWindow` has no `appId` property at all
+        // (checked in its own type data), so the id belongs to the process and
+        // there was nothing to choose.
+        //
+        // ⚠️ WHICH IS WHY THE TITLE IS IN THE MATCH TOO. `org.quickshell` is
+        // every window this shell will ever open, so a rule on the id alone
+        // would silently claim the task manager the moment it exists — and it
+        // would arrive floating with a 27 px radius that nobody asked for.
+        // niri's own docs put both on one match line
+        // (Configuration:-Window-Rules.md:153).
+        s += "\nwindow-rule {\n"
+        s += "    match app-id=" + q("^org\\.quickshell$")
+           + " title=" + q("^Settings$") + "\n"
+        s += "    open-floating true\n"
+        // Matched to what SettingsWindow paints (Theme.radiusXl), so niri's
+        // clip and its shadow follow the same shape rather than cutting a
+        // corner off it. Both are `look.rounding`, which is the one number.
+        s += "    geometry-corner-radius " + Math.round(L.rounding * 1.66) + "\n"
+        s += "    clip-to-geometry true\n"
+        if (Theme.blur) {
+            s += "    background-effect {\n        blur true\n    }\n"
+        }
+        s += "}\n"
         return s
     }
 
@@ -737,12 +770,116 @@ Scope {
 
         onReady: {
             note("buchhwin niri — generating from shell.json (version " + Config.version + ")")
-            write(fConfig, root.cfg + "/niri/config.kdl", buildConfig(), "niri config")
+            // Everything except config.kdl first: none of it can stop niri from
+            // starting, so none of it has to wait for a validator.
             write(fEnv, root.cfg + "/environment.d/50-buchhwin.conf",
                   environmentD(), "environment.d")
             root.writeDesktopOverrides()
-            note("done: " + written + " written, " + unchanged + " unchanged")
-            Qt.callLater(Qt.quit)
+            root.installConfig()
         }
+    }
+
+    // ---------------------------------------------- config.kdl, checked first
+    //
+    // ⚠️ AN INVALID config.kdl MEANS NIRI DOES NOT START. Measured on niri
+    // 26.04, nested, against a valid control: with a bad action or a bad key
+    // name it prints a parse error and returns immediately; with the same file
+    // repaired it runs for as long as you let it. `niri validate` agrees —
+    // exit 1, with the offending line.
+    //
+    // ⚠️ AND THIS TOOL RUNS BY ITSELF. services/Theming.qml regenerates on every
+    // settings change, about two seconds after shell.json is written and with
+    // nothing typed. So until this check existed, one bad value in the settings
+    // window wrote a config that the RUNNING session survived — niri keeps the
+    // one it already parsed — and that the next boot did not. The failure would
+    // arrive hours later, at a login, with no visible connection to the switch
+    // that caused it.
+    //
+    // ⚠️ THE PROBE LIVES IN /tmp, AND THAT IS ONLY SAFE BECAUSE THE INCLUDE IS
+    // ABSOLUTE: config.kdl pulls in `~/.config/niri/colors.kdl` by full path, so
+    // a copy validated anywhere resolves the same file. The day that include
+    // becomes relative, this probe has to move next to the real config or it
+    // will validate something that is not what gets installed.
+    property string pending: ""
+    readonly property string probePath: "/tmp/buchhwin-niri-probe.kdl"
+
+    function installConfig() {
+        root.pending = buildConfig()
+        fConfig.path = root.cfg + "/niri/config.kdl"
+
+        // Unchanged: no write, no validator, no process at all. This runs on
+        // every settings change, and a compositor reload for an identical file
+        // was already the reason `write()` compares in the first place.
+        if (fConfig.text() === root.pending) {
+            unchanged++
+            note("  same   niri config")
+            root.finish()
+            return
+        }
+
+        fProbe.path = root.probePath
+        fProbe.setText(root.pending)
+        validator.running = true
+    }
+
+    FileView { id: fProbe; blockLoading: true; printErrors: false }
+
+    Process {
+        id: validator
+
+        // ⚠️ 97 SEPARATES "NIRI IS NOT HERE" FROM "THE CONFIG IS BAD", and the
+        // two must not be confused: a CI container and a machine that only
+        // renders themes have no niri, and refusing to write there would break
+        // something real in order to protect something that is not running.
+        // Asking `command -v` inside the same shell keeps it to one process.
+        command: ["sh", "-c",
+                  "command -v niri >/dev/null 2>&1 || exit 97; exec niri validate -c \"$1\"",
+                  "sh", root.probePath]
+        stderr: StdioCollector { id: validatorErr }
+
+        // ⚠️ `root.write`, NEVER a bare `write` — AND THIS COST A DEBUGGING
+        // ROUND. `Process` has a `write()` of its OWN, for writing to the
+        // child's stdin, so inside this handler an unqualified `write(...)`
+        // resolves to THAT one. It takes a single argument, so QML logged
+        // "Too many arguments, ignoring 3" and moved on: no error, no config
+        // written, and a generator that reported "done" having produced
+        // nothing. tests/niri-config.sh caught it with "no config generated"
+        // ten times over. Everything reached through the component's own scope
+        // is qualified here for that reason.
+        onExited: function (code) {
+            if (code === 97) {
+                root.note("  ⚠ niri not installed — writing config.kdl unchecked")
+                root.write(fConfig, root.cfg + "/niri/config.kdl", root.pending, "niri config")
+                root.finish()
+                return
+            }
+            if (code === 0) {
+                root.write(fConfig, root.cfg + "/niri/config.kdl", root.pending, "niri config")
+                root.finish()
+                return
+            }
+
+            // ⚠️ ABORT, and the word is load-bearing: bin/bhctl's `run_tool`
+            // greps the log for it to tell a refusal from a crash, and this is
+            // a refusal. The previous config.kdl is untouched, so the desktop
+            // still boots — which is the whole point of the check.
+            root.note("buchhwin niri — ABORT: the generated config.kdl is NOT VALID, "
+                      + "so the previous one was kept and nothing was written.")
+            root.note("  niri validate said:")
+            var msg = String(validatorErr.text || "").split("\n")
+            var shown = 0
+            for (var i = 0; i < msg.length && shown < 24; i++) {
+                if (msg[i].replace(/\s/g, "").length) {
+                    root.note("    " + msg[i])
+                    shown++
+                }
+            }
+            root.finish()
+        }
+    }
+
+    function finish() {
+        note("done: " + written + " written, " + unchanged + " unchanged")
+        Qt.callLater(Qt.quit)
     }
 }

@@ -30,6 +30,7 @@ import "../../config"
 import "../../ipc"
 import "../../services" as Services
 import "../common"
+import "../../common"
 
 Item {
     id: root
@@ -37,8 +38,13 @@ Item {
     // The clock is handed in rather than read again: NotchContent already has
     // one SystemClock, and two of them on one screen can disagree by a minute
     // at the wrong moment.
-    property int hours: 0
-    property int minutes: 0
+    //
+    // ⚠️ THE WHOLE DATE, not the hour and the minute. It used to be two ints,
+    // and the date line underneath had to fake a dependency on `minutes` to be
+    // rebuilt at all — a `new Date()` with nothing to depend on is evaluated
+    // once and then shows yesterday until the shell restarts. One Date is the
+    // dependency, so the trick is gone with the thing that needed it.
+    property var now: null
 
     // ⚠️ ANCHORS, NOT A ROW LAYOUT, and it is the clock that decides it. In a
     // row the middle column sits wherever the two beside it leave room — so with
@@ -62,6 +68,7 @@ Item {
         anchors.left: parent.left
         anchors.verticalCenter: parent.verticalCenter
         visible: Services.Media.available
+               && (Config.media ? Config.media.showInIsland : true)
         spacing: Theme.space3
 
         Rectangle {
@@ -136,24 +143,16 @@ Item {
             font.pixelSize: Theme.fontSizeXl
             font.weight: Theme.weightSemibold
             color: Theme.fg
-            text: {
-                function p(n) { return n < 10 ? "0" + n : "" + n }
-                return p(root.hours) + ":" + p(root.minutes)
-            }
+            text: Clock.time(root.now)
         }
 
         BarText {
             Layout.alignment: Qt.AlignHCenter
             font.pixelSize: Theme.fontSizeSm
             color: Theme.fgMuted
-            // ⚠️ Rebuilt when the MINUTE changes, not every frame — the binding
-            // depends on `root.minutes`, which is what makes it update at all.
-            // A `new Date()` with no dependency would be evaluated once and then
-            // show yesterday's date until the shell restarted.
-            text: {
-                root.minutes                     // the dependency, deliberately
-                return Qt.formatDate(new Date(), "ddd, d MMM")
-            }
+            // The SHORT form: this is a pill, not a screen. The lock screen's
+            // long form is a separate setting for that reason.
+            text: Clock.dateShort(root.now)
         }
     }
 

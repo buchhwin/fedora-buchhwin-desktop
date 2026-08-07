@@ -1,0 +1,24 @@
+# One file per page of the settings window, in the order the reference lists
+# them. All ten are here.
+#
+# ⚠️ The last four needed NEW keys — `clock`, `motion`, `media` and `lock` did
+# not exist in shell.json at all — and every one of those keys was given a real
+# reader in the same change. A row over a key nothing reads is a control you can
+# move that does nothing, and the audit found five of those.
+#
+# ⚠️ `NotifyPage`, not `NotificationsPage`: the island already has a page by that
+# name, and two QML types with one name in two folders resolve correctly and
+# read as a mistake forever after.
+#
+# Registered here because quickshell loads through a virtual filesystem — see
+# ../../common/qmldir.
+BarIslandPage 1.0 BarIslandPage.qml
+MediaPage 1.0 MediaPage.qml
+ClockPage 1.0 ClockPage.qml
+AppearancePage 1.0 AppearancePage.qml
+MotionPage 1.0 MotionPage.qml
+LauncherPage 1.0 LauncherPage.qml
+NotifyPage 1.0 NotifyPage.qml
+ControlCenterPage 1.0 ControlCenterPage.qml
+LockPage 1.0 LockPage.qml
+SystemPage 1.0 SystemPage.qml

@@ -37,6 +37,25 @@ jobs:
       - name: every name the lock screen uses exists
         run: bash tests/lock-idents.sh
 
+      # ⚠️ THESE THREE READ THE REPOSITORY AND NOTHING ELSE, and two of them
+      # were run by hand for weeks — which means they were green whenever
+      # somebody remembered, not whenever the code changed. Neither needs
+      # quickshell, niri or a running desktop, so there was never a reason for
+      # them to sit outside CI. That is the exact argument that moved six suites
+      # into the qml job below.
+      #
+      # config-shape guards a CRASH: a `property var` nested inside a JsonObject
+      # segfaulted quickshell on about half of all starts, and an empty list was
+      # enough to do it.
+      - name: no nested property var, and every section has an alias
+        run: bash tests/config-shape.sh
+      # Every setting is read by something. It found five that nothing read.
+      - name: every setting in shell.json has a reader
+        run: bash tests/key-readers.sh
+      # And the other half of that: every setting is OFFERED by something.
+      - name: every setting has exactly one row in the settings window
+        run: bash tests/setting-rows.sh
+
   shell:
     runs-on: ubuntu-latest
     steps:

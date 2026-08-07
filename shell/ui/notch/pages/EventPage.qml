@@ -100,61 +100,39 @@ ColumnLayout {
     }
 
     // ------------------------------------------------------------- the fields
-    // A text field, drawn rather than imported: QtQuick.Controls would bring a
-    // second styling vocabulary into a shell whose whole point is having one.
-    component Field: Rectangle {
-        id: field
-        property alias text: input.text
-        property alias input: input
-        property string placeholder: ""
-        property bool bad: false
+    //
+    // ⚠️ THE `component Field` THAT USED TO BE HERE IS NOW common/TextField.qml.
+    // It was the first of five hand-drawn text fields in this shell and the
+    // cleanest of them, so it is the one that got lifted when the settings
+    // window needed a sixth. The sentence that justified drawing it at all is
+    // now in that file's header, along with the reason it stays drawn:
+    // QtQuick.Controls would bring a second styling vocabulary into a shell
+    // whose whole point is having one.
+    //
+    // What is different here is only that Return and Escape are signals now
+    // rather than being written inside the field — which is right, because what
+    // Return MEANS belongs to the form, not to the box.
+    //
+    // The other four copies — the clipboard search, the launcher search, the
+    // location picker and the wifi password box — are still their own. Each
+    // wants something slightly different (key forwarding, an echo mode), and
+    // moving four working surfaces over is its own change with its own
+    // screenshots, not a footnote to this one.
 
-        implicitHeight: Theme.space6
-        radius: Theme.radiusSm
-        color: Theme.surface
-        border.width: input.activeFocus ? Theme.space1 / 2 : 0
-        border.color: field.bad ? Theme.error : Theme.accent
-
-        TextInput {
-            id: input
-            anchors.fill: parent
-            anchors.leftMargin: Theme.space2
-            anchors.rightMargin: Theme.space2
-            verticalAlignment: TextInput.AlignVCenter
-            font.family: Theme.fontUi
-            font.pixelSize: Theme.fontSize
-            color: Theme.fg
-            selectionColor: Theme.accent
-            selectedTextColor: Theme.accentFg
-            selectByMouse: true
-            clip: true
-
-            Keys.onEscapePressed: Ipc.collapse()
-            Keys.onReturnPressed: root.save()
-            Keys.onEnterPressed: root.save()
-        }
-
-        BarText {
-            anchors { left: parent.left; leftMargin: Theme.space2
-                      verticalCenter: parent.verticalCenter }
-            visible: input.text.length === 0
-            text: field.placeholder
-            color: Theme.fgDim
-        }
-    }
-
-    Field {
+    TextField {
         id: title
         Layout.fillWidth: true
         placeholder: "Title"
         KeyNavigation.tab: dateField.input
+        onAccepted: root.save()
+        onCancelled: Ipc.collapse()
     }
 
     RowLayout {
         Layout.fillWidth: true
         spacing: Theme.space2
 
-        Field {
+        TextField {
             id: dateField
             Layout.fillWidth: true
             text: root.pad(root.base.getDate()) + "." +
@@ -162,9 +140,11 @@ ColumnLayout {
             placeholder: "TT.MM.JJJJ"
             bad: text.length > 0 && root.theDate === null
             KeyNavigation.tab: allDay.on ? title.input : fromField.input
+            onAccepted: root.save()
+            onCancelled: Ipc.collapse()
         }
 
-        Field {
+        TextField {
             id: fromField
             Layout.preferredWidth: Theme.space6 * 3
             visible: !allDay.on
@@ -172,9 +152,11 @@ ColumnLayout {
             placeholder: "From"
             bad: text.length > 0 && root.parseTime(text) < 0
             KeyNavigation.tab: toField.input
+            onAccepted: root.save()
+            onCancelled: Ipc.collapse()
         }
 
-        Field {
+        TextField {
             id: toField
             Layout.preferredWidth: Theme.space6 * 3
             visible: !allDay.on
@@ -185,6 +167,8 @@ ColumnLayout {
             bad: text.length > 0 &&
                  (root.parseTime(text) < 0 || root.parseTime(text) <= root.fromMin)
             KeyNavigation.tab: title.input
+            onAccepted: root.save()
+            onCancelled: Ipc.collapse()
         }
 
         Pill {

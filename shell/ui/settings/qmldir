@@ -1,0 +1,21 @@
+# The settings window (M8) — its own folder, because it is its own window.
+#
+# ⚠️ Registered here for the same reason as everywhere else: quickshell loads
+# through a virtual filesystem, where QML's implicit "types in my own folder"
+# rule does not apply. Without an entry the type does not exist, and QML says so
+# by drawing nothing. See ../common/qmldir.
+#
+# SettingRow and SettingGroup live here rather than in common/ because nothing
+# outside this window has settings rows in it. Toggle and TextField DO live in
+# common/, because they are controls rather than rows and the shell already had
+# five hand-drawn text fields for want of one.
+SettingsWindow 1.0 SettingsWindow.qml
+SettingsContent 1.0 SettingsContent.qml
+SettingsRail 1.0 SettingsRail.qml
+SettingGroup 1.0 SettingGroup.qml
+SettingRow 1.0 SettingRow.qml
+# The two settings that cannot be a row, each for a structural reason and each
+# named in the exemption list of tests/setting-rows.sh: `outputs` is one object
+# per monitor, `binds` is sixty-three of them.
+OutputScales 1.0 OutputScales.qml
+BindsList 1.0 BindsList.qml

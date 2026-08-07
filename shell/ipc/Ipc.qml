@@ -116,6 +116,23 @@ Singleton {
     function hideLauncher() { root.launcher = false }
     function toggleLauncher() { root.launcher = !root.launcher }
 
+    // ------------------------------------------------------------- settings
+    //
+    // ⚠️ NOT A PAGE EITHER, AND FOR A STRONGER REASON THAN THE LAUNCHER'S. The
+    // settings window is a REAL niri window: you move it, you push it to another
+    // workspace, you leave it open beside the thing you are changing. A single
+    // `page` string can express none of that.
+    //
+    // And it has to be a window rather than a surface floating over everything,
+    // because half of what it sets is how OTHER windows look — opacity, corner
+    // radius, gaps, blur. A pane on the overlay layer would cover the only
+    // evidence that the setting did anything.
+    property bool settingsOpen: false
+
+    function showSettings() { root.settingsOpen = true }
+    function hideSettings() { root.settingsOpen = false }
+    function toggleSettings() { root.settingsOpen = !root.settingsOpen }
+
     Timer {
         id: idle
         interval: 1600
@@ -152,7 +169,8 @@ Singleton {
     // Three names instead of eighteen, and the three are the targets, which are
     // structural. A wrong one here fails loudly on the very first binding.
     readonly property var targets: ({
-        "notch": notchIpc, "bar": barIpc, "launcher": launcherIpc
+        "notch": notchIpc, "bar": barIpc,
+        "launcher": launcherIpc, "settings": settingsIpc
     })
 
     IpcHandler {
@@ -185,23 +203,28 @@ Singleton {
         function clipboard(): void { root.toggle("clipboard") }
         function calculator(): void { root.toggle("calculator") }
         function timer(): void { root.toggle("timer") }
-        // The quick panel, opened straight onto its settings view. This is what
-        // the gear on the bar calls, and what the settings key is bound to —
-        // the bar's gear used to have no handler at all and was, in the words of
-        // the report, "stumm": it did nothing and did not say so either.
-        // ⚠️ `quickOverview`, and it said `quickSettings` until 07.08.2026 —
-        // a name that had been deleted the day before, when the switches moved
-        // into the overview. QML does not complain about reading a property
-        // that is not there, so this passed every check and shipped: pressing
-        // the gear logged `Cannot assign [undefined] to int` at showQuick's
-        // one assignment and left the panel shut. Measured, not reasoned:
-        // `qs -c buchhwin ipc call notch settings` then `… notch state`
-        // answered with an empty line.
+        // ⚠️ `settings` USED TO BE HERE AND IS NOW ITS OWN TARGET. It opened the
+        // quick panel on its overview tab, because there was no settings window
+        // to open — the placeholder in QuickPage.qml said as much in words. M8
+        // is that window, and a real niri window is not one of the notch's
+        // pages, so `qs -c buchhwin ipc call settings toggle` is where it went.
         //
-        // The comment on `quickSettings` claims "the compiler found every one
-        // of them". It did not find this one, because there is no compiler
-        // here — which is what tests/ipc-names.sh now checks instead.
-        function settings(): void { root.showQuick(root.quickOverview) }
+        // The history is worth keeping, because it is why tests/ipc-names.sh
+        // exists: this verb pointed at the `quickSettings` property for a day
+        // after that property was deleted. QML does not complain about reading
+        // a property that is not there — it hands back `undefined` — so it
+        // passed every check and shipped. The gear on the bar and the settings
+        // key both did nothing, and the only trace was one journal line,
+        // "Cannot assign [undefined] to int". The comment beside the deletion
+        // had said "the compiler found every one of them". There is no compiler
+        // here.
+        //
+        // ⚠️ And writing it as `quickSettings` rather than with the `root.`
+        // in front is not tidiness: ipc-names.sh reads comments too, on
+        // purpose, so a sentence ABOUT a dead name would fail as though it were
+        // a reader of one. Rewording the sentence is the right answer; making
+        // the check skip comments would be quieting the one tripwire whose
+        // whole subject is a name nobody noticed.
         function collapse(): void { root.collapse() }
         function state(): string { return root.page }
     }
@@ -244,5 +267,18 @@ Singleton {
         function open(): void { root.showLauncher() }
         function hide(): void { root.hideLauncher() }
         function state(): string { return root.launcher ? "open" : "closed" }
+    }
+
+    // The settings window. Same four verbs as the launcher, and the same
+    // reasoning: `open` rather than `show`, because the command line cannot
+    // reach a function of that name.
+    IpcHandler {
+        id: settingsIpc
+        target: "settings"
+
+        function toggle(): void { root.toggleSettings() }
+        function open(): void { root.showSettings() }
+        function hide(): void { root.hideSettings() }
+        function state(): string { return root.settingsOpen ? "open" : "closed" }
     }
 }

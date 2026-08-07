@@ -18,6 +18,7 @@ import "../../config"
 import "../../ipc"
 import "../../services" as Services
 import "../common"
+import "../../common"
 
 Item {
     id: root
@@ -289,27 +290,27 @@ Item {
                 // SystemClock rather than a Timer: it ticks on the minute
                 // boundary instead of a second after whenever the shell
                 // happened to start, and it sleeps in between.
-                text: {
-                    function p(n) { return n < 10 ? "0" + n : "" + n }
-                    return p(wallClock.hours) + ":" + p(wallClock.minutes)
-                }
+                text: Clock.time(wallClock.date)
             }
 
             SystemClock {
                 id: wallClock
-                precision: SystemClock.Minutes
+                precision: Clock.precision
             }
         }
 
         // --------------------------------------------------- settings
         Pill {
             interactive: true
-            active: Ipc.page === "quick" && Ipc.quickTab === Ipc.quickOverview
+            // ⚠️ `settingsOpen`, not a page — the settings window is a real niri
+            // window and sets no page at all. For a day this gear called a verb
+            // that pointed at a property which had been deleted, and it did
+            // nothing without saying so; the state it lights up on is now the
+            // same one the window is loaded from, so there is nothing to go out
+            // of step with.
+            active: Ipc.settingsOpen
             Icon { text: "settings"; size: Theme.fontSizeLg }
-            // The settings WINDOW is still M8. What this opens is the quick
-            // panel's settings view — network, bluetooth, sound, brightness —
-            // which is a real answer rather than the nothing it did before.
-            onClicked: Ipc.showQuick(Ipc.quickOverview)
+            onClicked: Ipc.toggleSettings()
         }
     }
 }

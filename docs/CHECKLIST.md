@@ -341,8 +341,24 @@ demonstrably right first — points 3 to 6 above.
 - [ ] **Is the blur behind the terminal enough for you?** `look.opacityTerminal`
       decides how much of it is visible at all — more transparency shows more
       blur.
-- [ ] ⚠️ **The gear does not open anything yet** — and it says so. The settings
-      window is M8.
+- [ ] **The gear opens the settings window**, and so does `Mod+Shift+comma` and
+      the arrow in the quick panel. It is a real niri window: move it, push it to
+      another workspace, leave it open beside what you are changing.
+      **All ten pages are there, and between them every one of the 135
+      settings in shell.json has exactly one row** — `bash tests/setting-rows.sh`
+      counts it, so "everything is settable" is a number rather than a belief.
+- [ ] ⚠️ **Two things need `bhctl niri apply` before they show**, and the rows
+      say so: the screen scale, and the motion speed's effect on niri's OWN
+      window animations. Everything else takes effect as you change it.
+- [ ] **Key bindings are a list you can read and search**, with "use the
+      built-in bindings" for a machine whose shell.json froze its own copy.
+      Rebinding a key is still to come.
+- [ ] **Does the settings window look like your reference?** Sidebar with a
+      search field over ten named rows, the active one filled; back and forward
+      at the top right-hand side; the page's symbol, heading and one line; then
+      rows with the switch at the far right and the slider's value at the top
+      right in the form `14 px`. Say what is wrong with the shape now, while
+      changing it is cheap.
 
 ---
 

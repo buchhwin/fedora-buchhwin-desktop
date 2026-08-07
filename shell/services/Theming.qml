@@ -299,9 +299,38 @@ Singleton {
             if (code !== 0) {
                 root.lastError = "niri generator exited " + code
                 root.log("NIRI GENERATOR FAILED, exit " + code)
-            } else {
-                root.log("niri config regenerated")
+                return
             }
+
+            // ⚠️ EXIT 0 IS NOT THE SAME AS "IT WROTE THE FILE", and believing it
+            // was left the loudest failure in this chain silent. The generator
+            // refuses to install a config.kdl that `niri validate` rejects —
+            // an invalid one means niri does not start at all, measured — and it
+            // cannot say so with an exit code, because quickshell has none to
+            // set. It says so in its log, with the word bin/bhctl already greps
+            // for. Without this the log read "niri config regenerated" while
+            // nothing had been written and the setting had quietly not applied.
+            niriLog.reload()
+            var txt = String(niriLog.text() || "")
+            var m = txt.match(/^buchhwin niri — ABORT:.*$/m)
+            if (m) {
+                root.lastError = String(m[0]).replace(/^buchhwin niri — ABORT:\s*/, "")
+                root.log("NIRI GENERATOR REFUSED: " + root.lastError)
+                return
+            }
+
+            root.lastError = ""
+            root.log("niri config regenerated")
         }
+    }
+
+    // Read after the generator has run, never watched: a log that is watched
+    // would re-trigger everything that reads this service every time a line is
+    // appended to it.
+    FileView {
+        id: niriLog
+        path: "/tmp/buchhwin-niri.log"
+        blockLoading: true
+        printErrors: false
     }
 }

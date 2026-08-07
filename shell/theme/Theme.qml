@@ -221,9 +221,31 @@ Singleton {
     readonly property real dimmed: 0.45
 
     readonly property bool animate: Config.look.profile !== "minimal"
-    readonly property int durFast: animate ? 120 : 0
-    readonly property int durBase: animate ? 200 : 0
-    readonly property int durSlow: animate ? 320 : 0
+
+    // ⚠️ ONE MULTIPLIER OVER ALL THREE, so the RATIO survives. 120/200/320 is
+    // not three independent numbers: the fade is faster than the settle, which
+    // is what makes content appear to arrive INSIDE a shape rather than after
+    // it. Three separate settings would invite breaking that; a multiplier
+    // cannot.
+    //
+    // Higher is faster — 2.0 halves every duration. Clamped and guarded: a
+    // missing block reads as null during shell construction, and a zero or a
+    // negative would divide the shell into a division by zero. "No motion at
+    // all" is `look.profile`, above, and two ways to say one thing is how they
+    // end up disagreeing.
+    //
+    // It reaches niri's own window animations too, because tools/niri.qml
+    // generates those from these same three numbers.
+    readonly property real motionSpeed: {
+        var s = Config.motion ? Number(Config.motion.speed) : 1
+        if (!(s > 0))
+            return 1
+        return Math.max(0.25, Math.min(4, s))
+    }
+
+    readonly property int durFast: animate ? Math.round(120 / motionSpeed) : 0
+    readonly property int durBase: animate ? Math.round(200 / motionSpeed) : 0
+    readonly property int durSlow: animate ? Math.round(320 / motionSpeed) : 0
     readonly property int easing: Easing.OutCubic
 
     readonly property bool effects: Config.look.profile !== "minimal"

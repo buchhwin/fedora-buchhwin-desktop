@@ -75,8 +75,16 @@ words+='|weitere|weiteren|Meldung|Meldungen|Mitteilung|Mitteilungen'
 # .git, so the git form answered with nothing and this check printed a green
 # tick over ZERO files for a whole session. A check that only works in a
 # checkout does not run where the code actually runs.
-files=$(git ls-files 'shell/*.qml' 'shell/**/*.qml' 'docs/*.md' 'README.md' \
-                    'lib/*.sh' 'bin/*' 'install.sh' 'tests/*.sh' 2>/dev/null)
+# ⚠️ `--others --exclude-standard` IS NOT OPTIONAL. Plain `git ls-files` lists
+# TRACKED files only, so a brand-new file — the most likely place for a mistake
+# to be — is silently left out. Found on 07.08.2026 when a new shell/common/
+# singleton became the sole reader of four settings and key-readers.sh reported
+# all four as having none: the advice it printed was "delete the key", which
+# would have deleted four working settings. Untracked-but-not-ignored is the
+# corpus that matches what is actually on disk.
+files=$(git ls-files --cached --others --exclude-standard \
+               'shell/*.qml' 'shell/**/*.qml' 'docs/*.md' 'README.md' \
+               'lib/*.sh' 'bin/*' 'install.sh' 'tests/*.sh' 2>/dev/null)
 if [[ -z "$files" ]]; then
     files=$(find shell docs lib bin tests -type f \
                  \( -name '*.qml' -o -name '*.md' -o -name '*.sh' -o -path 'bin/*' \) \

@@ -32,6 +32,10 @@ Singleton {
     readonly property alias nightlight: adapter.nightlight
     readonly property alias cursor: adapter.cursor
     readonly property alias brightness: adapter.brightness
+    readonly property alias clock: adapter.clock
+    readonly property alias motion: adapter.motion
+    readonly property alias media: adapter.media
+    readonly property alias lock: adapter.lock
     readonly property alias timer: adapter.timer
     readonly property alias clipboard: adapter.clipboard
     readonly property alias notch: adapter.notch
@@ -316,13 +320,17 @@ Singleton {
                     { key: "Mod+Shift+A", action: "spawn-sh",
                       arg: "qs -c buchhwin ipc call notch theme",
                       desc: "Choose a theme" },
-                    // The same view the gear on the bar opens. It gets a key
-                    // of its own because the bar is off by default, so without
-                    // one the network and bluetooth controls would sit behind a
-                    // surface most people never switch on.
+                    // The settings window. It gets a key of its own because the
+                    // bar is off by default, so without one the gear that opens
+                    // it would sit behind a surface most people never switch on.
+                    //
+                    // ⚠️ It used to point at `notch settings`, which opened the
+                    // quick panel — there was no settings window to open, and
+                    // the placeholder inside the panel said so. Mod+comma still
+                    // opens the panel itself, so nothing was lost.
                     { key: "Mod+Shift+comma", action: "spawn-sh",
-                      arg: "qs -c buchhwin ipc call notch settings",
-                      desc: "Network, bluetooth, sound and brightness" },
+                      arg: "qs -c buchhwin ipc call settings toggle",
+                      desc: "Settings" },
                     { key: "Mod+Escape", action: "spawn-sh",
                       arg: "qs -c buchhwin ipc call notch collapse",
                       desc: "Close the island" },
@@ -422,6 +430,93 @@ Singleton {
             ? adapter.binds : root.defaultBinds
 
     function save() { file.writeAdapter() }
+
+    // ------------------------------------------------------------ by path
+    //
+    // Read and write one setting by its dotted path: "notch.flare",
+    // "input.touchpad.tap". The settings window is built on these two, and
+    // that is the whole point of them existing. A row declares ONE path and
+    // both its reading and its writing go through it, so a slider labelled
+    // "Notch flare" cannot be wired to `collapsedWidth`.
+    //
+    // ⚠️ That failure is the one tests/key-readers.sh CANNOT catch. Its subject
+    // is "a row that writes a key nothing reads is a switch that lies"; this is
+    // the version where both halves are real keys with real readers and the
+    // label is simply attached to the wrong one. No text check finds that. Only
+    // having a single source for the path does.
+    //
+    // ⚠️ Both walk `adapter`, not `root`. The aliases at the top of this file
+    // cover the sections but not `version`, and `root.binds` is the RESOLVED
+    // list — the built-in set when the file is silent — rather than what the
+    // file actually says.
+    function get(path) {
+        var parts = String(path).split(".")
+        var node = adapter
+        for (var i = 0; i < parts.length; i++) {
+            if (node === null || node === undefined)
+                return undefined
+            node = node[parts[i]]
+        }
+        return node
+    }
+
+    // Returns whether anything changed, so a caller can tell "set" from "was
+    // already that". An unknown path warns rather than creating one: JsonAdapter
+    // drops keys it does not declare, so a typo would write into a JS object
+    // that is thrown away at the next parse and the row would appear to work.
+    function set(path, value) {
+        var parts = String(path).split(".")
+        var node = adapter
+        for (var i = 0; i < parts.length - 1; i++) {
+            node = node[parts[i]]
+            if (node === null || node === undefined) {
+                console.warn("Config.set: no such section: " + path)
+                return false
+            }
+        }
+        var leaf = parts[parts.length - 1]
+        if (node[leaf] === undefined) {
+            console.warn("Config.set: no such key: " + path)
+            return false
+        }
+        // Only for primitives. A list compares by identity, so an unchanged
+        // list would look changed and — worse — a changed one could look equal
+        // if the caller edited it in place.
+        if (typeof value !== "object" && node[leaf] === value)
+            return false
+        node[leaf] = value
+        writeSoon.restart()
+        return true
+    }
+
+    // ⚠️ WRITES ARE DEBOUNCED, AND THAT IS NOT A NICETY. `save()` serialises the
+    // entire adapter and rewrites shell.json; a dragged slider produces a value
+    // per frame, so a row that saved on every change would rewrite the whole
+    // file sixty times a second — on a laptop, which is what this is for.
+    //
+    // ⚠️ It is also the re-entrancy guard. services/Location.qml defers its one
+    // write for exactly this reason: "a write that lands inside the handler
+    // which triggered it re-enters the config adapter, and that is not
+    // survivable." A timer is that deferral, and it happens to collapse the
+    // drag as well.
+    //
+    // Nothing runs while nothing changes: the timer is started by `set`, never
+    // repeats, and an idle desktop has no config writer ticking in it.
+    Timer {
+        id: writeSoon
+        interval: 250
+        onTriggered: root.save()
+    }
+
+    // Make a pending write immediate. The end of a drag knows it is the end —
+    // LevelRow says so with `released` — and "soon" is the wrong answer for a
+    // value the user has finished choosing.
+    function flush() {
+        if (writeSoon.running) {
+            writeSoon.stop()
+            root.save()
+        }
+    }
 
     // Migration ran and could not finish. Empty while all is well; the settings
     // window will show it, because a config that refused to move forward is
@@ -775,6 +870,109 @@ Singleton {
                 // overwrites the pending value, so a fast bus feels live and a
                 // slow one simply arrives late. It never queues up a drag.
                 property bool externalLive: false
+            }
+
+            // How the time and the date are written, everywhere they are.
+            //
+            // ⚠️ THE POINT OF THIS BLOCK IS THAT THERE IS ONE OF IT. Before it,
+            // four places built the time by hand with their own copy of a
+            // two-line `p(n)` pad helper — the collapsed island, the widened
+            // island, the bar and the lock screen. Four copies of one format is
+            // how three of them end up right and one does not, and the fourth
+            // is on the screen you look at most. common/Clock.qml is the single
+            // reader, and every one of those four goes through it now.
+            property JsonObject clock: JsonObject {
+                // "24h" or "12h". Anything else is read as 24h rather than
+                // being an error: a clock is not a thing to fail to draw.
+                property string format: "24h"
+
+                // ⚠️ IT COSTS A REDRAW EVERY SECOND, and off is not timidity.
+                // Every SystemClock in the shell asks for MINUTE precision, so
+                // it wakes on the minute boundary and sleeps in between; turning
+                // this on switches all of them to second precision. On a laptop
+                // with the lid shut that is the difference between a clock that
+                // sleeps and one that does not. The row in the settings window
+                // says so rather than leaving it to be discovered.
+                property bool showSeconds: false
+
+                // A Qt format pattern, not a locale enum. Qt's own formatter is
+                // used because quickshell's JS engine has no `Intl`, so anything
+                // through toLocaleDateString comes back in a shape nobody asked
+                // for — and the enums were renamed between Qt 5 and 6 and a
+                // wrong one fails silently to an empty string. The day and month
+                // NAMES still come from the system locale.
+                property string dateFormat: "dddd, d MMMM"
+
+                // ⚠️ A SECOND ONE, AND IT IS NOT A DUPLICATE. The lock screen
+                // has a whole screen; the widened island has a pill. "Freitag,
+                // 7. August" in there would push the shape wider than the
+                // reference every day of the week with a long month name. Two
+                // places, two amounts of room, two settings — each with one
+                // reader, which is the test of whether a second key is honest.
+                property string dateFormatShort: "ddd, d MMM"
+
+                // "monday" or "sunday". ⚠️ It moves the column headings AND the
+                // number of blank cells before the 1st together — they are one
+                // decision, and changing one without the other is the off-by-one
+                // that puts every date on the wrong weekday.
+                property string weekStart: "monday"
+            }
+
+            // How quickly the shell moves.
+            //
+            // ⚠️ ONE NUMBER, NOT THREE. The three durations are 120/200/320 ms
+            // and their RATIO is a design decision — the fade is faster than the
+            // settle, which is what makes content appear to arrive inside a
+            // shape rather than after it. Three separate keys would invite
+            // breaking that; a multiplier cannot.
+            property JsonObject motion: JsonObject {
+                // 1.0 is the built-in tempo. Higher is faster: 2.0 halves every
+                // duration. It reaches niri's own window animations as well,
+                // because tools/niri.qml generates those from the same three
+                // numbers.
+                //
+                // ⚠️ It does NOT reach zero. "No animation at all" already has a
+                // switch — `look.profile` set to minimal — and two ways to say
+                // the same thing is how they end up disagreeing.
+                property real speed: 1.0
+            }
+
+            // What is playing, and where it is shown.
+            property JsonObject media: JsonObject {
+                // Which player wins when several are on the bus. Empty means the
+                // built-in rule: whatever is actually playing, and otherwise
+                // whatever was chosen last. A name here is matched against the
+                // MPRIS identity, so "Spotify" or "Brave" rather than a bus
+                // address nobody can type.
+                property string preferredPlayer: ""
+
+                // Whether the widened island carries the track at all. Off
+                // leaves the clock and the status pill, which is the right
+                // answer for anyone who does not want a music player in the
+                // corner of their eye.
+                property bool showInIsland: true
+
+                // The cover art filling the card behind the words, as the
+                // reference draws it. Off puts the cover back in its corner and
+                // leaves the card its own colour — the honest choice on a cover
+                // that is bright enough to fight the text.
+                property bool artworkAsBackground: true
+            }
+
+            // The lock screen: a large clock, the date, a round avatar, and
+            // nothing else until you touch a key. Each of those three can go.
+            property JsonObject lock: JsonObject {
+                property bool showDate: true
+                property bool showAvatar: true
+
+                // Whether the wallpaper is behind it. Off is a plain dark
+                // surface, which is what it was before this key existed.
+                //
+                // ⚠️ The lock screen is a SEPARATE PROCESS (BUCHHWIN_MODE=lock),
+                // so it reads shell.json itself and does not learn anything from
+                // the running shell. That is also why it is the one surface
+                // where a mistake is not merely ugly.
+                property bool wallpaper: false
             }
 
             property JsonObject look: JsonObject {

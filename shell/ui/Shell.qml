@@ -23,6 +23,7 @@ import "surface"
 import "launcher"
 import "wallpaper"
 import "notif"
+import "settings"
 import "common"
 
 Scope {
@@ -100,6 +101,21 @@ Scope {
             if (String(monitors[i]) === screen.name)
                 return true
         return false
+    }
+
+    // ⚠️ THE SETTINGS WINDOW IS OUTSIDE `Variants`, AND THAT IS THE POINT OF IT
+    // BEING A WINDOW. Everything below is a layer surface and therefore belongs
+    // to one screen, so it is built once per screen and each copy decides
+    // whether to draw. A window belongs to no screen: niri places it, you move
+    // it, and one per monitor would mean three settings windows opening at once
+    // on a docked laptop.
+    //
+    // Loaded on `Ipc.settingsOpen` the same way the launcher is, so closing it
+    // destroys it — and the window's own `closed` signal turns the flag back
+    // off when niri is what closed it.
+    LazyLoader {
+        activeAsync: Ipc.settingsOpen
+        component: SettingsWindow {}
     }
 
     Variants {

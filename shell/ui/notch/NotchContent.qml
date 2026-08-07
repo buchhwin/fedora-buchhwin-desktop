@@ -7,6 +7,7 @@ import Quickshell
 import "../../theme"
 import "../../config"
 import "../common"
+import "../../common"
 import "pages"
 
 Item {
@@ -117,17 +118,19 @@ Item {
         visible: !root.expanded && !root.wide && root.showClock
         opacity: (root.expanded || root.wide) ? 0 : 1
         color: Theme.fg
-        text: {
-            function p(n) { return n < 10 ? "0" + n : "" + n }
-            return p(clock.hours) + ":" + p(clock.minutes)
-        }
+        text: Clock.time(clock.date)
         Behavior on opacity {
             enabled: Theme.animate
             NumberAnimation { duration: Theme.durFast; easing.type: Theme.easing }
         }
     }
 
-    SystemClock { id: clock; precision: SystemClock.Minutes }
+    // ⚠️ The precision comes from the same singleton as the format, and that is
+    // not tidiness. Minutes means this wakes on the minute boundary and sleeps
+    // in between; asking for a seconds digit while keeping minute precision
+    // would show one that changes once a minute, which is worse than not
+    // offering it at all.
+    SystemClock { id: clock; precision: Clock.precision }
 
     // The hovered contents. A Loader for the same reason the pages are: a
     // desktop nobody is pointing at should not be holding an album cover, a
@@ -160,7 +163,7 @@ Item {
 
     Component {
         id: wideContent
-        NotchWide { hours: clock.hours; minutes: clock.minutes }
+        NotchWide { now: clock.date }
     }
 
     Loader {

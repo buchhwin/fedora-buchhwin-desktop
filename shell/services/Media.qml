@@ -10,6 +10,7 @@ pragma Singleton
 import QtQuick
 import Quickshell
 import Quickshell.Services.Mpris
+import "../config"
 
 Singleton {
     id: root
@@ -77,6 +78,26 @@ Singleton {
     function pick() {
         var list = Mpris.players ? Mpris.players.values : null
         if (!list || !list.length) { root.player = null; return }
+
+        // ⚠️ A NAMED PREFERENCE WINS OVER "WHATEVER IS PLAYING", and it has to.
+        // Anyone with a browser open has a second MPRIS player that starts
+        // playing whenever a page decides to — so without this the pill jumps
+        // from the music to an advert and back. Matched loosely against the
+        // player's own identity, because that is the string a person can
+        // actually type: "Spotify", "Brave".
+        var want = Config.media ? String(Config.media.preferredPlayer).trim().toLowerCase() : ""
+        if (want.length > 0) {
+            for (var w = 0; w < list.length; w++) {
+                var c = list[w]
+                if (!c) continue
+                var id = String(c.identity || "").toLowerCase()
+                if (id.length > 0 && id.indexOf(want) >= 0) { root.player = c; return }
+            }
+            // Named and not here: fall through rather than showing nothing. A
+            // preference is a preference, not a filter — a player that is not
+            // running should not silence the one that is.
+        }
+
         var fallback = null
         for (var i = 0; i < list.length; i++) {
             var p = list[i]
