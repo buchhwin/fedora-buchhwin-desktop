@@ -25,5 +25,11 @@ pipewire-pulseaudio
 wireplumber
 polkit
 xdg-user-dirs
+# ⚠️ THE FOUR THE PREDECESSOR HAD AND THIS DID NOT. Each is a package whose
+# absence is only noticed at the moment it is needed, which is the worst kind:
+udisks2                     # mount a USB stick without a password
+avahi                       # .local names resolve — nas.local, printer.local
+nss-mdns                    # ...and glibc actually asks avahi for them
+tuned-ppd                   # power profiles; replaced power-profiles-daemon in F41
 libnotify
 desktop-file-utils

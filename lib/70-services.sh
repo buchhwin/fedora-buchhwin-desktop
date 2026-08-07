@@ -16,8 +16,23 @@ phase_services() {
     #              since M4. Fedora Workstation starts bluez; Server does not.
     #   cups       costs nothing until the first print job, and its absence is
     #              only discovered when you need to print.
+    #   udisks2    mounting a USB stick without a password. ⚠️ NOT automount:
+    #              that needs a client sitting in the session, and the two that
+    #              exist are GTK or Python, both of which this project does not
+    #              take. The file manager mounts on click, which is the honest
+    #              half — said here rather than left to be discovered.
+    #   avahi      .local names. Without it `ssh nas.local` does not resolve on
+    #              a network where everything else finds it.
+    #   oomd       kills the one runaway process instead of letting the machine
+    #              swap itself to a standstill. On a laptop that is the
+    #              difference between a lost tab and a lost session.
+    #   tuned-ppd  Fedora's power profiles since F41 — it replaced
+    #              power-profiles-daemon, and the desktop's own power menu talks
+    #              to that D-Bus name. Not tlp: the two collide, and which one
+    #              wins is not decided here but measured on the laptop (M10).
     step "system services"
-    for unit in bluetooth.service cups.socket; do
+    for unit in bluetooth.service cups.socket udisks2.service avahi-daemon.service \
+                systemd-oomd.service tuned-ppd.service; do
         if systemctl list-unit-files "$unit" >/dev/null 2>&1 \
            && ! systemctl is-enabled --quiet "$unit" 2>/dev/null; then
             sudo systemctl enable --now "$unit" >/dev/null 2>&1 \

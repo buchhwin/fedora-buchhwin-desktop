@@ -70,6 +70,11 @@ stub xdg-mime 'exit 0'
 stub xdg-user-dirs-update 'exit 0'
 stub localectl 'exit 0'
 stub xdg-user-dir 'echo "$HOME/Pictures"'
+# phase_shellenv reads the current login shell and may change it. `getent`
+# answers with a bash shell so the change branch is the one exercised; `chsh`
+# succeeds without touching /etc/passwd.
+stub getent   'echo "test:x:1000:1000::/home/test:/bin/bash"'
+stub chsh     'exit 0'
 
 # ------------------------------------------------------------- the sandbox
 home="$tmp/home"; mkdir -p "$home"
@@ -110,8 +115,16 @@ run_installer() {   # $@ = extra install.sh arguments; $SYSFS = fake /sys, if an
         XDG_RUNTIME_DIR="$tmp/run" \
         BUCHHWIN_SYSFS="${SYSFS:-$tmp/sysfs-empty}" \
         TERM=dumb \
-        bash "$src/install.sh" "$@"
+        bash "$src/install.sh" "$@" </dev/null
 }
+# ⚠️ `</dev/null` IS LOAD-BEARING. The `sudo` stub drains stdin, so that a
+# heredoc piped into `sudo tee` is consumed exactly as it would be in a real
+# run — and with the suite's own stdin attached, that `cat` waits for an EOF
+# that never comes and the whole thing hangs at the first `sudo` outside a
+# heredoc. phase_shellenv's `sudo chsh` is the one that finds it.
+#
+# It is also the honest shape: a non-interactive install has no terminal, which
+# is exactly the case gpu_secureboot's `[[ -t 0 ]]` guard is written for.
 # ⚠️ AN EMPTY FAKE /sys BY DEFAULT, not the real one. Reading the host's actual
 # PCI bus would make every assertion below depend on what the machine running
 # the test happens to contain — green on a laptop with no NVIDIA and red on one
@@ -141,7 +154,7 @@ fi
 # for "==> Base system" finds nothing and reports ten phases missing on a run
 # that was perfectly fine. Measured with `cat -A` rather than guessed at.
 for sect in "Graphics" "Base system" "Desktop" "Applications" "Codecs" \
-            "Fonts" "Cursors" "Shell" "Theme" "Compositor" "Services" "Done"; do
+            "Fonts" "Cursors" "Shell" "Theme" "Compositor" "Services" "Shell and tools" "Done"; do
     printf '  %-44s ' "phase reached: $sect"
     if printf '%s\n' "$out" | grep -qE "==>.* ${sect}\$"; then
         printf '\033[38;5;114mok\033[0m\n'

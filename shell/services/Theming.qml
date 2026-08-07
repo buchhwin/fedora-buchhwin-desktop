@@ -210,6 +210,12 @@ Singleton {
                 // moment they existed, which is what it is for.
                 Config.terminal.cursorShape, Config.terminal.cursorBlinkInterval,
                 Config.terminal.cursorTrail, Config.terminal.scrollbackLines,
+                // The four behaviour keys the rewrite left behind, back and
+                // watched from the first commit that has them — rather than
+                // after somebody reports that switching remote control off
+                // changes nothing until the palette is touched.
+                Config.terminal.shellIntegration, Config.terminal.remoteControl,
+                Config.terminal.audibleBell, Config.terminal.scrollbackPager,
                 root.bindsPrint,
                 root.inputPrint,
                 root.programsPrint,

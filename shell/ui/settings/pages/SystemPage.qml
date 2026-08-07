@@ -378,6 +378,30 @@ ColumnLayout {
             kind: "slider"
             from: 1000; to: 100000; step: 1000
         }
+        SettingRow {
+            Layout.fillWidth: true
+            key: "terminal.shellIntegration"
+            label: "Shell integration"
+            hint: "Lets kitty see where each command starts and ends — that is what makes jump-to-prompt work and what opens the scrollback pager at the right line instead of at the top."
+        }
+        SettingRow {
+            Layout.fillWidth: true
+            key: "terminal.remoteControl"
+            label: "Remote control"
+            hint: "Turns on allow_remote_control AND listen_on together, which is what the ssh kitten needs — the predecessor called it the single biggest quality-of-life win when you live in SSH sessions. Either line alone does nothing."
+        }
+        SettingRow {
+            Layout.fillWidth: true
+            key: "terminal.scrollbackPager"
+            label: "Scrollback in a pager"
+            hint: "Ctrl+Shift+H hands the scrollback to less rather than scrolling it in place."
+        }
+        SettingRow {
+            Layout.fillWidth: true
+            key: "terminal.audibleBell"
+            label: "Audible bell"
+            hint: "Off. A terminal that beeps in an office is somebody else's problem."
+        }
     }
 
     SettingGroup {

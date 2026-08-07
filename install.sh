@@ -63,6 +63,9 @@ run_phase fonts
 run_phase cursors
 run_phase shell
 run_phase services
+# ⚠️ AFTER `services`, because it changes the login shell and that is the last
+# thing to touch: if anything earlier fails, the account still logs in.
+run_phase shellenv
 run_phase summary
 
 # An `--only` run that filters out `summary` must still exit 0. The previous

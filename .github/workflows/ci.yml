@@ -114,6 +114,19 @@ jobs:
     container: fedora:44
     steps:
       - uses: actions/checkout@v4
+      # ⚠️⚠️ WITHOUT THIS, `git` REFUSES THE CHECKOUT IN THIS JOB AND EVERY
+      # `git ls-files` IN IT ANSWERS WITH NOTHING. The container runs as root
+      # while the checkout belongs to the runner user, so git's dubious-ownership
+      # protection declines: "fatal: not a git repository".
+      #
+      # It had been true since this job was written, and it was invisible: the
+      # qmllint step passed `$(git ls-files ...)` — an empty list — to
+      # qmllint-qt6 and swallowed the result with `|| echo`, so the linter this
+      # project's own M1 plan asked for had never looked at a single file. It
+      # surfaced the moment that step was made to check its own inputs, which is
+      # the whole argument for checks that refuse to pass on nothing.
+      - name: let git read the checkout
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
       - name: install quickshell and niri
         # install_weak_deps=False is the same guarantee the installer relies on:
         # Fedora's niri package recommends waybar, alacritty, fuzzel and

@@ -390,7 +390,51 @@ Scope {
             "cursor_shape " + t.cursorShape + "\n" +
             "cursor_blink_interval " + t.cursorBlinkInterval + "\n" +
             "cursor_trail " + t.cursorTrail + "\n" +
-            "scrollback_lines " + t.scrollbackLines + "\n"
+            "scrollback_lines " + t.scrollbackLines + "\n" +
+            // ⚠️ THE BEHAVIOUR THE REWRITE LEFT BEHIND — see Config.qml.
+            "shell_integration " + (t.shellIntegration ? "enabled" : "disabled") + "\n" +
+            "enable_audio_bell " + (t.audibleBell ? "yes" : "no") + "\n" +
+            // ⚠️ Both lines or neither. allow_remote_control on its own only
+            // exposes kitty's own pty, and listen_on without it is ignored.
+            // {kitty_pid} is expanded by kitty, so two terminals cannot fight
+            // over one socket path.
+            (t.remoteControl
+             ? "allow_remote_control yes\nlisten_on unix:/tmp/kitty-{kitty_pid}\n"
+             : "allow_remote_control no\n") +
+            (t.scrollbackPager
+             ? "scrollback_pager less --chop-long-lines --RAW-CONTROL-CHARS +INPUT_LINE_NUMBER\n"
+             : "") +
+            kittyKeysAndChrome()
+    }
+
+    // ⚠️ FIXED LINES, AND DELIBERATELY NOT SETTINGS. Twelve shortcuts, a tab
+    // bar and a window shape as twelve-plus rows in the settings window would
+    // be a wall for values nobody changes twice. They are not dead defaults
+    // either: kitty.conf includes this file on its FIRST line, so anything
+    // written below that include in the user's own kitty.conf wins. That is the
+    // layering this project wants everywhere — we supply, they override — and
+    // it is exactly why these are safe here while the four above are not.
+    function kittyKeysAndChrome() {
+        return "\n# --- keys, tabs and window shape --------------------------\n" +
+            "# Overridable: kitty.conf includes this file first, so anything you\n" +
+            "# write below that include wins.\n" +
+            "map ctrl+shift+enter launch --cwd=current\n" +
+            "map ctrl+shift+t     new_tab_with_cwd\n" +
+            "map ctrl+shift+w     close_window\n" +
+            "map ctrl+shift+left  previous_tab\n" +
+            "map ctrl+shift+right next_tab\n" +
+            "map ctrl+shift+up    scroll_line_up\n" +
+            "map ctrl+shift+down  scroll_line_down\n" +
+            "map ctrl+shift+k     scroll_page_up\n" +
+            "map ctrl+shift+j     scroll_page_down\n" +
+            "map ctrl+shift+h     show_scrollback\n" +
+            "map ctrl+shift+g     scroll_to_prompt -1\n" +
+            "map ctrl+shift+f     scroll_to_prompt 1\n" +
+            "tab_bar_edge top\n" +
+            "tab_bar_style powerline\n" +
+            "tab_powerline_style slanted\n" +
+            "window_padding_width 6\n" +
+            "confirm_os_window_close 0\n"
     }
 
     function kittyTheme(m) {

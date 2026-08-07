@@ -1028,6 +1028,41 @@ Singleton {
                 // exists in kitty's own option table.
                 property int cursorTrail: 3
                 property int scrollbackLines: 20000
+
+                // ⚠️ THE FOUR BELOW ARE THE PREDECESSOR'S kitty.conf COMING
+                // BACK, and their absence is the clearest single example of the
+                // rule that decided what was carried across at all: the rewrite
+                // took the lines that fit in a THEME file — font, cursor,
+                // scrollback — and left behind every line that described how the
+                // terminal BEHAVES. The old comment beside `allow_remote_control`
+                // called the ssh kitten "the single biggest quality-of-life win
+                // when you live in SSH sessions", which is most of his day.
+                //
+                // Keys with rows rather than fixed lines in the generated file,
+                // for the same reason the cursor is one: a value nobody can
+                // change from the settings window is a value that gets edited
+                // into the generated file by hand and lost on the next palette
+                // switch.
+
+                // kitty marks where each command starts and ends. That is what
+                // makes jump-to-prompt work and what lets the scrollback pager
+                // open at the right line rather than at the top.
+                property bool shellIntegration: true
+
+                // ⚠️ TWO LINES, ONE SWITCH. `allow_remote_control` without
+                // `listen_on` gives remote control over kitty's own pty only,
+                // which is not what anybody enables it for; `listen_on` without
+                // the first is ignored outright. Two settings would offer a
+                // combination that silently does nothing.
+                property bool remoteControl: true
+
+                // Off, and it stays off: an audible bell on a laptop in an
+                // office is a decision somebody else has to live with.
+                property bool audibleBell: false
+
+                // Send the scrollback to a pager rather than scrolling it in
+                // place. Uses less with the same options ~/.zshrc exports.
+                property bool scrollbackPager: true
             }
 
             // The lock screen: a large clock, the date, a round avatar, and
