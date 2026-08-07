@@ -57,17 +57,34 @@ phase_shellenv() {
     # been changed, which lib/70-services.sh does — that prompt can fail with no
     # useful message.
     local want=/usr/bin/zsh
+
+    # ⚠️ `$USER` IS NOT ALWAYS SET, and under `set -u` an unset one is fatal —
+    # the installer would die here rather than warn. Found by tests/install-runs.sh
+    # running over SSH, where the shell is non-interactive and never sets it;
+    # the same is true of a systemd unit, a container and a cron job.
+    #
+    # Three sources, exactly as ui/lock/LockFace.qml already does for the same
+    # question: `id -un` asks the system rather than the environment and is the
+    # authoritative one, with the two environment spellings behind it.
+    local who
+    who="$(id -un 2>/dev/null || true)"
+    [[ -n "$who" ]] || who="${USER:-${LOGNAME:-}}"
+    if [[ -z "$who" ]]; then
+        warn "cannot tell which account this is — the login shell was left alone"
+        return 0
+    fi
+
     if [[ ! -x "$want" ]]; then
         warn "zsh is not installed — the login shell was left alone"
-    elif [[ "$(getent passwd "$USER" | cut -d: -f7)" == "$want" ]]; then
+    elif [[ "$(getent passwd "$who" | cut -d: -f7)" == "$want" ]]; then
         ok "zsh is already the login shell"
-    elif sudo -n chsh -s "$want" "$USER" 2>/dev/null \
-         || sudo chsh -s "$want" "$USER" 2>/dev/null \
+    elif sudo -n chsh -s "$want" "$who" 2>/dev/null \
+         || sudo chsh -s "$want" "$who" 2>/dev/null \
          || chsh -s "$want" 2>/dev/null; then
         ok "zsh is the login shell — it applies at the next login"
     else
         warn "could not change the login shell. Run it yourself:"
-        warn "  sudo chsh -s $want $USER"
+        warn "  sudo chsh -s $want $who"
     fi
 
     # ------------------------------------------------------------ the PATH
