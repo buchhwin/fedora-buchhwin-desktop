@@ -308,7 +308,14 @@ Singleton {
                     { key: "XF86Calculator", action: "spawn-sh",
                       arg: "qs -c buchhwin ipc call notch calculator",
                       desc: "Calculator" },
-                    { key: "Mod+Shift+T", action: "spawn-sh",
+                    // ⚠️ THE TIMER MOVED OFF Mod+Shift+T, and it moved because
+                    // the T was asked for by name: "mach super shift t für       english-ok: quoted brief
+                    // themes öffnen und nicht timer". T is the theme letter in   english-ok: quoted brief
+                    // both languages and the timer's was never more than "T for
+                    // timer", so the letter goes to the one that earns it.
+                    // Z is free, it is Zeit, and on the `de` layout it sits next
+                    // to the Shift he is already holding.
+                    { key: "Mod+Shift+Z", action: "spawn-sh",
                       arg: "qs -c buchhwin ipc call notch timer",
                       desc: "Work timer" },
                     { key: "Mod+Shift+N", action: "spawn-sh",
@@ -319,7 +326,7 @@ Singleton {
                       desc: "Choose a wallpaper" },
                     // Beside the wallpaper grid, because they are the same
                     // gesture: the two things that change how everything looks.
-                    { key: "Mod+Shift+A", action: "spawn-sh",
+                    { key: "Mod+Shift+T", action: "spawn-sh",
                       arg: "qs -c buchhwin ipc call notch theme",
                       desc: "Choose a theme" },
                     // The settings window. It gets a key of its own because the
