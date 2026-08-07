@@ -10,7 +10,8 @@ pragma Singleton
 //
 // Everything here is derived from two inputs: the 26-name palette and the
 // handful of numbers in Config.look. Change the palette and the whole desktop
-// follows, including GTK, Qt, kitty, niri and the greeter.
+// follows, including GTK, Qt, kitty and niri. (Not a greeter: there is no
+// greeter yet — that is M9.)
 
 import QtQuick
 import Quickshell

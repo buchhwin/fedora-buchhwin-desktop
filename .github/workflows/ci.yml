@@ -55,6 +55,18 @@ jobs:
       # And the other half of that: every setting is OFFERED by something.
       - name: every setting has exactly one row in the settings window
         run: bash tests/setting-rows.sh
+      # ⚠️ ADDED, AND IT NEEDED NOTHING. Pure awk over shell/**, no quickshell,
+      # no niri — it was outside CI for no reason at all, which is the exact
+      # pattern the comment above this block complains about. It guards the
+      # fault that made the gear on the bar do nothing: an IPC handler reading
+      # `root.<name>` for a property that no longer exists. QML says nothing
+      # when you read a property that is not there.
+      - name: every name an ipc handler reads is declared
+        run: bash tests/ipc-names.sh
+      # And the rescue command, which `doctor` recommends and `usage()` did not
+      # mention — plus the guard that stops it failing silently.
+      - name: bhctl lists what it implements
+        run: bash tests/bhctl-usage.sh
       # And the third axis of the same question: a setting can have a reader and
       # a row and still do nothing, because nothing regenerates the file its
       # reader reads. That was true of 28 keys — the whole `input` block
@@ -127,10 +139,34 @@ jobs:
               exit 1
             fi
           done
+      # ⚠️ THE `|| echo` THAT USED TO BE HERE COULD NOT DO ANYTHING, and it was
+      # measured rather than reasoned about: qmllint-qt6 exits 0 even with
+      # warnings, so the fallback never ran — while masking the one case that
+      # matters, qmllint being absent or the -I paths being wrong. The step then
+      # passed having linted nothing.
+      #
+      # Warnings still do not fail the build, and that is a decision with a
+      # reason: several are false on this codebase. `Member "height" not found
+      # on type "qs::io::JsonObject"` is qmllint not knowing that a JsonObject's
+      # properties are declared at runtime — the key exists and works. Turning
+      # those into errors would mean an exemption list, and every exemption this
+      # project has had turned out to hide a real fault.
+      #
+      # What IS checked: that qmllint ran at all, and over the expected files.
       - name: qmllint
         run: |
-          qmllint-qt6 -I /usr/lib64/qt6/qml -I shell/ $(git ls-files 'shell/**/*.qml') \
-            || echo "::warning::qmllint reported findings (not yet blocking)"
+          command -v qmllint-qt6 >/dev/null || {
+            echo "::error::qmllint-qt6 is not installed — this step was linting nothing"
+            exit 1
+          }
+          mapfile -t qml < <(git ls-files 'shell/**/*.qml')
+          (( ${#qml[@]} > 50 )) || {
+            echo "::error::only ${#qml[@]} qml files found — the glob is wrong"
+            exit 1
+          }
+          qmllint-qt6 -I /usr/lib64/qt6/qml -I shell/ "${qml[@]}" 2>&1 | tee /tmp/qmllint.txt
+          n=$(grep -c '^Warning:' /tmp/qmllint.txt || true)
+          echo "::notice::qmllint: ${n:-0} warnings over ${#qml[@]} files"
 
       # ⚠️ THE CHECK A LINTER CANNOT DO, and the one the plan asked for in M1
       # and never got. qmllint reads files; it does not build the object graph,
@@ -143,11 +179,26 @@ jobs:
       # ⚠️ AND THE LOCK SCREEN, WHICH THE LINE ABOVE DOES NOT COVER. It is a
       # separate process (BUCHHWIN_MODE=lock), so every suite could be green
       # with a lock screen that does not come up — and twice it nearly was.
-      # tests/unit-drift.sh is deliberately NOT here: it compares the units
-      # installed on a machine against what the installer would write, and a
-      # build container has no installed desktop for it to ask.
+      # ⚠️ THREE SUITES ARE DELIBERATELY NOT HERE, and the reason is the same
+      # for all three: they ask about an INSTALLED machine, and a build
+      # container is not one. Written down so the next person does not have to
+      # rediscover it, and so "not in CI" never again means "nobody decided".
+      #   tests/unit-drift.sh     compares the installed systemd units against
+      #                           what the installer would write
+      #   tests/generated-read.sh asks whether kitty.conf on THIS system
+      #                           includes our theme — its own header says it
+      #                           runs against the machine, not the repository
+      #   tests/ipc-effect.sh     calls a verb and asks the running shell which
+      #                           page it landed on; it exits 2 without one
       - name: the lock screen builds, and without complaints
         run: bash tests/lock.sh
+
+      # ⚠️ ADDED. It needs niri and nothing else, and the container installs
+      # niri already. It guards a silent class of fault: a keybinding naming an
+      # action niri does not have. The motivating case was Super+F, where the
+      # two fullscreen actions were the wrong way round for weeks.
+      - name: every keybinding names an action niri really has
+        run: bash tests/bind-actions.sh
 
       # ⚠️ ALL of them. Eight suites existed and CI ran two, so six were only
       # ever run by hand — which means they were green whenever somebody

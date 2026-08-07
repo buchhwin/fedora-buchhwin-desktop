@@ -2,7 +2,20 @@
 dnf-plugins-core
 git-core
 curl
-jq                  # the installer's only structured-data tool; there is no python here
+jq                  # the installer's structured-data tool of choice
+# ⚠️ AND python3, WHICH WAS USED IN FOUR PLACES AND DECLARED IN NONE. This line
+# used to read "there is no python here" while lib/40-apps.sh rewrote Brave's
+# Preferences with it, lib/70-services.sh read the keyboard layout with it, and
+# bin/bhctl used it for BOTH `binds reset` and `doctor`. On Fedora Workstation
+# it happens to be present because dnf itself is Python, which is why the claim
+# survived; on a minimal install `bhctl binds reset` — the one handle that
+# unfreezes a machine — would simply not work.
+#
+# The rule it was trying to state is real and stays: above the installer
+# everything is QML, because one language is simpler and stays consistent.
+# Python is a TOOL here, in bash that has no desktop to run QML on, and it never
+# carries configuration logic. Nothing new is written in it.
+python3
 tar
 unzip
 zsh

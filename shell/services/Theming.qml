@@ -38,8 +38,12 @@ Singleton {
 
     // ⚠️ A LOG, because this service does its work in another process and would
     // otherwise fail in complete silence — which is exactly how the thing it
-    // replaces went unnoticed for a milestone. `bhctl doctor` can read it, and
-    // so can anyone wondering why a palette did not arrive.
+    // replaces went unnoticed for a milestone. `bhctl doctor` reads it (the
+    // REFUSED/FAILED lines, and the last line otherwise), and so can anyone
+    // wondering why a palette did not arrive. That claim stood here for a while
+    // before it was true: bin/bhctl did not touch this file at all, so a
+    // refusal was visible only as a banner inside a window you might not be
+    // able to open, and not at all over SSH.
     //
     // It only ever holds the last few lines: an append-forever file on a
     // desktop that runs for weeks is a slow leak, not a diagnostic.
@@ -279,6 +283,29 @@ Singleton {
     }
 
     property string _seen: ""
+    // Whether THIS session has completed a render. Without it the first
+    // `_consider` after arming would stamp a state nobody produced — the files
+    // on disk would be blessed as current on the strength of having been looked
+    // at rather than written.
+    property bool _rendered: false
+    // Whether the palette file has answered — loaded OR failed. See _consider.
+    property bool _palReady: false
+
+    // Records what the generated files were last written from, once the
+    // fingerprint has stopped moving. Refuses while a render is in flight or
+    // the last one refused: a stamp over a failed run would tell the next login
+    // that stale files are current, which is worse than no stamp at all.
+    //
+    // The md5 rather than the fingerprint itself — the fingerprint ends with the
+    // whole palette file, so storing it verbatim would rewrite a few kilobytes
+    // on every change for nothing.
+    function _syncStamp() {
+        if (root.busy || root.lastError.length || !root._rendered)
+            return
+        var want = Qt.md5(root.fingerprint)
+        if (String(stamp.text() || "").trim() !== want)
+            stamp.setText(want + "\n")
+    }
 
     onFingerprintChanged: root._consider()
 
@@ -311,7 +338,14 @@ Singleton {
         watchChanges: true
         printErrors: false
         onFileChanged: reload()
-        onLoaded: root._consider()
+        // ⚠️ BOTH OUTCOMES ARM IT. A palette file that cannot be read is a
+        // state this has to leave rather than wait in: `_consider` refuses
+        // until `_palReady`, so a missing file with only `onLoaded` wired up
+        // would mean the watcher never starts at all and no setting ever
+        // reaches a generated file again. Same shape as Config.qml, where
+        // `settled` is `loaded || _failed`.
+        onLoaded: { root._palReady = true; root._consider() }
+        onLoadFailed: { root._palReady = true; root._consider() }
     }
 
     function _consider() {
@@ -322,14 +356,74 @@ Singleton {
         if (!Config.settled || !Scheme.ready || !root.fingerprint.length)
             return
 
+        // ⚠️ AND THE PALETTE FILE MUST HAVE BEEN READ, which is a third guard
+        // and it was missing. The fingerprint ends with paletteFile.text(), and
+        // a FileView returns "" until it has loaded — so arming happened on an
+        // INCOMPLETE fingerprint, and the file arriving a moment later looked
+        // like a change. That is visible in the log as "armed …" immediately
+        // followed by "something changed", on a machine where nothing had.
+        //
+        // On its own that only cost one render per login. It became a real
+        // fault with the stamp: the baseline recorded at arming and the value
+        // stamped after rendering could never agree, so every restart reported
+        // "the generated files are behind" and rendered again — the control for
+        // the catch-up was red three times in a row before this was found.
+        if (!root._palReady)
+            return
+
         if (root._seen === "") {
-            // First settled state: record it, render nothing. See the note above.
             root._seen = root.fingerprint
-            root.log("armed on palette " + Scheme.name)
+
+            // ⚠️ ARMING USED TO SWALLOW EVERY CHANGE MADE WHILE THE SHELL WAS
+            // OFF. It recorded the first settled state and rendered nothing —
+            // which is right when the generated files already match, and wrong
+            // in exactly the cases nobody is watching: editing shell.json by
+            // hand, a `git pull` that changes a palette, a restore from backup,
+            // `bhctl shell reset` followed by a restart. The desktop then ran
+            // with GTK, Qt, kitty and niri files describing yesterday's
+            // settings, and stayed that way until some UNRELATED setting moved
+            // the fingerprint. Nothing reported it, because from the watcher's
+            // point of view nothing had happened.
+            //
+            // ⚠️ AND THE FIX IS NOT "RENDER AT STARTUP". That was the obvious
+            // one and it is what the header of this file argues against: a
+            // process spawn and thirteen file writes on every single login to
+            // produce byte-identical output. The stamp is what makes the
+            // difference measurable — render only when the files are actually
+            // behind, which on a normal login is never.
+            var want = Qt.md5(root.fingerprint)
+            var have = String(stamp.text() || "").trim()
+            if (have === want) {
+                root.log("armed on palette " + Scheme.name + " (generated files are current)")
+                return
+            }
+            root.log(have.length
+                     ? "armed — the generated files are behind, catching up"
+                     : "armed — no stamp yet, rendering once")
+            debounce.restart()
             return
         }
-        if (root._seen === root.fingerprint)
+        if (root._seen === root.fingerprint) {
+            // ⚠️ THE STAMP IS WRITTEN HERE, NOT WHEN THE GENERATOR EXITS, AND
+            // THAT WAS MEASURED THE WRONG WAY ROUND FIRST. Stamping in
+            // niriProc.onExited looked obviously right and made every single
+            // restart report "the generated files are behind": the renderer
+            // rewrites the derived palette, this service watches that file, and
+            // at the moment the generator exits the fingerprint still contains
+            // the palette text from BEFORE the write. So the stamp recorded a
+            // state that had already stopped being true, and the next login
+            // compared against it and rendered again — one wasted process per
+            // login, which is precisely what the arming rule exists to avoid.
+            //
+            // The control caught it: a normal restart with nothing changed must
+            // say "current", and it said "catching up".
+            //
+            // Here, the fingerprint has stopped moving. That is the only moment
+            // at which "this is what the generated files were written from" is
+            // a true statement.
+            root._syncStamp()
             return
+        }
 
         root._seen = root.fingerprint
         root.log("something changed — rendering in " + debounce.interval + " ms")
@@ -449,7 +543,25 @@ Singleton {
 
             root.lastError = ""
             root.log("niri config regenerated")
+            root._rendered = true
+            root._syncStamp()
         }
+    }
+
+    // What the generated files were last written FROM. Lives in the state
+    // directory, not the config one: it is a record of something that happened,
+    // not a setting, and deleting it costs one extra render rather than losing
+    // anything.
+    //
+    // ⚠️ NOT `watchChanges`. This service is the only writer, so watching it
+    // would mean reacting to itself.
+    FileView {
+        id: stamp
+        path: (Quickshell.env("XDG_STATE_HOME") || (Quickshell.env("HOME") + "/.local/state"))
+              + "/buchhwin/theming-fingerprint"
+        blockLoading: true
+        printErrors: false
+        atomicWrites: true
     }
 
     // Read after the generator has run, never watched: a log that is watched

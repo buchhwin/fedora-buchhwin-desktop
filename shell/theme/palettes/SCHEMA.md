@@ -1,8 +1,9 @@
 # Palette schema
 
 One JSON file per palette in this directory. Drop a file in and it appears in
-the settings window, in `bhctl theme` and in `install.sh --flavour` — none of
-those keep a list of their own any more.
+the settings window and in `bhctl theme` — neither keeps a list of its own any
+more. (There is no `install.sh --flavour`; that was the predecessor's, and
+`install.sh -h` lists the four options this one has.)
 
 ```json
 {
@@ -33,13 +34,20 @@ On a light palette the order reverses — `base` is the page, `text` is the ink.
 
 ## Accents
 
-`accents` exists because they differ per family: Gruvbox has no `mauve`, and
-`apply-theme.py` exits on an accent its palette does not define. The settings
-window offers exactly this list, so it cannot write one that will not render.
+`accents` exists because they differ per family: Gruvbox has no `mauve`, and a
+renderer given an accent its palette does not define has nothing to write. The
+settings window offers exactly this list, so it cannot ask for one that will not
+render. (The predecessor's `apply-theme.py` was named here; the renderer is
+`shell/tools/render.qml`.)
 
-## Extras that are Catppuccin-only
+## Nothing here is family-specific any more
 
-Cursor themes, recoloured Papirus folders, the Kvantum widget theme and the
-SDDM greeter are downloaded from the Catppuccin project. For any other family
-`lib/50-fonts-theme.sh` skips them and says so. Everything the theme engine
-renders — all 17 files — works for every palette.
+The predecessor downloaded Catppuccin-only extras — recoloured Papirus folders,
+a Kvantum widget theme, an SDDM theme — and skipped them for every other family.
+None of that came across: Kvantum is in no package list, nothing downloads a
+folder icon set, and `lib/50-fonts-theme.sh`, which this paragraph used to name,
+does not exist (the file is `lib/50-fonts.sh`, and it fetches a font and a
+cursor theme, neither of them palette-dependent).
+
+Everything the renderer writes works for every palette, by construction:
+`shell/tools/render.qml` reads the 26 names and nothing else.

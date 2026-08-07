@@ -123,7 +123,13 @@ A broken `config.kdl` is not a disaster: the keys live in the compositor, and
 
 ## Deliberately not built yet
 
-Dock, settings window, greeter (M7–M9) · XWayland measurement (M11).
+Dock (M7) and greeter (M9).
+
+⚠️ The settings window used to be on this line and it is BUILT: ten pages under
+`shell/ui/settings/`, opened by `Ipc.settingsOpen`, and `tests/setting-rows.sh`
+runs in CI asserting that every one of the settings in `shell.json` has exactly
+one row in it. A checklist that says a finished thing does not exist is how the
+next person spends an afternoon building it twice.
 Bar and island have been there since M3; notifications, the lock screen and the
 wallpaper picker with its derived scheme are done.
 

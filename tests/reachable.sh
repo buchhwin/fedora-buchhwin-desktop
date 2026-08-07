@@ -87,6 +87,32 @@ else
     bad "qt6ct.conf does not select colors/buchhwin.conf — Qt apps keep their own"
 fi
 
+# ⚠️ VS CODE, WHICH NO SUITE ASKED ABOUT AT ALL. render.qml writes THREE files
+# for it — a package.json manifest, the colour theme, and the pointer in
+# settings.json — and this is the same "written but nobody looks at it" shape
+# that left kitty and qt6ct at their own colours for months. The manifest and
+# the theme are inert on their own: what makes them apply is
+# `workbench.colorTheme` in settings.json naming them.
+#
+# ⚠️ THE EXTENSION LIVES UNDER $HOME, NOT $XDG_CONFIG_HOME. VS Code looks in
+# ~/.vscode/extensions regardless of the XDG variables, which is why the two
+# halves of this check read from different roots — that asymmetry is real, not
+# a mistake in this file.
+ext="$HOME/.vscode/extensions/buchhwin-theme"
+if [[ -s "$ext/package.json" && -s "$ext/themes/buchhwin-color-theme.json" ]]; then
+    pass "written: vscode extension"
+    if grep -q '"workbench.colorTheme"[[:space:]]*:[[:space:]]*"Buchhwin"' \
+            "$cfg/Code/User/settings.json" 2>/dev/null; then
+        pass "vscode settings.json selects the generated theme"
+    else
+        bad "vscode settings.json does not name Buchhwin — the theme is installed and unused"
+    fi
+elif [[ -d "$HOME/.vscode" ]]; then
+    bad "vscode is here but the generated extension is not ($ext)"
+else
+    skip "vscode is not installed"
+fi
+
 # And the terminal's transparency lands in the file kitty reads, rather than
 # being left to the compositor, which fades the text along with it.
 if grep -q '^background_opacity ' "$cfg/kitty/theme.conf" 2>/dev/null; then

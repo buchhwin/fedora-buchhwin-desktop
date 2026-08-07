@@ -313,6 +313,7 @@ printf '{"version":1,"look":{"gapsOut":24},"cursor":{"theme":"McMojave-cursors",
 # the generator reads ~/.config/user-dirs.dirs to decide where screenshots go.
 # Leaving the real HOME in place makes this test depend on the account running
 # it — which is how it passed on the VM and failed in the CI container.
+mkdir -p "$tmp/home"
 applyout="$(HOME="$tmp/home" XDG_CONFIG_HOME="$tmp" XDG_DATA_HOME="$tmp/share" \
             bin/bhctl niri apply 2>&1)"; applyrc=$?
 if (( applyrc == 0 )) && [[ -f "$tmp/niri/config.kdl" ]]; then

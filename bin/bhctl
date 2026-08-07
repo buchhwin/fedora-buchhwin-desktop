@@ -21,6 +21,7 @@ bhctl location [<town>]              show or set where this machine is
 bhctl niri apply                     regenerate ~/.config/niri/config.kdl
 bhctl niri diff                      show what a regeneration would change
 bhctl doctor                         check the installation
+bhctl binds reset                    drop frozen key bindings from shell.json
 bhctl prune                          drop the instance dirs quickshell leaves
 bhctl shell reset                    restore default settings and restart
 EOF
@@ -302,6 +303,20 @@ niri)
         # begins with "$tmp", so replacing the shorter one first would rewrite
         # it to "$CONFIG_HOME/share" and reintroduce the very difference this
         # is here to remove.
+        # ⚠️ SAY SO WHEN THERE IS NOTHING TO COMPARE. `diff` has its stderr
+        # discarded below — it has to be, or a missing colors.kdl would be
+        # reported as a difference — and that means a missing file on EITHER
+        # side came out as: no output, non-zero exit, not a word. `doctor` reads
+        # an empty answer as "no differences" and printed "niri config ok",
+        # so a diff that could not run at all looked exactly like a clean one.
+        if [[ ! -f "$tmp/niri/config.kdl" ]]; then
+            echo "the generator produced no config.kdl to compare against" >&2
+            rm -rf "$tmp"; exit 1
+        fi
+        if [[ ! -f "$cfg" ]]; then
+            echo "no $cfg on this machine — run: bhctl niri apply" >&2
+            rm -rf "$tmp"; exit 1
+        fi
         sed -i -e "s|$tmp/share|$DATA_HOME|g" -e "s|$tmp|$CONFIG_HOME|g" \
             "$tmp/niri/config.kdl"
         if diff -u "$cfg" "$tmp/niri/config.kdl" 2>/dev/null; then
@@ -327,6 +342,22 @@ binds)
     reset)
         cfg="$CONFIG_HOME/buchhwin/shell.json"
         [[ -f "$cfg" ]] || { echo "no shell.json — nothing to reset"; exit 0; }
+        # ⚠️⚠️ THE RESCUE COULD FAIL AND STILL REPORT SUCCESS. This file runs
+        # under `set -uo pipefail` and deliberately NOT `-e`, so a missing
+        # python3 made the heredoc exit 127 with a message on stderr — and the
+        # `exec` at the end of this branch ran anyway. It printed "config.kdl
+        # regenerated and valid" over a settings file whose frozen bindings had
+        # not been touched, on exactly the machine where somebody is already
+        # having a bad day.
+        #
+        # Two guards, because they catch different things: the name has to
+        # exist before the heredoc, and the heredoc's own exit code has to be
+        # believed afterwards.
+        command -v python3 >/dev/null || {
+            echo "python3 is missing — it is in packages/dnf-core.txt" >&2
+            echo "  sudo dnf install python3, then run this again" >&2
+            exit 1
+        }
         python3 - "$cfg" <<'PYEOF'
 import json, os, sys
 path = sys.argv[1]
@@ -344,6 +375,13 @@ with open(tmp, "w") as fh:
 os.replace(tmp, path)
 print("binds: removed %d frozen entries — the built-in set applies again" % n)
 PYEOF
+        # ⚠️ AND THE EXIT CODE IS READ. Without this the `exec` below runs after
+        # a failed edit and announces success — see the note above the guard.
+        rc=$?
+        (( rc == 0 )) || {
+            echo "binds: shell.json was NOT changed (python exited $rc)" >&2
+            exit "$rc"
+        }
         # The generator has to run, or the file is right and the compositor
         # still has yesterday's config. This is the half people forget.
         exec "$0" niri apply
@@ -419,7 +457,16 @@ print(len(b) if isinstance(b,list) else 0)" "$cfg" 2>/dev/null || echo -1)"
         # temporary directory and compare. Reusing it also means the two can
         # never disagree.
         if [[ -f "$kdl" ]]; then
-            if [[ -n "$("$0" niri diff 2>/dev/null | grep -v '^no changes$')" ]]; then
+            # ⚠️ THE EXIT CODE, NOT JUST THE OUTPUT. This used to test only
+            # whether the diff printed anything, so a `niri diff` that could not
+            # run — no generator output, no config to compare — printed nothing
+            # and was read as "no differences". The one line meant to prove the
+            # generated config is current was green precisely when it knew least.
+            diffout="$("$0" niri diff 2>&1)"; diffrc=$?
+            if (( diffrc != 0 )); then
+                printf 'niri config UNKNOWN — the comparison could not run\n'
+                printf '%s\n' "$diffout" | head -2 | sed 's/^/            /'
+            elif [[ -n "$(grep -v '^no changes$' <<< "$diffout")" ]]; then
                 printf 'niri config STALE — it does not match shell.json\n'
                 printf '            run: bhctl niri apply   (see: bhctl niri diff)\n'
             else
@@ -533,6 +580,26 @@ except Exception:
             && path="/dev/dri/by-path/pci-$(basename "$p")-render"
         printf '            %s  (%s)\n' "$path" "${drv:-unknown}"
     done
+
+    # ⚠️ THE LAST THEMING RUN, WHICH NOTHING OUTSIDE THE SETTINGS WINDOW COULD
+    # SEE. services/Theming.qml has said "bhctl doctor can read it" in a comment
+    # since the day it was written, and bin/bhctl never touched the file — so a
+    # generator that REFUSED to install a config left one banner inside a window
+    # you may not be able to open, and nothing at all over SSH. The refusal path
+    # is the one that matters: it means the settings you just changed did not
+    # apply and the previous config is still live.
+    tlog=/tmp/buchhwin-theming.log
+    if [[ -f "$tlog" ]]; then
+        if grep -qE 'REFUSED|FAILED' "$tlog"; then
+            printf 'last theme  the last run did NOT apply:\n'
+            grep -E 'REFUSED|FAILED' "$tlog" | tail -1 | sed 's/^/            /'
+            printf '            after fixing it: open the settings window and press "Try again"\n'
+        else
+            printf 'last theme  %s\n' "$(tail -1 "$tlog")"
+        fi
+    else
+        printf 'last theme  has not run yet in this session\n'
+    fi
 
     # ⚠️ THE PRICE OF THE TWO COPRs, paid where it can be seen.
     #

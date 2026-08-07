@@ -21,12 +21,21 @@ quickshell
 qt6-qtdeclarative           # quickshell's runtime
 qt6-qtdeclarative-devel     # qmllint/qmlformat, used by CI and `bhctl doctor`
 
-# Greeter. greetd, not SDDM: the greeter is our own Quickshell surface, so it
-# uses the same palette, fonts and code as the lock screen instead of needing a
-# second theme maintained in a second format. greetd itself is 2 packages.
-# ⚠️ SDDM is only removed once the new greeter is proven to reach a desktop on
-# the VM — a broken greeter means no way to log in at all.
-greetd
+# ⚠️ greetd IS NOT HERE ANY MORE, and its absence is the decision.
+#
+# It was installed from the first commit and never configured: no
+# /etc/greetd/config.toml is written, no greetd.service is enabled, and there is
+# no greeter surface under shell/ui/ for it to start. Meanwhile lib/30-desktop.sh
+# enables sddm and lib/70-services.sh patches /etc/pam.d/sddm for the keyring —
+# so the machine installed one login manager it never used alongside another it
+# did. That is the same shape as bluez, which shipped a Bluetooth panel with no
+# daemon behind it for four milestones: a package present, and the one step that
+# would make it do something missing.
+#
+# It comes back with M9, in the same commit as the greeter and the config that
+# starts it. docs/CHECKLIST.md keeps the condition for removing sddm: only once
+# our own greeter demonstrably reaches a desktop, because a broken greeter means
+# no way to log in at all.
 
 # Terminal.
 kitty

@@ -145,6 +145,25 @@ printf '\033[38;5;114mok\033[0m\n'
 # a null one. `timer.presets` was the only one, and every preset anybody wrote
 # in shell.json was being thrown away in favour of the defaults, with one line
 # in the journal as the only sign. Strings, converted at the reader.
+# ⚠️ AND EVERY GROUP IS DOCUMENTED. docs/CONFIG.md carried eighteen of the
+# twenty-nine top-level groups, so nine of them — cursor, gpu, brightness,
+# clock, motion, media, lock, terminal, clipboard — were settable, had rows in
+# the settings window, and appeared in no document at all. That is the sort of
+# gap nobody trips over: the code works perfectly and the reader concludes the
+# feature does not exist.
+printf '  %-38s ' "every config group is in docs/CONFIG.md"
+undoc=""
+while read -r g; do
+    [[ -n "$g" ]] || continue
+    grep -qE "^\| \`$g\`|^\| \`[a-z]+\` / \`$g\`|/ \`$g\` /|/ \`$g\` \|" docs/CONFIG.md || undoc+=" $g"
+done < <(grep -oE '^ *readonly property alias [a-z]+:' "$file" | awk '{print $4}' | tr -d ':')
+if [[ -z "$undoc" ]]; then
+    printf '\033[38;5;114mok\033[0m\n'
+else
+    printf '\033[38;5;203mnot documented:%s\033[0m\n' "$undoc"
+    exit 1
+fi
+
 printf '  %-34s ' "no list<int>/list<real>"
 
 numeric="$(grep -nE 'property list<(int|real|double|float)>' "$file" || true)"

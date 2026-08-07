@@ -10,6 +10,11 @@ desktop — which is what makes it safe to add settings without a migration.
 
 ## Groups
 
+Every group below has a row in the settings window, and `tests/setting-rows.sh`
+checks that in both directions — a setting with no row fails, and a row with no
+setting fails too. This table used to list eighteen of the twenty-nine, so nine
+groups were settable and undocumented.
+
 | Group | What |
 |---|---|
 | `version` | migration marker; bumped only on a rename or removal |
@@ -30,6 +35,15 @@ desktop — which is what makes it safe to add settings without a migration.
 | `workspaces` | named workspaces |
 | `wallpaper` | `folder`, `current` image, `monitors` |
 | `location` | `name` (display only), `lat`, `lon` — set from the quick panel |
+| `cursor` | `theme` and `size`. ⚠️ TWO writers need it: niri draws the pointer over the desktop, GTK programs read `org.gnome.desktop.interface` and ignore the compositor. Setting one leaves the other wrong, which shows as a pointer that changes shape at a window edge |
+| `gpu` | `renderDevice` — which GPU niri draws with. Empty means niri chooses, which is right everywhere except a hybrid laptop with a monitor on the second card. ⚠️ `niri validate` accepts a device that does not exist; see docs/NIRI.md for the way back out |
+| `brightness` | `external` (talk to monitors over DDC/CI at all), `externalLive` (send while dragging, or once on release), `step` |
+| `clock` | `format`, `seconds`, `dateFormat`, `weekStart`, `precision` — read by `shell/common/Clock.qml`, which is the single formatter four places used to each have their own copy of |
+| `motion` | `speed`, one multiplier over `Theme.durFast/durBase/durSlow` so the RATIO between them survives. It reaches niri's own window animations too |
+| `media` | `preferred` player, and where the track is shown |
+| `lock` | what the lock screen shows: date, avatar, wallpaper |
+| `terminal` | the terminal's own cursor: `cursorShape`, `cursorBlinkInterval`, `cursorTrail`, `scrollbackLines`. ⚠️ Not the same thing as `programs.terminal`, which is WHICH terminal |
+| `clipboard` | history length and what is never kept |
 
 ## One state per program
 
