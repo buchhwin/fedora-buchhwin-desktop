@@ -56,9 +56,21 @@ Item {
     // computed to keep the centre actually central: whichever side is wider sets
     // the margin on BOTH sides. That is what makes the clock hold still while
     // music starts and stops.
-    readonly property real sideWidth: Math.max(media.implicitWidth,
-                                               right.implicitWidth)
-    implicitWidth: root.sideWidth * 2 + centre.implicitWidth + Theme.space5 * 2
+    // ⚠️⚠️ THE BATTERY LANDED ON TOP OF THE CLOCK, and this is why. The three
+    // groups are anchored independently — media on the left, the clock on the
+    // horizontal centre, the status on the right — so nothing STOPS them from
+    // overlapping; the only thing keeping them apart is this width being big
+    // enough. It was, until upower started answering and the right-hand group
+    // grew by a battery icon and a percentage on a machine that had never shown
+    // one. He saw it within minutes.
+    //
+    // ⚠️ `Math.ceil` and the extra gap are not decoration: implicit widths of
+    // text are fractional, and half a pixel short on each side is exactly the
+    // kind of overlap that only appears with certain content — which is the
+    // worst kind to hunt.
+    readonly property real sideWidth: Math.ceil(Math.max(media.implicitWidth,
+                                                         right.implicitWidth))
+    implicitWidth: root.sideWidth * 2 + centre.implicitWidth + Theme.space5 * 3
     implicitHeight: Math.max(media.implicitHeight, centre.implicitHeight,
                              right.implicitHeight)
 
@@ -159,6 +171,9 @@ Item {
     // --------------------------------------------------------- timer + pill
     RowLayout {
         id: right
+        // ⚠️ RIGHT-ALIGNED, BUT INSIDE A ROW THAT RESERVES ITS WIDTH — see the
+        // note beside `centre`. Anchoring it to the parent's right edge is what
+        // let it grow into the clock the moment a battery reading appeared.
         anchors.right: parent.right
         anchors.verticalCenter: parent.verticalCenter
         spacing: Theme.space3
@@ -184,12 +199,15 @@ Item {
             }
         }
 
-        // ----------------------------------------------------------- status pill
-        // The one thing on the notch that answers a click.
-        Pill {
-            interactive: true
+        // ----------------------------------------------------------- status
+        // ⚠️ THIS WAS A PILL AND IT IS NOT ANY MORE — his decision, and it wins
+        // twice. The pill was "the one thing on the notch that answers a
+        // click"; now the WHOLE hovered notch answers, so a button inside it
+        // was a smaller target inside a bigger one that does the same thing.
+        // Dropping it also gives back its padding, which is width this row did
+        // not have to spare — see the layout note at the top.
+        RowLayout {
             Layout.alignment: Qt.AlignVCenter
-            onClicked: Ipc.toggle("quick")
 
             RowLayout {
                 spacing: Theme.space2
@@ -236,9 +254,9 @@ Item {
             }
 
             // ⚠️ A machine with neither network nor battery — the test VM is
-            // exactly that — would otherwise get an empty pill, which is the one
-            // thing the brief rules out. It keeps the pill's job (open the quick
-            // panel) and says so with a symbol instead of standing there blank.
+            // exactly that — would otherwise show nothing at all here. The
+            // symbol says the notch can be opened, which is now true of every
+            // part of it rather than of one pill.
             Icon {
                 visible: !Services.Net.available && !Services.Power.available
                 text: "expand_more"
