@@ -301,7 +301,7 @@ ColumnLayout {
         BarText {
             Layout.fillWidth: true
             visible: root.dayEvents.length > 4
-            text: "and " + (root.dayEvents.length - 4) + " weitere"
+            text: "and " + (root.dayEvents.length - 4) + " more"
             color: Theme.fgMuted
             font.pixelSize: Theme.fontSizeSm
         }

@@ -64,10 +64,43 @@ Rectangle {
         anchors.margins: Theme.space3
         spacing: Theme.space3
 
-        Icon {
-            text: root.icon
-            size: Theme.fontSizeXl
-            color: root.content
+        // ⚠️ THE SYMBOL SITS IN A FILLED CIRCLE — from the reference
+        // (2026-08-06/vorlage-control-center.png), and it is not decoration.
+        // A bare glyph on an accent-filled tile and the same glyph on a dark
+        // one are two different weights of mark, so a row of tiles read as
+        // unevenly emphasised even when nothing was. The disc gives every
+        // symbol the same footprint whatever the tile is doing.
+        //
+        // ⚠️ The disc is DARKER on an active tile and LIGHTER on an inactive
+        // one — it always steps away from its background rather than always in
+        // one direction. On an accent tile a lighter disc would disappear into
+        // the accent; on a dark tile a darker one would disappear into the
+        // dark. Same idea as the subtitle below, which follows the content
+        // colour and loses opacity instead of being a fixed grey.
+        Rectangle {
+            implicitWidth: Theme.space6
+            implicitHeight: Theme.space6
+            radius: width / 2      // literal-ok: a circle is half its width
+            color: !root.usable ? Theme.surface
+                 : root.active ? Theme.accentActive
+                 : Theme.surfaceHigh
+
+            Behavior on color {
+                enabled: Theme.animate
+                ColorAnimation { duration: Theme.durFast; easing.type: Theme.easing }
+            }
+
+            Icon {
+                anchors.centerIn: parent
+                text: root.icon
+                size: Theme.fontSizeLg
+                // On a dark disc the symbol carries the accent, which is what
+                // makes an off tile still say what colour the desktop is. On an
+                // accent tile it goes back to the readable-on-accent colour.
+                color: !root.usable ? Theme.fgDisabled
+                     : root.active ? Theme.accentFg
+                     : Theme.accent
+            }
         }
 
         ColumnLayout {

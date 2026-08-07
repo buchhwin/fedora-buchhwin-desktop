@@ -19,6 +19,16 @@ RowLayout {
     property bool live: true          // false = muted, or no hardware
     property int steps: 20            // 20 → 5 % a notch, as the hardware keys use
 
+    // ⚠️ TWO SHAPES, ONE COMPONENT. The reference
+    // (2026-08-06/vorlage-control-center.png) draws the control-centre levels
+    // as tall rounded bars with the symbol INSIDE them and no percentage at
+    // all; the thin track with the icon beside it is still right where a level
+    // is a readout rather than a control — the media page, the small pages the
+    // volume keys raise. Building the fat one separately is how volume and
+    // brightness drift apart, which is the thing the head of this file exists
+    // to prevent, so it is a property instead.
+    property bool fat: false
+
     signal moved(real fraction)       // absolute, from a tap or drag
     signal nudged(int direction)      // +1 / -1, from the wheel
 
@@ -41,7 +51,10 @@ RowLayout {
         }
     }
 
+    // Beside the track when thin, inside it when fat — so it is the same Icon
+    // either way rather than one of two that could drift.
     Icon {
+        visible: !root.fat
         text: root.icon
         size: Theme.fontSizeLg
         color: root.live ? Theme.fg : Theme.fgDim
@@ -50,12 +63,14 @@ RowLayout {
     Rectangle {
         id: track
         Layout.fillWidth: true
-        implicitHeight: Theme.space1
+        implicitHeight: root.fat ? Theme.space6 : Theme.space1
         radius: Theme.radiusPill
         color: Theme.surfaceHigh
 
         Rectangle {
-            width: track.width * Math.max(0, Math.min(1, root.live ? root.value : 0))
+            id: fill
+            width: Math.max(root.fat ? track.height : 0,
+                            track.width * Math.max(0, Math.min(1, root.live ? root.value : 0)))
             height: parent.height
             radius: parent.radius
             color: Theme.accent
@@ -66,6 +81,22 @@ RowLayout {
                 enabled: Theme.animate
                 NumberAnimation { duration: Theme.durFast; easing.type: Theme.easing }
             }
+        }
+
+        // ⚠️ SITS ON THE TRACK, NOT ON THE FILL, and it is the fill that moves
+        // under it. Anchored into the fill it would slide off the left end as
+        // the level dropped; anchored here it stays where the symbol belongs
+        // and simply stops being on the accent when the fill retreats past it.
+        // That is why the fill has a minimum width of one track height in fat
+        // mode — at zero the symbol would sit on bare grey and read as broken.
+        Icon {
+            visible: root.fat
+            anchors.verticalCenter: parent.verticalCenter
+            anchors.left: parent.left
+            anchors.leftMargin: Theme.space3
+            text: root.icon
+            size: Theme.fontSizeLg
+            color: root.live ? Theme.accentFg : Theme.fgDim
         }
 
         TapHandler {
@@ -92,7 +123,11 @@ RowLayout {
         }
     }
 
+    // No number on the fat one — the reference has none, and it is right: a bar
+    // that fills most of the panel already says how far along it is, and "62 %"
+    // is a precision nobody sets a volume to.
     BarText {
+        visible: !root.fat
         text: Math.round(root.value * 100) + "%"
         font.pixelSize: Theme.fontSizeSm
         color: Theme.fgMuted

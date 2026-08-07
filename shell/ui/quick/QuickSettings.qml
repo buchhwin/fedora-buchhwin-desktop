@@ -166,6 +166,7 @@ ColumnLayout {
         spacing: Theme.space2
 
         LevelRow {
+            fat: true
             Layout.fillWidth: true
             icon: Services.Audio.muted ? "volume_off"
                 : Services.Audio.volume > 0.5 ? "volume_up" : "volume_down"
@@ -193,6 +194,7 @@ ColumnLayout {
     }
 
     LevelRow {
+        fat: true
         Layout.fillWidth: true
         visible: Services.Brightness.available
         icon: "brightness_6"
@@ -214,6 +216,7 @@ ColumnLayout {
     // and many monitors flash their own menu for each one. See the head of
     // services/Brightness.qml for what is measured here and what is not.
     LevelRow {
+        fat: true
         Layout.fillWidth: true
         visible: Services.Brightness.externalAvailable
         icon: "desktop_windows"

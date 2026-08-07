@@ -66,6 +66,9 @@ words+='|klar|bedeckt|Nebel|Niesel|Regen|Schnee|Schauer|Gewitter|Wolken|Sonne'
 words+='|Ausschalten|Neustart|Abmelden|Sperren|Ruhezustand'
 words+='|Anmeldung|abgelehnt|Konto|Stadt|eingeben|Ortssuche|Unsinn|Uhrzeit|Datum'
 words+='|Lautstärke|Lautstaerke|Helligkeit|Verbindung|verbunden|getrennt|Passwort'
+# And "+ 2 weitere" in the notification list, which shipped. Same limit as
+# above: not a function word, not a sentence — a two-word label. It is in now.
+words+='|weitere|weiteren|Meldung|Meldungen|Mitteilung|Mitteilungen'
 
 files=$(git ls-files 'shell/*.qml' 'shell/**/*.qml' 'docs/*.md' 'README.md' \
                     'lib/*.sh' 'bin/*' 'install.sh' 'tests/*.sh' 2>/dev/null)
