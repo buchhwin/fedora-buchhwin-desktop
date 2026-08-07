@@ -73,6 +73,21 @@ Scope {
                 root.harvest(d[j], into)
     }
 
+    // The same three fields the window's own filter looks at, asked of the
+    // index rather than of the box — there is no way to type into a TextField
+    // from here, and re-implementing the filter would be testing a copy.
+    function hits(idx, q) {
+        var n = 0
+        for (var i = 0; i < idx.length; i++) {
+            var r = idx[i]
+            if (String(r.label).toLowerCase().indexOf(q) >= 0
+                || String(r.hint).toLowerCase().indexOf(q) >= 0
+                || String(r.key).toLowerCase().indexOf(q) >= 0)
+                n++
+        }
+        return n
+    }
+
     function run() {
         root.note("buchhwin pages-check")
 
@@ -140,6 +155,32 @@ Scope {
             root.rowTotal += rows.length
             root.ok("\"" + p.id + "\" builds — " + rows.length + " rows", true)
             page.destroy()
+        }
+
+        // ------------------------------------------------------- the row index
+        // ⚠️ THE SEARCH IS THE OTHER THING THAT CAN BE GREEN AND USELESS. It
+        // used to look at ten page titles and ten descriptions, so "blur" found
+        // nothing at all — the box worked, it simply did not search the thing
+        // anybody wanted. Counting the index is how that stays fixed.
+        content.buildIndex()
+        var idx = content.rowIndex
+        root.ok("the search index builds", idx !== null)
+        if (idx !== null) {
+            root.ok("it holds every row (" + idx.length + ")",
+                    idx.length === root.rowTotal)
+            if (idx.length !== root.rowTotal)
+                root.note("          index " + idx.length
+                          + " vs " + root.rowTotal + " built")
+
+            // A word that is on a ROW and in no page title or description. If
+            // this finds nothing, the search has fallen back to what it did
+            // before and nobody would notice.
+            root.ok("\"blur\" finds a row", root.hits(idx, "blur") > 0)
+
+            // ⚠️ THE CONTROL. A matcher that returns everything would pass the
+            // line above and be worse than useless.
+            root.ok("a nonsense word finds nothing",
+                    root.hits(idx, "zzzznotathing") === 0)
         }
 
         content.destroy()

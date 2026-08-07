@@ -162,17 +162,146 @@ FocusScope {
     // description. Searching rows means every page building its list without
     // being open, which is a change to how a page is declared; saying what the
     // box does beats a box that quietly finds a tenth of what you asked for.
+    // ⚠️ IT SEARCHED TEN TITLES AND TEN BLURBS, and with 157 rows that was a box
+    // that quietly found a tenth of what you asked it for. Typing "blur" found
+    // nothing, because the word is on a row and not in any page's description —
+    // which is exactly the case that matters, since a page title is the thing
+    // you can already see in the sidebar.
+    //
+    // The obstacle was never the matching. It is that a page's rows do not exist
+    // until the page is built, and the settings window builds one page at a
+    // time. Keeping a second list of every row beside the real ones would be
+    // double bookkeeping that drifts — the fault this repo spends most of its
+    // checks preventing.
+    //
+    // So: build all twenty-one pages once, off-screen, on the FIRST keystroke,
+    // read their rows, and throw the pages away. One cost, paid by someone who
+    // has just shown they want to search, and no second source of truth.
+    property var rowIndex: null
+
+    // Rows are found by asking for the properties rather than by matching the
+    // type name — a row is something with a `key` and a `kind`, which is what
+    // the rest of the system means by one. Matching `SettingRow` by name would
+    // go blind the day one gets wrapped.
+    function harvest(obj, page, into) {
+        if (!obj)
+            return
+        if (obj.key !== undefined && obj.kind !== undefined && String(obj.key).length)
+            into.push({ key: String(obj.key),
+                        label: String(obj.label === undefined ? "" : obj.label),
+                        hint: String(obj.hint === undefined ? "" : obj.hint),
+                        page: page })
+        var kids = obj.children === undefined ? [] : obj.children
+        for (var i = 0; i < kids.length; i++)
+            root.harvest(kids[i], page, into)
+        var d = obj.data === undefined ? [] : obj.data
+        for (var j = 0; j < d.length; j++)
+            if (d[j] !== undefined && kids.indexOf(d[j]) < 0)
+                root.harvest(d[j], page, into)
+    }
+
+    function buildIndex() {
+        if (root.rowIndex !== null)
+            return
+        var out = []
+        for (var i = 0; i < root.pages.length; i++) {
+            var p = root.pages[i]
+            var comp = Qt.createComponent(p.source)
+            if (comp.status !== Component.Ready)
+                continue
+            // ⚠️ `null` AS THE PARENT, deliberately. Given `root` the page would
+            // be a child of this FocusScope with no layout to place it — drawn
+            // at the top left, over the real one. Parentless is what "build it
+            // to look at it" means.
+            var obj = comp.createObject(null)
+            if (obj === null)
+                continue
+            root.harvest(obj, p, out)
+            obj.destroy()
+        }
+        root.rowIndex = out
+    }
+
+    // What the sidebar lists. With an empty box that is the pages, in their own
+    // sections; with a query it is matches, and a matching ROW is offered as
+    // itself rather than as the page it happens to live on.
     readonly property var shown: {
         var q = search.text.trim().toLowerCase()
         if (q.length === 0)
             return root.pages
+
         var out = []
-        for (var i = 0; i < root.pages.length; i++) {
-            var p = root.pages[i]
-            if (p.title.toLowerCase().indexOf(q) >= 0 || p.blurb.toLowerCase().indexOf(q) >= 0)
-                out.push(p)
+        var i, p
+        for (i = 0; i < root.pages.length; i++) {
+            p = root.pages[i]
+            if (p.title.toLowerCase().indexOf(q) >= 0
+                || p.blurb.toLowerCase().indexOf(q) >= 0)
+                out.push({ id: p.id, icon: p.icon, title: p.title,
+                           section: "Pages", source: p.source, blurb: p.blurb })
+        }
+
+        var idx = root.rowIndex
+        if (idx !== null) {
+            for (i = 0; i < idx.length; i++) {
+                var r = idx[i]
+                if (r.label.toLowerCase().indexOf(q) < 0
+                    && r.hint.toLowerCase().indexOf(q) < 0
+                    && r.key.toLowerCase().indexOf(q) < 0)
+                    continue
+                out.push({ id: r.page.id, icon: r.page.icon,
+                           title: r.label.length ? r.label : r.key,
+                           // The page is named on the entry, because "Blur" on
+                           // its own does not say where you are about to go.
+                           section: "Settings", rowKey: r.key,
+                           source: r.page.source, blurb: r.page.title })
+            }
         }
         return out
+    }
+
+    // ------------------------------------------------- getting to a found row
+    // Landing on a page of seventeen rows with the right one somewhere in it is
+    // barely better than not having searched, so the row is scrolled to and says
+    // once that it is the one.
+    property string pendingRow: ""
+
+    function findByName(item, name) {
+        if (!item)
+            return null
+        if (item.objectName === name)
+            return item
+        var kids = item.children === undefined ? [] : item.children
+        for (var i = 0; i < kids.length; i++) {
+            var hit = root.findByName(kids[i], name)
+            if (hit)
+                return hit
+        }
+        return null
+    }
+
+    function revealRow(key) {
+        var item = root.findByName(pageLoader.item, key)
+        if (!item)
+            return
+        var y = item.mapToItem(pageLoader.item, 0, 0).y
+        scroller.contentY = Math.max(0, Math.min(y - Theme.space5,
+                                     Math.max(0, scroller.contentHeight - scroller.height)))
+        if (typeof item.flash === "function")
+            item.flash()
+    }
+
+    function goTo(entry) {
+        var wasThere = entry.id === root.currentId
+        root.pendingRow = entry.rowKey === undefined ? "" : entry.rowKey
+        root.navigate(entry.id)
+        // ⚠️ A row on the page already open never fires `onLoaded`, because
+        // `navigate` returns early when the id has not changed. Without this the
+        // search silently does nothing for exactly the rows you are closest to.
+        if (wasThere && root.pendingRow.length) {
+            var k = root.pendingRow
+            root.pendingRow = ""
+            Qt.callLater(function () { root.revealRow(k) })
+        }
     }
 
     Keys.onEscapePressed: Ipc.hideSettings()
@@ -220,7 +349,14 @@ FocusScope {
                 }
                 // The first match, so typing three letters and pressing Return
                 // is a way to get somewhere rather than only a way to filter.
-                onAccepted: if (root.shown.length > 0) root.navigate(root.shown[0].id)
+                onAccepted: if (root.shown.length > 0) root.goTo(root.shown[0])
+
+                // ⚠️ THE INDEX IS BUILT ON THE FIRST KEYSTROKE, not when the
+                // window opens. Building twenty-one pages costs a visible pause;
+                // paying it when the window opens would tax everyone who came to
+                // change one thing they can already see. Someone typing in the
+                // search box has said what they want it for.
+                onTextChanged: if (search.text.length > 0) root.buildIndex()
             }
 
             // ⚠️ THE SIDEBAR HAS TO SCROLL NOW, and it did not before. Ten rows
@@ -253,7 +389,7 @@ FocusScope {
                                 return i
                         return -1
                     }
-                    onActivated: function (i) { root.navigate(root.shown[i].id) }
+                    onActivated: function (i) { root.goTo(root.shown[i]) }
                 }
 
                 // The same narrow bar the content area uses, and hidden the same
@@ -278,7 +414,9 @@ FocusScope {
             BarText {
                 Layout.fillWidth: true
                 visible: root.shown.length === 0
-                text: "No page by that name"
+                text: root.rowIndex === null
+                      ? "No page by that name"
+                      : "Nothing by that name, in any page or setting"
                 color: Theme.fgMuted
                 wrapMode: Text.WordWrap
             }
@@ -539,6 +677,18 @@ FocusScope {
                     height: implicitHeight
 
                     source: root.currentPage.source
+
+                    // The page exists now, so the row inside it can be found.
+                    // `onLoaded` rather than a timer: there is nothing to wait
+                    // for beyond this, and a timer would be a guess at how long
+                    // a page takes on a machine nobody has measured.
+                    onLoaded: {
+                        if (!root.pendingRow.length)
+                            return
+                        var k = root.pendingRow
+                        root.pendingRow = ""
+                        Qt.callLater(function () { root.revealRow(k) })
+                    }
                 }
 
                 // ⚠️ NOT DEAD CODE, though every entry above names a file that

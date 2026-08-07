@@ -132,6 +132,32 @@ ColumnLayout {
     spacing: Theme.space1
     opacity: root.usable ? 1 : Theme.dimmed
 
+    // ⚠️ THE NAME IS THE KEY, and it is how the search finds this row again
+    // after navigating to its page. Rows only exist once their page is built,
+    // so there is nothing to hold on to between "you searched for blur" and
+    // "the Effects page has finished loading" except a string.
+    objectName: root.key
+
+    // Being found should be visible. Landing on a page of seventeen rows with
+    // the right one somewhere in it is barely better than not searching — so
+    // the row says which one it is, once, and then stops.
+    property bool found: false
+    function flash() {
+        root.found = true
+        forget.restart()
+    }
+    Timer {
+        id: forget
+        interval: Theme.durSlow * 6
+        onTriggered: root.found = false
+    }
+
+    // ⚠️ THE LABEL CHANGES COLOUR RATHER THAN GAINING A BACKGROUND. A Rectangle
+    // here would be a LAYOUT ITEM — this root is a ColumnLayout, and anchoring a
+    // child inside a layout is ignored with a warning — so the highlight would
+    // have appeared as an extra empty row pushing everything down. Colour costs
+    // no space and cannot move anything.
+
     // ------------------------------------------------------------- label line
     RowLayout {
         id: labelLine
@@ -160,7 +186,16 @@ ColumnLayout {
             BarText {
                 Layout.fillWidth: true
                 text: root.label
-                color: Theme.fg
+                // Accent while the search has just brought you here, then back.
+                // The fade out is the point: a highlight that stays is a row
+                // that looks permanently special.
+                color: root.found ? Theme.accent : Theme.fg
+                font.weight: root.found ? Theme.weightSemibold : Theme.weightNormal
+
+                Behavior on color {
+                    enabled: Theme.animate
+                    ColorAnimation { duration: Theme.durSlow; easing.type: Theme.easing }
+                }
             }
 
             // ⚠️ ONE LINE, AND THE REST IN A TOOLTIP. These explanations are
