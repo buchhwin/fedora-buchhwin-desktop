@@ -6,6 +6,10 @@
 set -uo pipefail
 REPO_DIR="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/.." && pwd)"
 CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
+# `niri diff` renders into a sandbox and has to map the sandbox paths back to
+# the real ones before comparing; the generator writes both of these into the
+# file it produces.
+DATA_HOME="${XDG_DATA_HOME:-$HOME/.local/share}"
 
 usage() {
     cat <<'EOF'
@@ -258,18 +262,48 @@ niri)
         fi
         ;;
     diff)
-        tmp="$(mktemp -d)"; mkdir -p "$tmp/niri" "$tmp/environment.d"
-        XDG_CONFIG_HOME="$tmp" run_tool niri || { rm -rf "$tmp"; exit 1; }
-        # ⚠️ PUT THE REAL CONFIG HOME BACK BEFORE COMPARING, or this never says
+        tmp="$(mktemp -d)"
+        mkdir -p "$tmp/buchhwin" "$tmp/niri" "$tmp/environment.d" "$tmp/share"
+
+        # ⚠️⚠️ COPY THE SETTINGS IN, or this compares the machine against
+        # NOTHING. Config.qml:663-667 resolves shell.json out of
+        # XDG_CONFIG_HOME, so pointing that at an empty directory makes the
+        # generator fall back to the schema defaults — `_failed` is set,
+        # `settled` goes true anyway (Config.qml:121), and it renders a config
+        # for a machine nobody owns.
+        #
+        # The result was not "sometimes wrong", it was wrong on every configured
+        # machine: a single key differing from its default was enough. Measured
+        # on the test VM, where `cursor.theme` was "apple" and this printed the
+        # default "Breeze_Dark" as the incoming value. `doctor` reuses this
+        # command, so it had been reporting "niri config STALE" — and the
+        # remedy it suggested, `bhctl niri apply`, could never clear it.
+        #
+        # tests/niri-config.sh:31 has always done this correctly, and :74 names
+        # the empty case "defaults (no shell.json)" — which is exactly what this
+        # was accidentally measuring.
+        [[ -f "$CONFIG_HOME/buchhwin/shell.json" ]] \
+            && cp "$CONFIG_HOME/buchhwin/shell.json" "$tmp/buchhwin/shell.json"
+
+        # ⚠️ AND XDG_DATA_HOME WITH IT. The generator also writes a desktop-file
+        # override under $XDG_DATA_HOME/applications. Without this line a plain
+        # `bhctl niri diff` — and therefore every `bhctl doctor` — wrote into the
+        # real ~/.local/share on a machine it was only supposed to look at.
+        XDG_CONFIG_HOME="$tmp" XDG_DATA_HOME="$tmp/share" run_tool niri \
+            || { rm -rf "$tmp"; exit 1; }
+
+        # ⚠️ PUT THE REAL DIRECTORIES BACK BEFORE COMPARING, or this never says
         # "no changes". The generator writes absolute paths out of
         # XDG_CONFIG_HOME — `LG_CONFIG_FILE` is one — and this runs it against a
         # temporary directory, so that line differed on every single run
         # regardless of whether anything had actually changed.
         #
-        # It went unnoticed because nothing depended on the answer until
-        # `doctor` started asking. A comparison that always reports a difference
-        # is the same as no comparison at all.
-        sed -i "s|$tmp|$CONFIG_HOME|g" "$tmp/niri/config.kdl"
+        # ⚠️ The data home is substituted FIRST and it has to be: "$tmp/share"
+        # begins with "$tmp", so replacing the shorter one first would rewrite
+        # it to "$CONFIG_HOME/share" and reintroduce the very difference this
+        # is here to remove.
+        sed -i -e "s|$tmp/share|$DATA_HOME|g" -e "s|$tmp|$CONFIG_HOME|g" \
+            "$tmp/niri/config.kdl"
         if diff -u "$cfg" "$tmp/niri/config.kdl" 2>/dev/null; then
             echo "no changes"
         fi

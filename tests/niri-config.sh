@@ -252,4 +252,41 @@ else
 fi
 rm -rf "$tmp"
 
+# ---------------------------------------------------------------------------
+# `bhctl niri diff` must compare the machine against ITS OWN settings.
+#
+# ⚠️ THE FAULT THIS EXISTS FOR. `diff` renders into a temporary XDG_CONFIG_HOME
+# and it created $tmp/niri and $tmp/environment.d but never $tmp/buchhwin — so
+# the generator looked for shell.json (Config.qml:663-667), found nothing, and
+# produced a config from the pure schema defaults. Every machine with a single
+# non-default key was told "niri config STALE", and `bhctl niri apply`, the fix
+# it recommended, could never clear it. `doctor` reuses this command, so the one
+# line meant to prove the generated config was current was the least trustworthy
+# line in the report.
+#
+# The test is a round trip against a DELIBERATELY NON-DEFAULT value, because
+# that is the only kind this could ever get wrong: `apply`, then `diff`, and the
+# answer has to be "no changes". With the bug present the second step prints the
+# default back at you, which is what makes this the control and not a mirror.
+printf '  %-34s ' "apply then diff says no changes"
+tmp="$(mktemp -d)"; mkdir -p "$tmp/buchhwin" "$tmp/niri" "$tmp/environment.d" "$tmp/share"
+# gapsOut 24 rather than the default, and a cursor theme that is not Breeze_Dark:
+# one key the layout section reads and one the misc section reads, so a sandbox
+# that loses the settings file cannot pass by touching only one code path.
+printf '{"version":1,"look":{"gapsOut":24},"cursor":{"theme":"McMojave-cursors","size":32}}\n' \
+    > "$tmp/buchhwin/shell.json"
+if XDG_CONFIG_HOME="$tmp" XDG_DATA_HOME="$tmp/share" bin/bhctl niri apply >/dev/null 2>&1; then
+    out="$(XDG_CONFIG_HOME="$tmp" XDG_DATA_HOME="$tmp/share" bin/bhctl niri diff 2>&1)"
+    if [[ "$out" == "no changes" ]]; then
+        printf '\033[38;5;114mok\033[0m\n'
+    else
+        printf '\033[38;5;203mreports a difference against its own settings\033[0m\n'
+        printf '%s\n' "$out" | head -8 | sed 's/^/      /'
+        fail=1
+    fi
+else
+    printf '\033[38;5;203mbhctl niri apply failed\033[0m\n'; fail=1
+fi
+rm -rf "$tmp"
+
 exit $fail

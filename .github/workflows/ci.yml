@@ -77,6 +77,17 @@ jobs:
         run: |
           for f in $(git ls-files '*.sh'); do bash -n "$f"; done
 
+      # ⚠️ AND THE INSTALLER IS ACTUALLY RUN, because neither of the two steps
+      # above can see the fault that made this necessary. `lib/20-base.sh`
+      # referenced DRY_RUN, which exists in the predecessor and not here; under
+      # `set -u` that is fatal, so phase_base exited 127 and the seven phases
+      # after it never ran. `bash -n` parses without executing, and
+      # `shellcheck -S warning` did not report it — the only thing that could
+      # was running the thing. Every system command is stubbed and it runs
+      # against a copy of the tree, so this changes nothing on the runner.
+      - name: install.sh runs from top to bottom
+        run: bash tests/install-runs.sh
+
   # qmllint cannot see a missing qmldir entry or a singleton shadowed by a Qt
   # type — both of which turned the whole desktop black during development.
   # So the linter runs AND the shell is actually started, headless.
