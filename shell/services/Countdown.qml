@@ -108,6 +108,29 @@ Singleton {
         root.remaining = 0
     }
 
+    // ⚠️ AND IT ACKNOWLEDGES ITSELF AFTER A MINUTE, because otherwise it never
+    // does. `rang` was cleared by exactly one thing: the "got it" pill on the
+    // timer page inside the notch. Somebody who hears the chime, reads the
+    // notification and carries on has `0:00` sitting in their notch for the
+    // rest of the session — which is what he reported, and it is worse than
+    // useless: a badge that is always there is a badge nobody reads.
+    //
+    // ⚠️ NOT INSTANT, AND NOT NEVER. The whole point of `rang` is that the
+    // notch does not quietly go back to the time of day the moment a timer
+    // ends — you might have been in another room. A minute is long enough to
+    // walk back to the machine and short enough that it is still news. The
+    // chime and the notification have already fired by then, so this badge is
+    // the third telling, not the first.
+    //
+    // It restarts on every transition into `rang`, so a second timer finishing
+    // during the minute gets its own full minute.
+    Timer {
+        running: root.rang
+        interval: 60000
+        repeat: false
+        onTriggered: root.acknowledge()
+    }
+
     // ---------------------------------------------------------------- the tick
     //
     // A whole second is enough for a countdown read at a glance, and it is 60
