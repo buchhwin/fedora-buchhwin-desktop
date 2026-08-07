@@ -700,7 +700,7 @@ Singleton {
             // only the migration chain quietly papering over it. Both now write
             // no version at all: a file without one reads as 0 and is migrated
             // forward, which is exactly the path a genuinely old file takes.
-            property int version: 11
+            property int version: 12
 
             property JsonObject theme: JsonObject {
                 property string palette: "everforest-dark"
@@ -1546,7 +1546,21 @@ Singleton {
             // is one edit here instead of a hunt through the bindings.
             property JsonObject programs: JsonObject {
                 property list<string> terminal: ["kitty"]
-                property list<string> browser: ["brave-browser"]
+                // ⚠️ THE FLAG IS HERE BECAUSE Mod+B DOES NOT USE THE .desktop
+                // FILE. tools/niri.qml writes an override into
+                // ~/.local/share/applications with --ozone-platform=wayland, and
+                // that override is real — measured: the launcher resolves Brave
+                // to "/usr/bin/brave-browser-stable --ozone-platform=wayland".
+                // But `spawn "brave-browser"` runs the binary directly and never
+                // reads a desktop file, so the key and the launcher were
+                // starting two different browsers. The slow one was the key.
+                //
+                // ⚠️ AND ~/.config/brave-flags.conf DOES NOTHING AT ALL. That
+                // convention is Arch's; Fedora's /opt/brave.com/brave/brave-browser
+                // is a bash wrapper with zero occurrences of "flags.conf",
+                // checked with grep. The file has been sitting there being
+                // believed in.
+                property list<string> browser: ["brave-browser", "--ozone-platform=wayland"]
                 property list<string> fileManager: ["nautilus"]
                 property list<string> editor: ["code"]
                 property list<string> imageViewer: ["loupe"]

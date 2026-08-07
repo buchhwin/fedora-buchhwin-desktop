@@ -43,7 +43,7 @@ Singleton {
     // joining three fields with it can never collide with their contents.
     readonly property string sep: "\u0000"
 
-   readonly property int current: 11
+   readonly property int current: 12
 
     // step[n] upgrades a config at version n to version n+1.
     // Each is a pure function: take the parsed object, return it changed.
@@ -345,6 +345,29 @@ Singleton {
                 if (cfg.look.opacityApp === 0.80 || cfg.look.opacityApp === 0.8)
                     cfg.look.opacityApp = 1.0
             }
+            return cfg
+        },
+
+        // ---------------------------------------------------------- 11 -> 12
+        // `programs.browser` gains the Wayland flag.
+        //
+        // ⚠️ THE KEY AND THE LAUNCHER WERE STARTING TWO DIFFERENT BROWSERS.
+        // tools/niri.qml writes a .desktop override carrying
+        // --ozone-platform=wayland, and the launcher honours it — measured on
+        // his machine, the launcher resolves Brave to the flagged command. But
+        // `spawn "brave-browser"` runs the binary and never looks at a desktop
+        // file, so Mod+B got the unflagged one. Without the flag Brave picks
+        // X11 and took 43 to 100 seconds to start against 1.4 with it.
+        //
+        // Same rule as every lift in this file: ONLY when the value is exactly
+        // the old default. Somebody who has put their own arguments there has
+        // made a decision, and a decision is not a fossil.
+        function (cfg) {
+            if (cfg.programs
+                && Array.isArray(cfg.programs.browser)
+                && cfg.programs.browser.length === 1
+                && cfg.programs.browser[0] === "brave-browser")
+                cfg.programs.browser = ["brave-browser", "--ozone-platform=wayland"]
             return cfg
         },
 

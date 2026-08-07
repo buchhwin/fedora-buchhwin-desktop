@@ -165,6 +165,24 @@ Scope {
                     kept.ok && kept.config.binds !== undefined
                     && kept.config.binds.length === Config.defaultBinds.length)
 
+            // ⚠️ BOTH DIRECTIONS, as every lift in that file needs. One of these
+            // alone is not a check: a step that rewrote the key unconditionally
+            // would pass the first, and a step that did nothing would pass the
+            // second.
+            var flagged = Migrations.migrate(
+                { version: 11, programs: { browser: ["brave-browser"] } }, ctx)
+            root.ok("11→12 gives the untouched browser its Wayland flag",
+                    flagged.ok
+                    && flagged.config.programs.browser.length === 2
+                    && flagged.config.programs.browser[1] === "--ozone-platform=wayland")
+
+            var chosen = Migrations.migrate(
+                { version: 11, programs: { browser: ["firefox", "--new-window"] } }, ctx)
+            root.ok("11→12 leaves a browser somebody chose alone",
+                    chosen.ok
+                    && chosen.config.programs.browser.length === 2
+                    && chosen.config.programs.browser[0] === "firefox")
+
             // ------------------------------------------------------ theme
             // All 26 palette names resolve. `hex()` answers Scheme.unknown for
             // a name it does not know — magenta, impossible to miss in a
