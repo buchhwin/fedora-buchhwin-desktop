@@ -56,6 +56,11 @@ Item {
     // Building that separately is how the predecessor grew two sidebars.
     property bool spread: false
 
+    // The natural height of one pill, taken from the first one that builds. It
+    // is needed to work out how much space is left over to share between them,
+    // and they are all identical, so one is enough.
+    property int pillHeight: 0
+
     implicitWidth: rail.implicitWidth
     // ⚠️ Only the NATURAL height is declared, never the spread one. A spread
     // rail takes the height its parent gives it, and asking for that height
@@ -78,7 +83,25 @@ Item {
         // `Layout.fillHeight` on the pills into real distribution: a layout
         // only has room to share out if something gave it a height.
         anchors.bottom: root.spread ? parent.bottom : undefined
-        spacing: Theme.space2
+
+        // ⚠️ THE GAPS GROW, NOT THE BUTTONS — and the obvious way does not work.
+        // The first attempt gave each pill `Layout.fillHeight` with
+        // `Qt.AlignVCenter`, on the assumption that an alignment keeps an item
+        // at its natural size inside a stretched cell. QtQuick.Layouts IGNORES
+        // the vertical alignment as soon as fillHeight is set, so every pill
+        // came out as a tall lozenge with a small glyph adrift in it — measured
+        // on screen, not reasoned about.
+        //
+        // So the leftover height is shared out as SPACING instead. Never below
+        // the normal gap: on a short panel the rail simply stays compact rather
+        // than overlapping itself.
+        spacing: {
+            var n = root.entries.length
+            if (!root.spread || n < 2 || root.pillHeight <= 0)
+                return Theme.space2
+            return Math.max(Theme.space2,
+                            (root.height - n * root.pillHeight) / (n - 1))
+        }
 
         Repeater {
             model: root.entries
@@ -88,15 +111,10 @@ Item {
                 required property int index
                 required property var modelData
 
-                // ⚠️ `AlignVCenter` TOGETHER WITH `fillHeight`, and the pair is
-                // the whole trick. `fillHeight` alone hands the pill the whole
-                // cell and it STRETCHES into a tall lozenge with a small glyph
-                // adrift in it. With a vertical alignment as well, QtQuick.
-                // Layouts gives the cell the space and the pill keeps its own
-                // height inside it — so the GAPS grow and the buttons do not.
-                Layout.alignment: root.spread ? Qt.AlignHCenter | Qt.AlignVCenter
-                                              : Qt.AlignHCenter
-                Layout.fillHeight: root.spread
+                Layout.alignment: Qt.AlignHCenter
+                // One measurement, from the first pill — see `pillHeight`.
+                Component.onCompleted: if (railPill.index === 0)
+                                           root.pillHeight = railPill.implicitHeight
                 interactive: true
                 active: root.currentIndex === railPill.index
 
