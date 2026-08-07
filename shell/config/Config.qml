@@ -595,7 +595,7 @@ Singleton {
             // only the migration chain quietly papering over it. Both now write
             // no version at all: a file without one reads as 0 and is migrated
             // forward, which is exactly the path a genuinely old file takes.
-            property int version: 9
+            property int version: 10
 
             property JsonObject theme: JsonObject {
                 property string palette: "everforest-dark"
@@ -1049,7 +1049,21 @@ Singleton {
                 // 24 keeps the same proportion. It is a key rather than a
                 // multiplication so the settings window can show both numbers.
                 property int hoverCornerRadius: 24
-                property int expandedHeight: 135
+                // ⚠️ `expandedHeight` IS GONE, and removing it is the honest
+                // answer rather than giving it a reader back. It was a MINIMUM
+                // applied to every page, and commit 9bec5fa deleted that on
+                // purpose — it was the second half of his report about the
+                // spacing: a page shorter than 135 got the difference split
+                // above and below it as dead space, measured at media 161→138,
+                // tray 161→138, calculator 161→120.
+                //
+                // After that only ui/notch/pages/WallpaperPage.qml still used
+                // it, to size its covers — and commit 3added8 turned that page
+                // into a grid whose cells come from the column count. So the
+                // key had no reader at all, which tests/key-readers.sh found.
+                //
+                // Restoring a reader would mean re-introducing the dead space
+                // that was measured away. Pages are as tall as what is on them.
                 property int minExpandedWidth: 619
                 property list<string> monitors: []
             }

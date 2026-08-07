@@ -43,7 +43,7 @@ Singleton {
     // joining three fields with it can never collide with their contents.
     readonly property string sep: "\u0000"
 
-   readonly property int current: 9
+   readonly property int current: 10
 
     // step[n] upgrades a config at version n to version n+1.
     // Each is a pure function: take the parsed object, return it changed.
@@ -285,6 +285,24 @@ Singleton {
                     out.push(String(n))
             }
             t.presets = out
+            return cfg
+        },
+
+        // 9 → 10: `notch.expandedHeight` removed.
+        //
+        // It was a MINIMUM height applied to every page, and commit 9bec5fa
+        // deleted that behaviour on purpose — a page shorter than 135 got the
+        // difference split above and below it as dead space, measured at
+        // media 161→138, tray 161→138, calculator 161→120. After that only the
+        // wallpaper picker still read it, to size its covers, and 3added8 made
+        // that page a grid. tests/key-readers.sh found the key with no reader
+        // left at all.
+        //
+        // Removed rather than given a reader back: restoring one would mean
+        // re-introducing the space that was measured away.
+        function (cfg) {
+            if (cfg.notch && cfg.notch.expandedHeight !== undefined)
+                delete cfg.notch.expandedHeight
             return cfg
         },
 

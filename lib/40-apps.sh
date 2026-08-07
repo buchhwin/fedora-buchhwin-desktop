@@ -146,6 +146,41 @@ PYEOF
         ok "brave follows the theme"
     fi
 
+    # ⚠️ `programs.imageViewer` AND `programs.video` HAD NO READER AT ALL.
+    # `loupe` and `vlc` sat in the settings and nothing ever opened them —
+    # found by tests/key-readers.sh. His decision on 07.08.2026 was to make them
+    # the system defaults, which is what the keys were for: then they apply
+    # everywhere, out of Nautilus and out of any download, not on one key.
+    #
+    # ⚠️ AND BRAVE HAD TAKEN THE IMAGES. Measured on the fresh machine:
+    #   image/png    brave-browser.desktop
+    #   image/jpeg   brave-browser.desktop
+    #   video/mp4    vlc.desktop
+    # Clicking a picture opened the browser. The Brave package claims those
+    # associations on install, so this is a repair as much as a setting.
+    #
+    # ⚠️ ONCE, AND ONLY ONCE — marked by a stamp file. Every later run leaves
+    # the associations alone, because by then any difference is the user's own
+    # choice and an installer that re-asserts itself on every run is a program
+    # that will not be argued with. The .desktop names were read off the
+    # machine, not remembered: `org.gnome.Loupe.desktop`, `vlc.desktop`.
+    local mimeStamp="${XDG_STATE_HOME:-$HOME/.local/state}/buchhwin/mime-defaults-set"
+    if [[ -f "$mimeStamp" ]]; then
+        ok "default applications already set once — leaving them alone"
+    elif command -v xdg-mime >/dev/null 2>&1; then
+        step "default applications for pictures and video"
+        xdg-mime default org.gnome.Loupe.desktop \
+            image/png image/jpeg image/gif image/webp image/tiff image/bmp \
+            >/dev/null 2>&1 || true
+        xdg-mime default vlc.desktop \
+            video/mp4 video/x-matroska video/webm video/quicktime video/x-msvideo \
+            >/dev/null 2>&1 || true
+        mkdir -p "$(dirname "$mimeStamp")" && : > "$mimeStamp"
+        ok "pictures open in loupe, video in vlc"
+    else
+        warn "xdg-mime is missing — pictures will open in whatever claimed them"
+    fi
+
     sudo dnf install -y flatpak >/dev/null 2>&1
     sudo flatpak remote-add --if-not-exists flathub \
         https://flathub.org/repo/flathub.flatpakrepo >/dev/null 2>&1

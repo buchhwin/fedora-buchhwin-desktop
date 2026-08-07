@@ -105,6 +105,23 @@ Scope {
             root.ok("config settled", Config.settled)
             root.ok("no migration error: " + Config.migrationError,
                     Config.migrationError.length === 0)
+
+            // ⚠️ THE COMMENT BESIDE `nulledKeys` PROMISED THIS AND NOTHING DID
+            // IT. Config.qml says of that property: "tools/smoke.qml reports it
+            // and the settings window will show it." Neither was true —
+            // tests/key-readers.sh found it with no reader anywhere.
+            //
+            // It is not decoration. A `null` block in shell.json makes the
+            // adapter hand back nulls instead of values, and `"theme": null`
+            // once took out Scheme, Theme and Theming at once with no error
+            // visible. The scrub in Config._migrate repairs it and records what
+            // it had to throw away — and something silently reverted to
+            // defaults is exactly what somebody has to be able to find out
+            // about, which was the whole argument for keeping the list.
+            root.ok("no settings were nulled and scrubbed" +
+                    (Config.nulledKeys.length
+                     ? " (" + Config.nulledKeys.join(", ") + ")" : ""),
+                    Config.nulledKeys.length === 0)
             root.ok("config version matches the migration chain",
                     Config.version === Migrations.current)
 
