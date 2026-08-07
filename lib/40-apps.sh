@@ -21,6 +21,32 @@ phase_apps() {
     mapfile -t pkgs < <(read_list dnf-apps.txt)
     dnf_install weak "${pkgs[@]}" || warn "some applications failed"
 
+    # ⚠️ BRAVE GETS A POLICY FILE, and the one key here is MEASURED rather than
+    # remembered. Chromium reads /etc/brave/policies/managed/*.json at start.
+    #
+    # Proven with a control on 07.08.2026, because "I wrote a policy and the
+    # browser looks different" is not a measurement: with the file in place the
+    # new tab is blank; with the same file REMOVED and Brave restarted, the full
+    # Brave page comes back — background photo, the "Ask anything, find
+    # anything…" box, a STATS panel and a REWARDS panel. That is exactly the
+    # strip 2026-08-06/vorlage-brave-sauber.png asks to be rid of, and blanking
+    # the new tab removes all of it at once, because all of it lives there.
+    #
+    # ⚠️ `BookmarkBarEnabled` is false because Chromium has no "on hover" — the
+    # choices are always, never, and new-tab-page only. Ctrl+Shift+B brings it
+    # back for as long as it is wanted.
+    step "brave policy"
+    sudo mkdir -p /etc/brave/policies/managed
+    sudo tee /etc/brave/policies/managed/buchhwin.json >/dev/null <<'POLICY'
+{
+  "NewTabPageLocation": "about:blank",
+  "BookmarkBarEnabled": false,
+  "BraveRewardsDisabled": true,
+  "BraveAIChatEnabled": false
+}
+POLICY
+    ok "brave policy"
+
     sudo dnf install -y flatpak >/dev/null 2>&1
     sudo flatpak remote-add --if-not-exists flathub \
         https://flathub.org/repo/flathub.flatpakrepo >/dev/null 2>&1
