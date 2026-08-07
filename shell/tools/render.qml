@@ -954,6 +954,16 @@ Scope {
              // reads it from gsettings and never asks the compositor, so
              // setting only one of the two gives a pointer that changes shape
              // when it crosses from the desktop onto a window.
+             //
+             // ⚠️ AND IT WORKS — which is worth writing down because it was
+             // reported as broken for an afternoon. A single reading said
+             // gsettings still held the old theme after a render, and that was
+             // a snapshot of a run that had already finished, not a fault. The
+             // control settled it: set BOTH `gtk-theme` and `cursor-theme` to
+             // nonsense by hand, run `bhctl theme apply`, and both come back —
+             // gtk-theme to adw-gtk3-dark, cursor-theme to McMojave-cursors.
+             // Fourth time in one week that a "bug" was a measurement without a
+             // control.
              + "gsettings set " + iface + " cursor-theme '"
              + Config.cursor.theme + "'; "
              + "gsettings set " + iface + " cursor-size "
