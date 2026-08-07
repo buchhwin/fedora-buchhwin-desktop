@@ -64,8 +64,23 @@ POLICY
     # away again a minute later. Refusing is better than doing nothing visible.
     step "brave follows the theme"
     local bravePrefs="$CONFIG_HOME/BraveSoftware/Brave-Browser/Default/Preferences"
-    if pgrep -x brave >/dev/null || pgrep -f brave-browser >/dev/null; then
-        warn "brave is running — close it and re-run, or its colours stay grey"
+    # ⚠️ WAIT FOR IT TO BE GONE, do not sleep and hope — right in itself, and
+    # NOT the reason the key disappears. That was the first theory: Brave writes
+    # Preferences on exit, so a `pkill` plus two seconds could let its copy land
+    # after ours. Measured, and it is wrong: Brave was gone in 200 ms, the key
+    # was written to a settled file, and after the next start
+    # `extensions.theme` was absent again.
+    #
+    # So Brave discards it itself. What that means is still open — the pref may
+    # have been renamed in this version, or it may only be honoured when a GTK
+    # theme is actually resolvable. This loop stays because polling for a
+    # condition beats sleeping for a guess whatever the cause.
+    local waited=0
+    while pgrep -f brave-browser >/dev/null && (( waited < 50 )); do
+        sleep 0.2; waited=$(( waited + 1 ))
+    done
+    if pgrep -f brave-browser >/dev/null; then
+        warn "brave is still running — close it and re-run, or its colours stay grey"
     else
         mkdir -p "$(dirname "$bravePrefs")"
         python3 - "$bravePrefs" <<'PYEOF'
