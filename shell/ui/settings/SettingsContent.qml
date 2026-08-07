@@ -13,7 +13,9 @@ pragma ComponentBehavior: Bound
 // so "everything is settable" is a number rather than a belief.
 import QtQuick
 import QtQuick.Layouts
-import "pages"
+// ⚠️ NO `import "pages"`. The pages are reached by URL now, not by type name,
+// so importing the folder would be importing something for nothing — and an
+// import that is there for no reason is the one nobody dares remove later.
 import "../common"
 import "../../ipc"
 import "../../services" as Services
@@ -33,17 +35,36 @@ FocusScope {
     // it on the terminal, and `bhctl doctor` says it over SSH.
     Component.onCompleted: Services.Gpu.probe()
 
+    // ⚠️ ONE ENTRY IS THE WHOLE REGISTRATION, and it used to be three. A page
+    // needed a line here, a `Component { id: fooPage; FooPage {} }` further
+    // down, AND a branch in a ten-way ternary on `currentId`. Forgetting the
+    // third produced a page that drew nothing, which is why there was a
+    // hand-written placeholder explaining that exact mistake.
+    //
+    // `source` is a relative URL, which quickshell resolves through its virtual
+    // filesystem — proven by shell.qml, which boots the entire shell that way
+    // (`source: "ui/Shell.qml"`). A wrong path is now loud: Loader.status goes
+    // to Error and says so on screen, instead of drawing an empty page.
+    //
+    // It also buys the row search: a page's rows only exist once it is built,
+    // and a URL is something the search can build off-screen and throw away.
+    // A Component id could not have been handed around like that.
+    //
     // ⚠️ Every icon name goes through tests/icons.sh. "Material Icons Round" is
     // missing more names than anyone expects — the quick panel ended up on
     // `dashboard` because `grid_view` and `space_dashboard` are both absent.
     readonly property var pages: [
         { id: "bar",      icon: "view_agenda",   title: "Bar & Island",
+          source: "pages/BarIslandPage.qml",
           blurb: "Shape and size of the island, the notch, and the bar." },
         { id: "media",    icon: "music_note",    title: "Media",
+          source: "pages/MediaPage.qml",
           blurb: "Which player the island follows, and where the track is shown." },
         { id: "clock",    icon: "schedule",      title: "Clock & Date",
+          source: "pages/ClockPage.qml",
           blurb: "How the time and the date are written, everywhere they are." },
         { id: "look",     icon: "palette",       title: "Appearance",
+          source: "pages/AppearancePage.qml",
           blurb: "Colours, the wallpaper, shape, transparency, effects, type, and one state per themed program." },
         // ⚠️ `speed`, and the obvious name was wrong: "Material Icons Round"
         // has no `animation` at all. tests/icons.sh caught it by measuring the
@@ -51,16 +72,22 @@ FocusScope {
         // fallback box. Asked the font for sixteen candidates rather than
         // guessing a second time.
         { id: "motion",   icon: "speed",         title: "Motion",
+          source: "pages/MotionPage.qml",
           blurb: "Whether things move, and how much else is drawn." },
         { id: "launcher", icon: "apps",          title: "Launcher",
+          source: "pages/LauncherPage.qml",
           blurb: "The program list and how it opens." },
         { id: "notify",   icon: "notifications", title: "Notifications",
+          source: "pages/NotifyPage.qml",
           blurb: "Arriving messages, how long they stay, and where." },
         { id: "control",  icon: "tune",          title: "Control Center",
+          source: "pages/ControlCenterPage.qml",
           blurb: "Brightness, night light, the work timer and the clipboard." },
         { id: "lock",     icon: "lock",          title: "Lock Screen",
+          source: "pages/LockPage.qml",
           blurb: "What the screen shows while the session is locked." },
         { id: "system",   icon: "computer",      title: "System",
+          source: "pages/SystemPage.qml",
           blurb: "Keyboard, touchpad, graphics, windows, programs, the session and the key bindings." }
     ]
 
@@ -419,7 +446,8 @@ FocusScope {
                 Layout.fillHeight: true
                 clip: true
                 contentWidth: width
-                contentHeight: pageLoader.implicitHeight
+                contentHeight: pageLoader.status === Loader.Error
+                             ? broken.implicitHeight : pageLoader.implicitHeight
                 boundsBehavior: Flickable.StopAtBounds
 
                 // ⚠️ A NEW PAGE STARTS AT THE TOP. The Flickable lives OUTSIDE
@@ -439,20 +467,36 @@ FocusScope {
                     width: scroller.width - Theme.space3
                     height: implicitHeight
 
-                    // ⚠️ `sourceComponent` needs a Component, never an instance.
-                    // QML accepts an instance without a word of complaint and
-                    // then never builds the thing.
-                    sourceComponent: root.currentId === "bar" ? barPage
-                                   : root.currentId === "media" ? mediaPage
-                                   : root.currentId === "clock" ? clockPage
-                                   : root.currentId === "lock" ? lockPage
-                                   : root.currentId === "look" ? appearancePage
-                                   : root.currentId === "motion" ? motionPage
-                                   : root.currentId === "launcher" ? launcherPage
-                                   : root.currentId === "notify" ? notifyPage
-                                   : root.currentId === "control" ? controlPage
-                                   : root.currentId === "system" ? systemPage
-                                   : missingPage
+                    source: root.currentPage.source
+                }
+
+                // ⚠️ NOT DEAD CODE, though every entry above names a file that
+                // exists. This is what a mistyped or deleted page looks like now
+                // — and it is the same fault the old placeholder was for, caught
+                // one step earlier: a Loader whose source will not load reports
+                // Error, where a Loader with a null component simply drew
+                // nothing and read as a page that happened to be empty.
+                ColumnLayout {
+                    id: broken
+                    width: pageLoader.width
+                    visible: pageLoader.status === Loader.Error
+                    spacing: Theme.space2
+
+                    BarText {
+                        Layout.fillWidth: true
+                        text: root.currentPage.title + " did not load."
+                        color: Theme.error
+                        wrapMode: Text.WordWrap
+                    }
+                    BarText {
+                        Layout.fillWidth: true
+                        text: "Its file is " + root.currentPage.source
+                            + " — check the path in the page list, and the log "
+                            + "for what QML made of it."
+                        font.pixelSize: Theme.fontSizeSm
+                        color: Theme.fgMuted
+                        wrapMode: Text.WordWrap
+                    }
                 }
 
                 // The narrow scrollbar the reference draws down the right-hand
@@ -475,42 +519,4 @@ FocusScope {
         }
     }
 
-    Component { id: barPage; BarIslandPage {} }
-    Component { id: appearancePage; AppearancePage {} }
-    Component { id: motionPage; MotionPage {} }
-    Component { id: launcherPage; LauncherPage {} }
-    Component { id: notifyPage; NotifyPage {} }
-    Component { id: controlPage; ControlCenterPage {} }
-    Component { id: systemPage; SystemPage {} }
-    Component { id: mediaPage; MediaPage {} }
-    Component { id: clockPage; ClockPage {} }
-    Component { id: lockPage; LockPage {} }
-
-    // ⚠️ NOT DEAD CODE, THOUGH EVERY ID ABOVE MAPS TO A PAGE. This is what
-    // appears if an entry is added to `pages` and its Component is forgotten —
-    // a real mistake with an otherwise silent symptom, because a Loader with a
-    // null component draws nothing at all and reads as a page that is simply
-    // empty.
-    Component {
-        id: missingPage
-
-        ColumnLayout {
-            spacing: Theme.space2
-
-            BarText {
-                Layout.fillWidth: true
-                text: root.currentPage.title + " has no page behind it."
-                color: Theme.error
-                wrapMode: Text.WordWrap
-            }
-            BarText {
-                Layout.fillWidth: true
-                text: "The entry is in the list but its Component is missing — add "
-                    + "one beside the others in SettingsContent.qml."
-                font.pixelSize: Theme.fontSizeSm
-                color: Theme.fgMuted
-                wrapMode: Text.WordWrap
-            }
-        }
-    }
 }

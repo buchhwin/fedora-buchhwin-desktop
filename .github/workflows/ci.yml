@@ -216,6 +216,16 @@ jobs:
       - name: the lock screen builds, and without complaints
         run: bash tests/lock.sh
 
+      # ⚠️ AND EVERY SETTINGS PAGE, which smoke.sh does not reach either: it
+      # starts the shell, and the settings window is behind a LazyLoader that
+      # nothing opens. A page registered under a path that does not exist greps
+      # perfectly clean in setting-rows.sh and draws nothing on screen.
+      #
+      # It also cross-checks the two ways of counting rows — read out of the
+      # source, and built by the window. They have to be the same number.
+      - name: every settings page builds, and the row counts agree
+        run: bash tests/pages.sh
+
       # ⚠️ ADDED. It needs niri and nothing else, and the container installs
       # niri already. It guards a silent class of fault: a keybinding naming an
       # action niri does not have. The motivating case was Super+F, where the
