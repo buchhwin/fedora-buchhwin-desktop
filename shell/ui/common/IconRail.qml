@@ -43,28 +43,25 @@ Item {
     property int currentIndex: 0
     signal activated(int index)
 
-    // ⚠️ TWO WAYS TO SIT, AND THE COMPONENT OWNS BOTH. His request of
-    // 07.08.2026: "kannst du im quick panel die settings button links besser    english-ok: the request, quoted
-    // aufteilen ... das sich die über die ganze höhe irgendwie schön hin        english-ok: the request, quoted
-    // passen". With `spread` the four symbols share the height they are given
-    // instead of stacking at the top and leaving the rest of the strip empty
-    // beside a tall calendar.
+    // ⚠️ TWO WAYS TO SIT, AND THE COMPONENT OWNS BOTH.
+    //
+    // ⚠️ AND THE FIRST ATTEMPT AT THE SECOND ONE WAS THE WRONG SHAPE. It shared
+    // the whole height out as gaps, so the four symbols stood far apart down the
+    // full length of a tall panel. He looked at it and said no: "evtl mach alles  english-ok: the request, quoted
+    // 4 mittig das wäre besser also nicht über die ganze höhe aber gleiche       english-ok: the request, quoted
+    // größe alles schon mittig auf der linken seite". So the group keeps its     english-ok: the request, quoted
+    // natural spacing and sits CENTRED in whatever height it is given.
     //
     // It is a property rather than a second component because the settings
-    // window (M8) has the same strip and wants the other behaviour — a sidebar
-    // of ten pages fills its height on its own and must not be stretched.
-    // Building that separately is how the predecessor grew two sidebars.
-    property bool spread: false
-
-    // The natural height of one pill, taken from the first one that builds. It
-    // is needed to work out how much space is left over to share between them,
-    // and they are all identical, so one is enough.
-    property int pillHeight: 0
+    // window (M8) has the same strip and wants the plain top-aligned form — a
+    // sidebar of ten pages fills its height on its own. Building that separately
+    // is how the predecessor grew two sidebars that drifted apart.
+    property bool centred: false
 
     implicitWidth: rail.implicitWidth
-    // ⚠️ Only the NATURAL height is declared, never the spread one. A spread
-    // rail takes the height its parent gives it, and asking for that height
-    // back as an implicit size is a layout that sizes itself from itself.
+    // ⚠️ Only the NATURAL height is declared. A centred rail takes the height
+    // its parent gives it, and asking for that height back as an implicit size
+    // is a layout that sizes itself from itself.
     implicitHeight: rail.implicitHeight
 
     // ⚠️ STACKED ABOVE ITS SIBLINGS, and that belongs to the component rather
@@ -77,31 +74,12 @@ Item {
 
     ColumnLayout {
         id: rail
-        anchors.top: parent.top
         anchors.left: parent.left
-        // ⚠️ Anchored to the BOTTOM as well when spreading, which is what turns
-        // `Layout.fillHeight` on the pills into real distribution: a layout
-        // only has room to share out if something gave it a height.
-        anchors.bottom: root.spread ? parent.bottom : undefined
-
-        // ⚠️ THE GAPS GROW, NOT THE BUTTONS — and the obvious way does not work.
-        // The first attempt gave each pill `Layout.fillHeight` with
-        // `Qt.AlignVCenter`, on the assumption that an alignment keeps an item
-        // at its natural size inside a stretched cell. QtQuick.Layouts IGNORES
-        // the vertical alignment as soon as fillHeight is set, so every pill
-        // came out as a tall lozenge with a small glyph adrift in it — measured
-        // on screen, not reasoned about.
-        //
-        // So the leftover height is shared out as SPACING instead. Never below
-        // the normal gap: on a short panel the rail simply stays compact rather
-        // than overlapping itself.
-        spacing: {
-            var n = root.entries.length
-            if (!root.spread || n < 2 || root.pillHeight <= 0)
-                return Theme.space2
-            return Math.max(Theme.space2,
-                            (root.height - n * root.pillHeight) / (n - 1))
-        }
+        // Top-aligned by default; centred when asked. Never both — anchoring a
+        // layout to top AND verticalCenter is a fight QML resolves silently.
+        anchors.top: root.centred ? undefined : parent.top
+        anchors.verticalCenter: root.centred ? parent.verticalCenter : undefined
+        spacing: Theme.space2
 
         Repeater {
             model: root.entries
@@ -112,9 +90,6 @@ Item {
                 required property var modelData
 
                 Layout.alignment: Qt.AlignHCenter
-                // One measurement, from the first pill — see `pillHeight`.
-                Component.onCompleted: if (railPill.index === 0)
-                                           root.pillHeight = railPill.implicitHeight
                 interactive: true
                 active: root.currentIndex === railPill.index
 

@@ -84,11 +84,13 @@ RowLayout {
     // and `space_dashboard` are both MISSING from "Material Icons Round", which
     // is how "Overview" ended up as `dashboard`.
     IconRail {
-        // ⚠️ `fillHeight` AND `spread`, not `AlignTop`. The rail used to be four
-        // pills tall in a panel whose left column is as tall as a month grid,
-        // so three quarters of the strip was empty. His words on 07.08.2026.
+        // ⚠️ `fillHeight` AND `centred`, not `AlignTop`. The rail used to sit at
+        // the top of a panel as tall as a month grid, so three quarters of the
+        // strip was empty. Spreading the four symbols over that whole height was
+        // tried first and he turned it down — they belong together as a group,
+        // in the middle.
         Layout.fillHeight: true
-        spread: true
+        centred: true
         currentIndex: root.tab
         entries: [
             { icon: "dashboard",     tooltip: "Overview" },
