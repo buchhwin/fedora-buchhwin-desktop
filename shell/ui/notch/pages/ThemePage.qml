@@ -125,7 +125,15 @@ ColumnLayout {
             // has been read. `printErrors: false` because a malformed JSON
             // somebody dropped in the folder must not fill the journal — it
             // shows as a card with no colours, which is the honest answer.
-            property var palette: ({})
+            //
+            // ⚠️ `hues`, NOT `palette`. `Item` already has a `palette` — it is
+            // QQuickItem's, for Qt's own control colours — and shadowing it made
+            // Qt warn on every single start: "Member palette of the object
+            // QQuickItem_QML_132 overrides a member of the base object." The
+            // same trap ui/quick/Tile.qml names about `enabled`, walked into
+            // from the other side a week later. Found by an audit axis whose
+            // whole rule is that a clean start prints nothing.
+            property var hues: ({})
 
             FileView {
                 // ⚠️ A derived palette that has never been calculated has no
@@ -139,9 +147,9 @@ ColumnLayout {
                 onLoaded: {
                     try {
                         var d = JSON.parse(text())
-                        cell.palette = d.colors || ({})
+                        cell.hues = d.colors || ({})
                     } catch (e) {
-                        cell.palette = ({})
+                        cell.hues = ({})
                     }
                 }
             }
@@ -150,7 +158,7 @@ ColumnLayout {
             // palette missing a name would otherwise paint `undefined`, which
             // QML renders as transparent black — a card that looks like a hole.
             function hue(name, fallback) {
-                var v = cell.palette[name]
+                var v = cell.hues[name]
                 return v ? "#" + v : fallback
             }
 
