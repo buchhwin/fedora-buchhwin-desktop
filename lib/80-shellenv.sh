@@ -81,6 +81,6 @@ phase_shellenv() {
     if [[ ! -f "$CONFIG_HOME/environment.d/10-buchhwin-path.conf" ]]; then
         printf 'PATH=%s/.local/bin:${PATH}\n' "$HOME" \
             > "$CONFIG_HOME/environment.d/10-buchhwin-path.conf"
-        ok "~/.local/bin is on the PATH"
+        ok "$HOME/.local/bin is on the PATH"
     fi
 }
