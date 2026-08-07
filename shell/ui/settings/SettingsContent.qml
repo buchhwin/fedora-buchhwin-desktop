@@ -109,9 +109,29 @@ FocusScope {
         spacing: Theme.space4
 
         // ------------------------------------------------------------ sidebar
+        //
+        // ⚠️ PINNED, AND MEASURED BEFORE IT WAS. `Layout.preferredWidth` alone
+        // is only a WISH: the content beside it has `fillWidth`, so a wide page
+        // took room from the sidebar and a narrow one gave it back. The active
+        // row was 312 px on Bar & Island, 282 on Clock & Date, 243 on System and
+        // 208 on Appearance — the sidebar breathed with whichever page was open,
+        // which is what he reported as wasted space.
+        //
+        // Pinned on all three, so the layout has nothing to negotiate. And the
+        // number comes from the LONGEST ENTRY rather than from an invented
+        // multiple of the grid: "Control Center" decides how wide this is, not
+        // me. The floor only covers the case where the search field is the
+        // widest thing in here.
         ColumnLayout {
+            id: sidebar
+
+            readonly property int pinned:
+                Math.max(rail.implicitWidth, Theme.space6 * 5)
+
             Layout.fillHeight: true
-            Layout.preferredWidth: Theme.space6 * 7
+            Layout.preferredWidth: sidebar.pinned
+            Layout.minimumWidth: sidebar.pinned
+            Layout.maximumWidth: sidebar.pinned
             spacing: Theme.space3
 
             TextField {
@@ -130,6 +150,7 @@ FocusScope {
             }
 
             SettingsRail {
+                id: rail
                 Layout.fillWidth: true
                 entries: root.shown
                 currentIndex: {
@@ -212,6 +233,20 @@ FocusScope {
                         color: Theme.fgMuted
                         wrapMode: Text.WordWrap
                     }
+
+                    // ⚠️ Not decoration. Putting the offending setting back does
+                    // not move the fingerprint, so nothing regenerates and this
+                    // banner would keep reporting a failure that is already
+                    // repaired. This is the door out.
+                    Pill {
+                        interactive: !Services.Theming.busy
+                        opacity: Services.Theming.busy ? Theme.dimmed : 1
+                        BarText {
+                            text: Services.Theming.busy ? "Trying…" : "Try again"
+                            color: Theme.fg
+                        }
+                        onClicked: Services.Theming.retry()
+                    }
                 }
             }
 
@@ -282,6 +317,16 @@ FocusScope {
                 contentWidth: width
                 contentHeight: pageLoader.implicitHeight
                 boundsBehavior: Flickable.StopAtBounds
+
+                // ⚠️ A NEW PAGE STARTS AT THE TOP. The Flickable lives OUTSIDE
+                // the Loader, so its scroll position survived the page change:
+                // opening System from a scrolled Appearance dropped you into the
+                // middle of the touchpad settings, with the group heading above
+                // the fold. Both references reset — and so does every browser.
+                Connections {
+                    target: root
+                    function onCurrentIdChanged() { scroller.contentY = 0 }
+                }
 
                 Loader {
                     id: pageLoader

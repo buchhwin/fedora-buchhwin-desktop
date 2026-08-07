@@ -24,6 +24,10 @@ ColumnLayout {
 
     spacing: Theme.space5
 
+    // ⚠️ Nothing is listed until a page that needs the list is opened. An idle
+    // desktop must not be running fc-list over 133 font families.
+    Component.onCompleted: Services.Installed.scan()
+
     // The colour names every palette defines. From the palette schema, not from
     // memory: theme/palettes/*.json each carry all fourteen.
     readonly property var accents: [
@@ -361,14 +365,17 @@ ColumnLayout {
             Layout.fillWidth: true
             key: "look.fontUi"
             label: "Interface font"
-            kind: "field"
+            kind: "pick"
+            options: Services.Installed.fonts
             placeholder: "Inter"
         }
         SettingRow {
             Layout.fillWidth: true
             key: "look.fontMono"
             label: "Monospace font"
-            kind: "field"
+            hint: "Only the fixed-width families, asked of fontconfig rather than kept in a list here."
+            kind: "pick"
+            options: Services.Installed.monoFonts
             placeholder: "JetBrainsMono Nerd Font"
         }
         SettingRow {
@@ -376,7 +383,8 @@ ColumnLayout {
             key: "look.fontIcon"
             label: "Icon font"
             hint: "⚠️ \"Material Icons Round\", not the Symbols name — the wrong one renders every icon as a box."
-            kind: "field"
+            kind: "pick"
+            options: Services.Installed.fonts
             placeholder: "Material Icons Round"
         }
         SettingRow {
@@ -396,8 +404,10 @@ ColumnLayout {
             Layout.fillWidth: true
             key: "cursor.theme"
             label: "Cursor theme"
-            kind: "field"
-            placeholder: "Breeze_Dark"
+            hint: "The themes on this machine — a directory under /usr/share/icons or ~/.icons that actually contains cursors."
+            kind: "pick"
+            options: Services.Installed.cursorThemes
+            placeholder: "Adwaita"
         }
         SettingRow {
             Layout.fillWidth: true

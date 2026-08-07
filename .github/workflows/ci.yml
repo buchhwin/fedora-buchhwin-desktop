@@ -55,6 +55,12 @@ jobs:
       # And the other half of that: every setting is OFFERED by something.
       - name: every setting has exactly one row in the settings window
         run: bash tests/setting-rows.sh
+      # And the third axis of the same question: a setting can have a reader and
+      # a row and still do nothing, because nothing regenerates the file its
+      # reader reads. That was true of 28 keys — the whole `input` block
+      # included — until this check existed.
+      - name: every generated key is in the watcher's fingerprint
+        run: bash tests/fingerprint.sh
 
   shell:
     runs-on: ubuntu-latest

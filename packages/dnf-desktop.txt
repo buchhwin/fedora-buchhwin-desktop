@@ -96,6 +96,13 @@ qt6ct
 
 # Drives.
 udisks2
+
+# ⚠️ bluez WAS MISSING, AND THE SHELL HAS A BLUETOOTH PANEL. services/Bt.qml and
+# ui/quick/BluetoothList.qml have shipped since M4; Quickshell.Bluetooth talks to
+# a running bluez over D-Bus, and without the daemon the panel is a control with
+# nothing behind it. Fedora Workstation happens to bring bluez in; Fedora Server
+# does not, and this repository installs onto both.
+bluez
 # Files, network shares and cloud storage.
 #
 # nautilus is not merely "a file manager". From niri's own shipped wiki:

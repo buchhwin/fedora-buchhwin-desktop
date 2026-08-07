@@ -375,8 +375,26 @@ Scope {
     }
 
     // ------------------------------------------------------------------ kitty
+    //
+    // ⚠️ BEHAVIOUR AS WELL AS COLOUR, from today. This file already carried the
+    // font and the background opacity, so it was never colours-only; what is
+    // new is that four of the lines below describe how the terminal ACTS. See
+    // the note on `terminal` in config/Config.qml for why that line was
+    // crossed, and note that switching kitty's theming off takes them with it —
+    // which is the honest meaning of off.
+    function kittyBehaviour() {
+        var t = Config.terminal
+        if (!t)
+            return ""
+        return "\n# --- behaviour -------------------------------------------\n" +
+            "cursor_shape " + t.cursorShape + "\n" +
+            "cursor_blink_interval " + t.cursorBlinkInterval + "\n" +
+            "cursor_trail " + t.cursorTrail + "\n" +
+            "scrollback_lines " + t.scrollbackLines + "\n"
+    }
+
     function kittyTheme(m) {
-        return head(true, m) +
+        return head(true, m) + kittyBehaviour() +
             "foreground " + col(m, "text") + "\n" +
             "background " + col(m, "base") + "\n" +
             // ⚠️ The terminal's own transparency, not the compositor's.

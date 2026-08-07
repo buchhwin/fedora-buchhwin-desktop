@@ -9,6 +9,59 @@ phase_base() {
     dnf_install weak "${pkgs[@]}" || die "base packages failed"
     ok "base system"
 
+    # ⚠️ `Is this ok [y/N]:` WITH N AS THE DEFAULT means every install needs an
+    # explicit y. Flipped to [Y/n]: on this machine the answer is essentially
+    # always yes, and pressing Enter should not abort the install you just asked
+    # for.
+    #
+    # ⚠️ THIS WAS IN THE PREDECESSOR AND WAS NEVER CARRIED ACROSS. It is not a
+    # regression — fedora-buchhwin-hyprland/lib/20-base.sh has had it since that
+    # project started, and the rewrite simply left it behind. He noticed because
+    # he uses it every day. What else was left behind is being gone through
+    # separately; this is the first of them.
+    #
+    # Idempotent, and the placement matters: the key belongs under [main], and
+    # appended to the end of a file that has other sections dnf ignores it.
+    step "dnf answers [Y/n]"
+    if (( DRY_RUN )); then
+        printf '     [dry-run] set defaultyes=True in /etc/dnf/dnf.conf\n'
+    else
+        sudo mkdir -p /etc/dnf
+        sudo touch /etc/dnf/dnf.conf
+        if grep -qE '^[[:space:]]*defaultyes[[:space:]]*=' /etc/dnf/dnf.conf; then
+            sudo sed -i -E 's/^[[:space:]]*defaultyes[[:space:]]*=.*/defaultyes=True/' \
+                /etc/dnf/dnf.conf
+        elif grep -q '^\[main\]' /etc/dnf/dnf.conf; then
+            sudo sed -i '/^\[main\]/a defaultyes=True' /etc/dnf/dnf.conf
+        else
+            printf '[main]\ndefaultyes=True\n' | sudo tee -a /etc/dnf/dnf.conf >/dev/null
+        fi
+        # ⚠️ THE LINE THAT STOOD NEXT TO IT AND WAS LEFT BEHIND. In the
+        # predecessor these two were one block; the rewrite took `defaultyes`
+        # and not this. Ten parallel downloads is the single biggest difference
+        # to how long an install feels on a fast line.
+        if grep -qE '^[[:space:]]*max_parallel_downloads[[:space:]]*=' /etc/dnf/dnf.conf; then
+            sudo sed -i -E 's/^[[:space:]]*max_parallel_downloads[[:space:]]*=.*/max_parallel_downloads=10/' \
+                /etc/dnf/dnf.conf
+        elif grep -q '^\[main\]' /etc/dnf/dnf.conf; then
+            sudo sed -i '/^\[main\]/a max_parallel_downloads=10' /etc/dnf/dnf.conf
+        else
+            printf '[main]\nmax_parallel_downloads=10\n' | sudo tee -a /etc/dnf/dnf.conf >/dev/null
+        fi
+        ok "dnf answers [Y/n] and downloads ten at a time"
+    fi
+
+    # ⚠️ WE READ THIS FILE AND NEVER CREATED IT. lib/60-shell.sh asks
+    # `xdg-user-dir PICTURES` and tools/niri.qml parses ~/.config/user-dirs.dirs
+    # to decide where screenshots go — but nothing ever ran the updater, so on a
+    # fresh machine the file does not exist and both fall back silently. The
+    # package was installed (packages/dnf-core.txt); only the one command that
+    # makes it do anything was missing.
+    if command -v xdg-user-dirs-update >/dev/null; then
+        xdg-user-dirs-update
+        ok "xdg user directories"
+    fi
+
     # `dnf i` as well as `dnf install`, and under sudo too.
     #
     # dnf5 already ships `in` for install and `if` for info; this adds the

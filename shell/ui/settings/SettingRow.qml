@@ -46,8 +46,14 @@ ColumnLayout {
     // file; tests/setting-rows.sh checks the spelling of every `kind:` against
     // the five below, which catches the same typo AND keeps the row table
     // readable from outside QML.
-    // switch | slider | choice | field | strings
+    // switch | slider | choice | field | strings | pick
     property string kind: "switch"
+
+    // --- pick: the values this machine actually has. A `pick` is a text field
+    // that SUGGESTS rather than a list that forbids — you can still type
+    // something that is not installed yet, which matters for a config file that
+    // may be copied to another machine before that machine has the font.
+    property var options: []
 
     // --- slider
     property real from: 0
@@ -128,8 +134,24 @@ ColumnLayout {
 
     // ------------------------------------------------------------- label line
     RowLayout {
+        id: labelLine
         Layout.fillWidth: true
         spacing: Theme.space3
+
+        // ⚠️ THE WHOLE ROW IS THE TARGET FOR A SWITCH. It used to be the switch
+        // itself — 44 x 24 px at the far right of a row several hundred wide.
+        // Both references let you press anywhere on the row, and this shell has
+        // already paid once for a hit area smaller than the thing it looked
+        // like (the "every pill was half dead" bug, 68x29 lit and 44x21
+        // answering).
+        HoverHandler { id: rowHover }
+        TapHandler {
+            enabled: root.kind === "switch" && root.usable
+            onTapped: {
+                Config.set(root.key, !(root.current === true))
+                Config.flush()
+            }
+        }
 
         ColumnLayout {
             Layout.fillWidth: true
@@ -140,14 +162,24 @@ ColumnLayout {
                 text: root.label
                 color: Theme.fg
             }
+
+            // ⚠️ ONE LINE, AND THE REST IN A TOOLTIP. These explanations are
+            // mine and they are long; wrapped, almost every row was three lines
+            // tall, and fifty-five of those is the wall he called hard to scan.
+            //
+            // ⚠️ AND IT IS ELIDED RATHER THAN HIDDEN ON HOVER. Showing it only
+            // under the pointer would change the row's HEIGHT as the mouse
+            // moves, so the page would shift under you while you read it. One
+            // line always, the whole thing in a tooltip: no layout moves at all.
             BarText {
+                id: hintLine
                 Layout.fillWidth: true
                 visible: root.hint.length > 0
                 text: root.hint
                 font.pixelSize: Theme.fontSizeSm
                 color: Theme.fgMuted
-                wrapMode: Text.WordWrap
-                elide: Text.ElideNone
+                elide: Text.ElideRight
+                maximumLineCount: 1
             }
         }
 
@@ -184,11 +216,21 @@ ColumnLayout {
                        : root.kind === "choice" ? choiceControl
                        : root.kind === "strings" ? stringsControl
                        : root.kind === "field" ? fieldControl
+                       : root.kind === "pick" ? pickControl
                        : null
     }
 
     // ⚠️ `sourceComponent` needs a Component, never an instance. QML accepts an
     // instance without a word of complaint and then never builds the thing.
+    // The whole explanation, only while the pointer is on the row. It is the
+    // same Tooltip the icon rail uses, so there is one definition of what a
+    // tooltip looks like rather than two that drift.
+    Tooltip {
+        target: labelLine
+        active: rowHover.hovered && hintLine.truncated
+        text: root.hint
+    }
+
     Component {
         id: sliderControl
 
@@ -265,6 +307,91 @@ ColumnLayout {
                 function onActiveFocusChanged() {
                     if (!listField.input.activeFocus)
                         listField.commit()
+                }
+            }
+        }
+    }
+
+    // ⚠️ A FIELD WITH SUGGESTIONS, NOT A DROPDOWN. There are 133 font families
+    // on the test machine and 99 keyboard layouts — as pills that is a wall, and
+    // as a closed list it would refuse a name this machine does not have yet.
+    // Typing filters; clicking picks; leaving it alone keeps what you typed.
+    Component {
+        id: pickControl
+
+        ColumnLayout {
+            id: pick
+            spacing: Theme.space1
+
+            readonly property string current:
+                root.current === undefined || root.current === null ? "" : String(root.current)
+
+            readonly property var matches: {
+                if (!pickField.input.activeFocus)
+                    return []
+                var q = pickField.text.trim().toLowerCase()
+                var out = []
+                for (var i = 0; i < root.options.length && out.length < 8; i++) {
+                    var o = String(root.options[i])
+                    if (o.toLowerCase() === q)
+                        continue
+                    if (q.length === 0 || o.toLowerCase().indexOf(q) >= 0)
+                        out.push(o)
+                }
+                return out
+            }
+
+            TextField {
+                id: pickField
+                Layout.fillWidth: true
+                enabled: root.usable
+                text: pick.current
+                placeholder: root.placeholder
+
+                function commit() {
+                    Config.set(root.key, pickField.text)
+                    Config.flush()
+                }
+                onAccepted: pickField.commit()
+                Connections {
+                    target: pickField.input
+                    function onActiveFocusChanged() {
+                        if (!pickField.input.activeFocus)
+                            pickField.commit()
+                    }
+                }
+            }
+
+            // ⚠️ The one line that says the truth a text box cannot: the value
+            // in the file is not on this machine. `cursor.theme` ships as
+            // "Breeze_Dark" and the test machine has no such theme.
+            BarText {
+                Layout.fillWidth: true
+                visible: root.options.length > 0 && pick.current.length > 0
+                         && root.options.indexOf(pick.current) < 0
+                text: "Not installed here"
+                font.pixelSize: Theme.fontSizeSm
+                color: Theme.warn
+            }
+
+            Flow {
+                Layout.fillWidth: true
+                spacing: Theme.space2
+                visible: pick.matches.length > 0
+
+                Repeater {
+                    model: pick.matches
+
+                    Pill {
+                        id: suggestion
+                        required property var modelData
+                        interactive: true
+                        BarText { text: String(suggestion.modelData); color: Theme.fg }
+                        onClicked: {
+                            pickField.text = String(suggestion.modelData)
+                            pickField.commit()
+                        }
+                    }
                 }
             }
         }

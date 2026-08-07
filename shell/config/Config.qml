@@ -36,6 +36,7 @@ Singleton {
     readonly property alias motion: adapter.motion
     readonly property alias media: adapter.media
     readonly property alias lock: adapter.lock
+    readonly property alias terminal: adapter.terminal
     readonly property alias timer: adapter.timer
     readonly property alias clipboard: adapter.clipboard
     readonly property alias notch: adapter.notch
@@ -959,6 +960,36 @@ Singleton {
                 property bool artworkAsBackground: true
             }
 
+            // The terminal's BEHAVIOUR, not its colours.
+            //
+            // ⚠️ THIS IS A LINE WE HAVE NOT CROSSED BEFORE. Until now the
+            // renderer wrote foreign programs' COLOURS and nothing else — the
+            // rule being that their configuration belongs to them. These four
+            // are behaviour, and they are here because he asked for one of them
+            // by name: the cursor trail from the predecessor
+            // (fedora-buchhwin-hyprland/dotfiles/kitty/kitty.conf:44-46), which
+            // the rewrite never carried across.
+            //
+            // It goes in the file we already generate and kitty already
+            // includes, so there is no second include to seed and no file that
+            // exists only on machines installed after today. Switching kitty's
+            // theming off removes these with the colours, which is the honest
+            // meaning of "off": we write nothing.
+            property JsonObject terminal: JsonObject {
+                // block | beam | underline — kitty's own three.
+                property string cursorShape: "beam"
+                // Seconds. 0 stops the blink; kitty treats a negative as
+                // "system default", which is a third meaning nobody needs here.
+                property real cursorBlinkInterval: 0.6
+                // ⚠️ THE ANIMATION HE MEANT. kitty's `cursor_trail` is the
+                // number of cells the cursor may fall behind before it catches
+                // up in an animated sweep; 0 is off. Checked on the test
+                // machine rather than assumed — kitty 0.47.1, and the option
+                // exists in kitty's own option table.
+                property int cursorTrail: 3
+                property int scrollbackLines: 20000
+            }
+
             // The lock screen: a large clock, the date, a round avatar, and
             // nothing else until you touch a key. Each of those three can go.
             property JsonObject lock: JsonObject {
@@ -1183,6 +1214,18 @@ Singleton {
                 // at. It is a key because how long feels right is not something
                 // anyone can decide for somebody else.
                 property int hotCornerDwellMs: 250
+
+                // ⚠️ A ROUNDED SCREEN CORNER IS OURS TO DRAW — niri has
+                // `geometry-corner-radius` for windows and for layer surfaces
+                // and nothing at all for the output, asked in its own wiki
+                // rather than assumed. Four surfaces of this many pixels each,
+                // input passing straight through them.
+                //
+                // 0 switches them off entirely and creates no surfaces, which
+                // is the right default for a desktop nobody has asked for them
+                // on — but he did ask, with a picture, so it ships on and
+                // gently: "ganz leicht" were his words.
+                property int screenCornerRadius: 12
             }
 
             // How arriving notifications behave on screen. They are their own

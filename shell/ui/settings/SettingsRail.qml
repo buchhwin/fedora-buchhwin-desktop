@@ -46,6 +46,12 @@ ColumnLayout {
             readonly property bool current: root.currentIndex === row.index
 
             Layout.fillWidth: true
+            // ⚠️ THE NATURAL WIDTH IS REPORTED, and that is what pins the
+            // sidebar. `line` is anchored to both sides so its WIDTH follows
+            // the row, but its implicitWidth is still the sum of what is in it —
+            // so the column can ask "how wide does the longest entry need to
+            // be" and stop being a number somebody guessed.
+            implicitWidth: line.implicitWidth + Theme.space2 + Theme.space3
             implicitHeight: line.implicitHeight + Theme.space2
 
             radius: Theme.radiusSm

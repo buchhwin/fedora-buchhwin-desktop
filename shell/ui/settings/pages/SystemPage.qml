@@ -22,12 +22,15 @@ import QtQuick
 import QtQuick.Layouts
 import ".."
 import "../../../config"
+import "../../../services" as Services
 import "../../../theme"
 
 ColumnLayout {
     id: root
 
     spacing: Theme.space5
+
+    Component.onCompleted: Services.Installed.scan()
 
     readonly property var accelProfiles: [
         { value: "adaptive", label: "Adaptive" },
@@ -55,14 +58,17 @@ ColumnLayout {
             Layout.fillWidth: true
             key: "input.keyboard.layout"
             label: "Layout"
-            kind: "field"
+            hint: "The xkb layouts this machine knows, read from its own rules file."
+            kind: "pick"
+            options: Services.Installed.keyboardLayouts
             placeholder: "de"
         }
         SettingRow {
             Layout.fillWidth: true
             key: "input.keyboard.variant"
             label: "Variant"
-            kind: "field"
+            kind: "pick"
+            options: Services.Installed.keyboardVariants
             placeholder: "none"
         }
         SettingRow {
@@ -281,6 +287,51 @@ ColumnLayout {
             label: "Video player"
             kind: "strings"
             placeholder: "vlc"
+        }
+    }
+
+    SettingGroup {
+        Layout.fillWidth: true
+        title: "Terminal"
+
+        // ⚠️ These four are BEHAVIOUR, not colour, and they are the first of
+        // their kind — see the note on `terminal` in config/Config.qml. They
+        // are written into the file kitty already includes, so they arrive with
+        // the palette rather than needing a second include.
+        SettingRow {
+            Layout.fillWidth: true
+            key: "terminal.cursorShape"
+            label: "Cursor shape"
+            kind: "choice"
+            choices: [
+                { value: "beam",      label: "Beam" },
+                { value: "block",     label: "Block" },
+                { value: "underline", label: "Underline" }
+            ]
+        }
+        SettingRow {
+            Layout.fillWidth: true
+            key: "terminal.cursorBlinkInterval"
+            label: "Cursor blink"
+            hint: "Seconds. 0 stops it blinking."
+            kind: "slider"
+            from: 0; to: 2.0; step: 0.1; decimals: 1; unit: "s"
+        }
+        SettingRow {
+            Layout.fillWidth: true
+            key: "terminal.cursorTrail"
+            label: "Cursor trail"
+            hint: "How many cells the cursor may fall behind before it catches up in one sweep. 0 is off — this is the animation, and it needs kitty 0.36 or newer."
+            kind: "slider"
+            from: 0; to: 10; step: 1
+        }
+        SettingRow {
+            Layout.fillWidth: true
+            key: "terminal.scrollbackLines"
+            label: "Scrollback"
+            hint: "Lines kept above the top of the window."
+            kind: "slider"
+            from: 1000; to: 100000; step: 1000
         }
     }
 

@@ -69,6 +69,55 @@ Singleton {
     // documents the Weather service being kept out of construction for that
     // reason. Before the config has settled this reads ONE property and
     // returns; afterwards the adapter is done and the rest is safe.
+    // ------------------------------------------------- the three list prints
+    //
+    // Kept out of the fingerprint expression itself so that string is still
+    // readable, and so each one can say what it costs.
+
+    // ⚠️ KEY AND ACTION AND ARGUMENT, not the length. A rebinding tool changes
+    // entries IN PLACE — same count, different meaning — so a length would sit
+    // there saying nothing had happened while every key moved. `\u0000` as the
+    // separator for the same reason Migrations.qml uses it: no key name, action
+    // or argument can contain it, so two different lists cannot collide.
+    readonly property string bindsPrint: {
+        var b = Config.binds
+        if (!b || !b.length)
+            return ""
+        var out = []
+        for (var i = 0; i < b.length; i++)
+            out.push(String(b[i].key) + "\u0000" + String(b[i].action)
+                     + "\u0000" + String(b[i].arg === undefined ? "" : b[i].arg))
+        return out.join("\u0001")
+    }
+
+    // The eighteen input keys, which were the largest hole of the twenty-eight.
+    // Written out rather than walked, for the same reason render.qml writes its
+    // thirteen theme targets out: a loop over a section reads whatever is there,
+    // so a key added to Config and forgotten here would look watched and not be.
+    readonly property string inputPrint: {
+        var i = Config.input
+        if (!i || !i.keyboard || !i.touchpad || !i.mouse)
+            return ""
+        var k = i.keyboard, t = i.touchpad, m = i.mouse
+        return [k.layout, k.variant, k.options, k.repeatDelay, k.repeatRate,
+                t.tap, t.dwt, t.naturalScroll, t.middleEmulation,
+                t.accelSpeed, t.accelProfile, t.scrollMethod, t.clickMethod,
+                m.naturalScroll, m.accelSpeed, m.accelProfile,
+                i.focusFollowsMouse, i.warpMouseToFocus].join("\u0000")
+    }
+
+    // ⚠️ The six program references. niri.qml never names them — it resolves
+    // `@terminal` through Config.program(), a STRING lookup that no search for
+    // the identifier can see. That is exactly why they were missed, and why
+    // switching the terminal left Mod+Return starting the old one.
+    readonly property string programsPrint: {
+        var p = Config.programs
+        if (!p)
+            return ""
+        return JSON.stringify([p.terminal, p.browser, p.fileManager,
+                               p.editor, p.imageViewer, p.video])
+    }
+
     readonly property string fingerprint: {
         if (!Config.settled)
             return ""
@@ -88,7 +137,20 @@ Singleton {
         if (!t || !l || !g)
             return ""
         return [t.palette, t.accent, t.customColor,
-                l.rounding, l.borderWidth, l.opacityPanel, l.opacityTerminal,
+                // ⚠️ `opacityPanel` AND `panelBorderWidth` ARE GONE FROM HERE,
+                // and their absence is deliberate. Nothing under shell/tools/
+                // reads either — they colour OUR OWN surfaces, which follow the
+                // Theme singleton live and need no generator at all. Each cost a
+                // full render over thirteen foreign files plus a `niri validate`
+                // on every drag of a slider, for a result that was byte-identical
+                // by construction. On a laptop.
+                //
+                // ⚠️ tests/key-readers.sh counted them as read BECAUSE THEY WERE
+                // HERE — it treats any occurrence outside Config.qml as a reader,
+                // including one inside this very string. So the fingerprint was
+                // the only thing keeping them off that test's orphan list, and
+                // removing them is what makes that test honest about them.
+                l.rounding, l.borderWidth, l.opacityTerminal,
                 // ⚠️ The renderer reads this one and the watcher did not
                 // know it existed — so opening up GTK windows changed
                 // nothing until something ELSE happened to move the
@@ -98,7 +160,7 @@ Singleton {
                 l.fontUi, l.fontMono, l.fontSize, l.profile,
                 g.enabled, g.mode,
                 g.gtk, g.qt, g.kitty, g.alacritty, g.niri, g.btop, g.bat,
-                g.fastfetch, g.delta, g.tmux, g.starship, g.lazygit,
+                g.fastfetch, g.delta, g.tmux, g.starship, g.lazygit, g.vscode,
                 // ⚠️ AND THE KEYS THE NIRI GENERATOR READS. Until now this
                 // watcher only ran the RENDERER, so every niri-side setting had
                 // no watcher at all: adding an app to `windows.blurred` wrote
@@ -107,17 +169,52 @@ Singleton {
                 // its translucent CSS and no blur rule, which is a worse look
                 // than leaving it opaque.
                 //
-                // Only the ones that are cheap to stringify and actually change
-                // at runtime; the key bindings are not among them, because a
-                // settings window rewriting a 63-entry list on every keystroke
-                // is exactly what the debounce below exists to avoid.
-                // ⚠️ THE NIRI-SIDE LISTS, and they were added ONE AT A TIME
-                // rather than completely — `autostart` was still missing, so the
-                // polkit agent only appeared when something ELSE happened to move
-                // the fingerprint. Whoever adds a key that tools/niri.qml reads
-                // adds it here as well; that is the whole contract of this string
-                // and it has now been broken twice in one day.
+                // ⚠️ THE CONTRACT WAS BROKEN TWENTY-EIGHT TIMES, AND THAT IS
+                // WHY tests/fingerprint.sh NOW EXISTS. The note that used to
+                // stand here said the rule had been broken "twice in one day"
+                // and asked whoever adds a key to remember. Nobody remembers,
+                // and a rule with no check is a wish. Counted on 07.08.2026:
+                //
+                //   input.*        18   layout, tap-to-click, pointer speed,
+                //                       scroll method — none of it applied
+                //   programs.*      6   switching the terminal left Mod+Return
+                //                       starting the old one
+                //   keys.mod        1   Super -> Alt wrote nothing at all
+                //   binds           1   every key change, which is exactly what
+                //                       a rebinding tool would produce
+                //   motion.speed    1   the shell sped up, niri's own window
+                //                       animations did not
+                //   theming.vscode  1   the newest theme target, forgotten
+                //
+                // Measured rather than read, each against a control that DID
+                // regenerate: change the key, wait, ask whether config.kdl was
+                // rewritten. Four of them, four times "unchanged".
+                //
+                // ⚠️ AND THE OLD NOTE ARGUED `binds` OUT ON COST — "a settings
+                // window rewriting a 63-entry list on every keystroke". The
+                // argument does not hold: the debounce below is 800 ms, and the
+                // generator compares before writing, so a keystroke costs one
+                // process and no compositor reload. `length` rather than the
+                // whole list settles even that: a bind editor changes entries in
+                // place, so the length alone would miss it — the join of key and
+                // action is what actually moves, and it is 63 short strings once
+                // per change, next to the 26 colours already here.
                 Config.surfaces.hotCorners,
+                Config.keys.mod,
+                // The terminal's behaviour, written into the file the renderer
+                // already produces. tests/fingerprint.sh asked for these the
+                // moment they existed, which is what it is for.
+                Config.terminal.cursorShape, Config.terminal.cursorBlinkInterval,
+                Config.terminal.cursorTrail, Config.terminal.scrollbackLines,
+                root.bindsPrint,
+                root.inputPrint,
+                root.programsPrint,
+                // ⚠️ Theme.durBase, not motion.speed — the generator reads the
+                // three DURATIONS, and those come from `look.profile` as well.
+                // Watching the raw key would miss the profile switch; watching
+                // the durations catches both, and it is the value the generated
+                // file actually contains.
+                Theme.durFast, Theme.durBase, Theme.durSlow,
                 // ⚠️ BOTH GENERATORS READ THESE, so they belong here — the rule
                 // three lines up, applied on the way in this time instead of
                 // after somebody noticed the pointer never changed.
@@ -131,6 +228,14 @@ Singleton {
                 Config.theme ? Config.theme.lightFrom : "",
                 Config.theme ? Config.theme.lightUntil : "",
                 Config.theme ? Config.theme.lightPalette : "",
+                // ⚠️ The wallpaper itself, and it is NOT a duplicate of the
+                // palette file below. Scheme derives the colours from it, so it
+                // is genuinely a key a generator's dependency reads — and
+                // tests/fingerprint.sh has no exemption list on purpose, so
+                // "covered indirectly" is not an answer it accepts. The two
+                // arrive within the same 800 ms window and collapse into one
+                // render, so being literal here costs nothing.
+                Config.wallpaper ? Config.wallpaper.current : "",
                 JSON.stringify(Config.autostart),
                 JSON.stringify(Config.workspaces),
                 JSON.stringify(Config.outputs),
@@ -145,8 +250,10 @@ Singleton {
                 // contract as opacityApp above, which was missing for a week.
                 l.shadowOpacity,
                 l.opacityActive,
-                l.opacityInactive, l.panelBorderWidth, Config.notch.cornerRadius,
-                Config.notch.hoverCornerRadius,
+                // `hoverCornerRadius` went with them: niri.qml:497 reads
+                // `notch.cornerRadius` and nothing else. It was picked up along
+                // with its neighbour rather than because anything wanted it.
+                l.opacityInactive, Config.notch.cornerRadius,
                 // ⚠️ THE COLOURS THEMSELVES, not the palette's NAME. The first
                 // version watched `Scheme.name` and `theme.palette`, and the
                 // acceptance test failed on the very case this service exists
@@ -239,6 +346,20 @@ Singleton {
     // Runs the same tool the installer and `bhctl` run. One renderer, three
     // callers — a second copy of this logic is how the predecessor ended up
     // with two sets of colours that disagreed.
+    // ⚠️ THE WAY OUT OF A STUCK BANNER. `lastError` is only recomputed when the
+    // generator runs, and the generator only runs when the fingerprint MOVES —
+    // so after a refusal, fixing the cause by putting a setting back to what it
+    // was leaves the fingerprint where it started and nothing runs. The banner
+    // then reports a failure that is already repaired, forever. That is exactly
+    // what he reported, and the sticky half of it needs a door rather than a
+    // cleverer condition.
+    function retry() {
+        if (root.busy)
+            return
+        root.log("retry asked for")
+        debounce.restart()
+    }
+
     function render() {
         if (root.busy) {
             // Something changed while we were writing. Go round once more when

@@ -218,6 +218,49 @@ Scope {
                 }
             }
 
+            // The four rounded screen corners. ⚠️ One LazyLoader each rather
+            // than one surface with four corners drawn on it: niri blurs and
+            // shadows the WHOLE surface, so a fullscreen one would put both
+            // behind the entire display. Four r × r textures instead.
+            //
+            // A radius of 0 creates nothing at all — not a surface drawing
+            // nothing, no surface.
+            //
+            // ⚠️ WRITTEN OUT, NOT A `Repeater`, AND THE FIRST ATTEMPT WAS THE
+            // Repeater. It instantiates delegates into an ITEM, and this
+            // delegate is a `Scope` — so it built nothing, said nothing, and
+            // `niri msg -j layers` answered "0 corner surfaces" while the
+            // journal stayed clean. The two hot corners above are written out
+            // for the same reason.
+            LazyLoader {
+                activeAsync: Config.surfaces.screenCornerRadius > 0
+                component: ScreenCorner {
+                    modelData: perScreen.modelData
+                    corner: "top-left"
+                }
+            }
+            LazyLoader {
+                activeAsync: Config.surfaces.screenCornerRadius > 0
+                component: ScreenCorner {
+                    modelData: perScreen.modelData
+                    corner: "top-right"
+                }
+            }
+            LazyLoader {
+                activeAsync: Config.surfaces.screenCornerRadius > 0
+                component: ScreenCorner {
+                    modelData: perScreen.modelData
+                    corner: "bottom-left"
+                }
+            }
+            LazyLoader {
+                activeAsync: Config.surfaces.screenCornerRadius > 0
+                component: ScreenCorner {
+                    modelData: perScreen.modelData
+                    corner: "bottom-right"
+                }
+            }
+
             // Only while a page is open. A permanent fullscreen surface that
             // swallows clicks is the kind of bug nobody suspects.
             LazyLoader {

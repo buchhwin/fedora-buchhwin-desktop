@@ -25,3 +25,4 @@ singleton Location 1.0 Location.qml
 singleton Tray 1.0 Tray.qml
 singleton Clipboard 1.0 Clipboard.qml
 singleton Theming 1.0 Theming.qml
+singleton Installed 1.0 Installed.qml

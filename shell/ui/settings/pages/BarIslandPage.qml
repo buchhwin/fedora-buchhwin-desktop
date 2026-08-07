@@ -170,6 +170,14 @@ ColumnLayout {
         }
         SettingRow {
             Layout.fillWidth: true
+            key: "surfaces.screenCornerRadius"
+            label: "Rounded screen corners"
+            hint: "0 switches them off and creates no surfaces at all. niri cannot round the display itself — this is four small overlays, and clicks pass straight through them."
+            kind: "slider"
+            from: 0; to: 40; step: 1; unit: "px"
+        }
+        SettingRow {
+            Layout.fillWidth: true
             key: "surfaces.hotCornerDwellMs"
             label: "Corner dwell"
             hint: "How long the pointer has to rest there. A corner that fires on contact is a trap."
