@@ -184,28 +184,46 @@ Singleton {
                     // --- windows --------------------------------------------
                     { key: "Mod+Q",       action: "close-window", desc: "Close window", repeat: false },
                     { key: "Alt+F4",      action: "close-window", desc: "Close window", repeat: false },
-                    // Fullscreen is the one people reach for, so it gets the
-                    // short key. `fullscreen-window` is already a toggle, so the
-                    // same press brings the window back.
-                    // ⚠️ WINDOWED fullscreen, and that is a bug fix rather than
-                    // a preference. From niri's own documentation,
-                    // Fullscreen-and-Maximize.md:39: "Niri renders a solid
-                    // black backdrop behind fullscreen windows." So a
-                    // translucent terminal blended with BLACK instead of the
-                    // wallpaper the moment it went fullscreen — reported as
-                    // "the colour changes and you cannot see the background any
-                    // more", and that is exactly what it was.
+                    // ⚠️ THESE TWO WERE THE OTHER WAY ROUND, AND THE SHORT KEY
+                    // DID NOTHING. He reported it twice — "super f geht nicht    english-ok: the report, quoted
+                    // für fullscreen" — and the second time he added the fact    english-ok: the report, quoted
+                    // that cracked it: "wo es geht ist bei super strg f". Both   english-ok: the report, quoted
+                    // lines come out of the same generated file, so a stale
+                    // config could not explain one working and the other not.
                     //
-                    // `toggle-windowed-fullscreen` fills the working area
-                    // without the real fullscreen state, so there is no
-                    // backdrop and the wallpaper stays where it was. Real
-                    // fullscreen moves to Mod+Ctrl+F, where black IS what you
-                    // want: video and games. ⚠️ NOT Mod+Shift+F — that is
-                    // `maximize-column` and has been since the vim group was
-                    // laid out; saying otherwise in this comment would be a
-                    // second thing to get wrong.
-                    { key: "Mod+F",       action: "toggle-windowed-fullscreen", desc: "Fullscreen" },
-                    { key: "Mod+Ctrl+F",  action: "fullscreen-window",  desc: "True fullscreen (black behind it)" },
+                    // Measured on the machine, against a control screenshot of
+                    // the same focused window:
+                    //
+                    //   toggle-windowed-fullscreen      40 pixels changed
+                    //                                   (x 222..223, y 55..74 —
+                    //                                   the terminal cursor)
+                    //   fullscreen-window          367 719 pixels changed
+                    //
+                    // Windowed fullscreen fills the WORKING AREA. On a
+                    // scrolling compositor a single window already fills it, so
+                    // the action is a no-op in the ordinary case. The short key
+                    // sat on the one you cannot see.
+                    //
+                    // ⚠️ THE OLD ARGUMENT WAS REAL AND IS KEPT, because it will
+                    // come back. From niri's own docs, Fullscreen-and-
+                    // Maximize.md:39: "Niri renders a solid black backdrop
+                    // behind fullscreen windows." A translucent terminal
+                    // therefore blends with BLACK rather than the wallpaper the
+                    // moment it goes fullscreen — reported once as "the colour
+                    // changes and you cannot see the background any more".
+                    //
+                    // That is a real cost, and it loses to a key that does
+                    // nothing: black behind a fullscreen window is what
+                    // fullscreen IS everywhere else, and it is what you want for
+                    // video and games. Windowed fullscreen keeps its place on
+                    // Mod+Ctrl+F for the terminal case.
+                    //
+                    // ⚠️ NOT Mod+Shift+F — that is `maximize-column` and has
+                    // been since the vim group was laid out; saying otherwise
+                    // here would be a second thing to get wrong.
+                    { key: "Mod+F",       action: "fullscreen-window", desc: "Fullscreen" },
+                    { key: "Mod+Ctrl+F",  action: "toggle-windowed-fullscreen",
+                      desc: "Fullscreen inside the working area (keeps the wallpaper)" },
                     { key: "Mod+Shift+F", action: "maximize-column",   desc: "Maximise column" },
                     { key: "Mod+W",       action: "toggle-column-tabbed-display", desc: "Column as tabs" },
                     { key: "Mod+O",       action: "toggle-overview",   desc: "Overview" },
