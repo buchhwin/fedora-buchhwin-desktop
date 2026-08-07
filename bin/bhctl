@@ -309,6 +309,17 @@ niri)
         # side came out as: no output, non-zero exit, not a word. `doctor` reads
         # an empty answer as "no differences" and printed "niri config ok",
         # so a diff that could not run at all looked exactly like a clean one.
+        # ⚠️ AND `diff` ITSELF HAS TO EXIST. The comparison below discards
+        # diff's stderr — it has to, or a missing optional include would be
+        # reported as a difference — and that swallowed "diff: command not
+        # found" too. A minimal Fedora image does not ship diffutils, so in the
+        # CI container this printed absolutely nothing, exited non-zero, and the
+        # test above it could only report "0 bytes of output". Two days of
+        # `doctor` saying "niri config ok" would have come from the same hole.
+        command -v diff >/dev/null || {
+            echo "diff is not installed (dnf install diffutils)" >&2
+            rm -rf "$tmp"; exit 1
+        }
         if [[ ! -f "$tmp/niri/config.kdl" ]]; then
             echo "the generator produced no config.kdl to compare against" >&2
             rm -rf "$tmp"; exit 1

@@ -120,6 +120,12 @@ jobs:
         # swaylock. Asserting it here means every run proves it still holds.
         # jq is required by tests/all-palettes.sh, which exits 2 without it —
         # it was never installed explicitly before.
+        # ⚠️ diffutils, because a minimal Fedora image does not ship `diff`.
+        # `bhctl niri diff` discards diff's stderr — it must, or a missing
+        # optional include reads as a difference — so "command not found" was
+        # swallowed and the whole command printed nothing at all. The check
+        # that caught it could only say "0 bytes of output"; bin/bhctl now
+        # tests for the binary rather than relying on the container.
         # material-icons-fonts is what tests/icons.sh measures glyphs in — the
         # name in Fedora is "Material Icons Round", NOT the Symbols name the
         # docs suggest, and that mismatch rendered every icon as tofu once.
@@ -131,6 +137,7 @@ jobs:
           # question — which is the exact failure mode qt6ct sat in for months.
           dnf install -y --setopt=install_weak_deps=False \
             quickshell qt6-qtdeclarative qt6-qtdeclarative-devel git-core niri jq \
+            diffutils \
             material-icons-fonts fontconfig \
             btop bat fastfetch git-delta tmux alacritty
           for unwanted in waybar fuzzel swaylock; do
