@@ -307,17 +307,35 @@ tmp="$(mktemp -d)"; mkdir -p "$tmp/buchhwin" "$tmp/niri" "$tmp/environment.d" "$
 # that loses the settings file cannot pass by touching only one code path.
 printf '{"version":1,"look":{"gapsOut":24},"cursor":{"theme":"McMojave-cursors","size":32}}\n' \
     > "$tmp/buchhwin/shell.json"
-if XDG_CONFIG_HOME="$tmp" XDG_DATA_HOME="$tmp/share" bin/bhctl niri apply >/dev/null 2>&1; then
-    out="$(XDG_CONFIG_HOME="$tmp" XDG_DATA_HOME="$tmp/share" bin/bhctl niri diff 2>&1)"
+#
+# ⚠️ HOME IS REDIRECTED TOO, and it is not tidiness. bhctl falls back to
+# $HOME/.config and $HOME/.local/share when the XDG variables are absent, and
+# the generator reads ~/.config/user-dirs.dirs to decide where screenshots go.
+# Leaving the real HOME in place makes this test depend on the account running
+# it — which is how it passed on the VM and failed in the CI container.
+applyout="$(HOME="$tmp/home" XDG_CONFIG_HOME="$tmp" XDG_DATA_HOME="$tmp/share" \
+            bin/bhctl niri apply 2>&1)"; applyrc=$?
+if (( applyrc == 0 )) && [[ -f "$tmp/niri/config.kdl" ]]; then
+    out="$(HOME="$tmp/home" XDG_CONFIG_HOME="$tmp" XDG_DATA_HOME="$tmp/share" \
+           bin/bhctl niri diff 2>&1)"
     if [[ "$out" == "no changes" ]]; then
         printf '\033[38;5;114mok\033[0m\n'
     else
         printf '\033[38;5;203mreports a difference against its own settings\033[0m\n'
-        printf '%s\n' "$out" | head -8 | sed 's/^/      /'
+        # ⚠️ SAY WHAT WAS ACTUALLY SEEN. The first version printed only the diff,
+        # and when this failed in CI the diff was EMPTY — which says nothing at
+        # all about why. An empty answer here has three different causes and
+        # they need telling apart: bhctl printed nothing, the generated file is
+        # missing, or diff itself errored with its stderr thrown away.
+        printf '      %s bytes of output, exit was %s\n' "${#out}" "$applyrc"
+        printf '%s\n' "$out" | head -8 | sed 's/^/      | /'
         fail=1
     fi
 else
-    printf '\033[38;5;203mbhctl niri apply failed\033[0m\n'; fail=1
+    printf '\033[38;5;203mbhctl niri apply failed (rc %s, config %s)\033[0m\n' \
+        "$applyrc" "$([[ -f "$tmp/niri/config.kdl" ]] && echo present || echo MISSING)"
+    printf '%s\n' "$applyout" | head -6 | sed 's/^/      | /'
+    fail=1
 fi
 rm -rf "$tmp"
 
