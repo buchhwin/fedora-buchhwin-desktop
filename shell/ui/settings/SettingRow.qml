@@ -367,24 +367,41 @@ ColumnLayout {
             }
             readonly property var matches: pick.all.slice(0, pick.shown)
 
-            TextField {
-                id: pickField
+            RowLayout {
                 Layout.fillWidth: true
-                enabled: root.usable
-                text: pick.current
-                placeholder: root.placeholder
+                spacing: Theme.space2
 
-                function commit() {
-                    Config.set(root.key, pickField.text)
-                    Config.flush()
-                }
-                onAccepted: pickField.commit()
-                Connections {
-                    target: pickField.input
-                    function onActiveFocusChanged() {
-                        if (!pickField.input.activeFocus)
-                            pickField.commit()
+                TextField {
+                    id: pickField
+                    Layout.fillWidth: true
+                    enabled: root.usable
+                    text: pick.current
+                    placeholder: root.placeholder
+
+                    function commit() {
+                        Config.set(root.key, pickField.text)
+                        Config.flush()
                     }
+                    onAccepted: pickField.commit()
+                    Connections {
+                        target: pickField.input
+                        function onActiveFocusChanged() {
+                            if (!pickField.input.activeFocus)
+                                pickField.commit()
+                        }
+                    }
+                }
+
+                // Same reasoning as fieldControl above: nothing in this window
+                // takes the keyboard away from a text field, so "commit when
+                // you leave it" never happened. Clicking a suggestion already
+                // commits — this is for a value typed by hand.
+                Pill {
+                    interactive: true
+                    visible: pickField.text !== pick.current
+                    active: true
+                    BarText { text: "Apply"; color: Theme.accentFg }
+                    onClicked: pickField.commit()
                 }
             }
 
@@ -437,27 +454,57 @@ ColumnLayout {
         }
     }
 
+    // ⚠️⚠️ AN APPLY BUTTON, BECAUSE LEAVING THE FIELD IS NOT AN EVENT HERE.
+    // He reported "typing works but is not taken over", and the mechanism is
+    // this: the only thing that committed a typed value was losing keyboard
+    // focus, and in a window whose other controls are sliders and pills there
+    // is nothing that TAKES focus — so the field keeps it until the window
+    // closes, and closing destroys the value.
+    //
+    // Return still commits, and the focus-loss handler stays: it is correct
+    // when it does fire, and removing it would break the one path that worked.
+    // What is added is the thing he asked for in as many words — a button that
+    // appears when there is something unsaved and goes away once there is not.
+    // ⚠️ It is deliberately NOT always visible: a button that is present and
+    // usually does nothing teaches people to ignore it, which is how the
+    // refusal banner nearly went unread.
     Component {
         id: fieldControl
 
-        TextField {
-            id: plainField
-            enabled: root.usable
-            placeholder: root.placeholder
-            text: root.current === undefined || root.current === null ? "" : String(root.current)
+        RowLayout {
+            spacing: Theme.space2
 
-            function commit() {
-                Config.set(root.key, plainField.text)
-                Config.flush()
+            readonly property string stored:
+                root.current === undefined || root.current === null ? "" : String(root.current)
+
+            TextField {
+                id: plainField
+                Layout.fillWidth: true
+                enabled: root.usable
+                placeholder: root.placeholder
+                text: parent.stored
+
+                function commit() {
+                    Config.set(root.key, plainField.text)
+                    Config.flush()
+                }
+
+                onAccepted: plainField.commit()
+                Connections {
+                    target: plainField.input
+                    function onActiveFocusChanged() {
+                        if (!plainField.input.activeFocus)
+                            plainField.commit()
+                    }
+                }
             }
 
-            onAccepted: plainField.commit()
-            Connections {
-                target: plainField.input
-                function onActiveFocusChanged() {
-                    if (!plainField.input.activeFocus)
-                        plainField.commit()
-                }
+            Pill {
+                interactive: true
+                visible: plainField.text !== plainField.parent.stored
+                active: true
+                BarText { text: "Apply"; color: Theme.accentFg }
+                onClicked: plainField.commit()
             }
         }
     }
