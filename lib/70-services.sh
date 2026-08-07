@@ -70,6 +70,25 @@ JOURNAL
         ok "journal capped at 500M"
     fi
 
+    # ⚠️ THE LID IS THE ONE POWER SETTING THE SHELL CANNOT CARRY OUT. Idle,
+    # locking and suspend are the shell's own, over ext-idle-notify — but the lid
+    # has to work when the shell has crashed, is restarting, or was never
+    # started, so logind owns it and logind is configured in /etc.
+    #
+    # Written here rather than left to the settings window, because a Power page
+    # whose lid row only takes effect after somebody types `bhctl power apply`
+    # is a row that does nothing on a fresh machine. `bhctl` is the one writer,
+    # so the file has exactly one shape no matter who asked for it.
+    if [[ -x "$REPO_DIR/bin/bhctl" ]]; then
+        if "$REPO_DIR/bin/bhctl" power apply >/dev/null 2>&1; then
+            ok "lid behaviour written for logind"
+        else
+            # Not fatal: a first install has no shell.json yet, and the defaults
+            # in it are logind's own anyway.
+            warn "could not write the lid behaviour — run: bhctl power apply"
+        fi
+    fi
+
     # ⚠️ THE KEYBOARD LAYOUT REACHES niri AND NOTHING ELSE. `input.keyboard.layout`
     # goes into the generated niri config, which is the session — but the LOGIN
     # SCREEN and the TTY are not the session, and the login screen is where you

@@ -20,6 +20,7 @@ bhctl calendar                       check the Google calendar connection
 bhctl location [<town>]              show or set where this machine is
 bhctl niri apply                     regenerate ~/.config/niri/config.kdl
 bhctl niri diff                      show what a regeneration would change
+bhctl power [apply]                  show or write the lid behaviour
 bhctl doctor                         check the installation
 bhctl binds reset                    drop frozen key bindings from shell.json
 bhctl prune                          drop the instance dirs quickshell leaves
@@ -193,6 +194,91 @@ calendar)
             -H "Authorization: Bearer $(jq -r '.data[0]' <<<"$tok")" "$url" 2>/dev/null)"
     echo "calendar:  HTTP $code  $url"
     [[ "$code" == "207" || "$code" == "200" ]] && echo "reachable" || echo "NOT reachable"
+    ;;
+power)
+    # ⚠️ THE LID IS THE ONE THING ON THE POWER PAGE THE SHELL CANNOT DO. Idle,
+    # locking and suspend are all ours — Quickshell's IdleMonitor over
+    # ext-idle-notify — but closing the lid has to work when the shell has
+    # crashed, is restarting, or was never started. That is logind's job, and
+    # logind is configured in /etc.
+    #
+    # So this is the one setting with a second step. The shell writes the wish
+    # into shell.json; this writes it where logind will read it.
+    shift
+    f="$CONFIG_HOME/buchhwin/shell.json"
+    drop=/etc/systemd/logind.conf.d/50-buchhwin.conf
+
+    # ⚠️ HandleLidSwitch IS THE BATTERY CASE, and that is not a guess: logind's
+    # own manual says HandleLidSwitchExternalPower is "completely ignored by
+    # default (for backwards compatibility) -- an explicit value must be set
+    # before it will be used". So both are always written, or the mains setting
+    # silently does nothing.
+    read_lid() {
+        local key="$1" v
+        v="$(jq -r ".power.$key // empty" "$f" 2>/dev/null)"
+        case "$v" in
+        suspend|lock|ignore) printf '%s' "$v" ;;
+        # An empty or unknown value is not a reason to write something
+        # arbitrary into /etc. suspend is logind's own default and ours.
+        *) printf 'suspend' ;;
+        esac
+    }
+
+    case "${1:-}" in
+    ""|show)
+        if [[ -f "$f" ]]; then
+            echo "wanted:   battery=$(read_lid lidClosedBattery)  mains=$(read_lid lidClosedAc)"
+        else
+            echo "wanted:   no settings file yet"
+        fi
+        if [[ -f "$drop" ]]; then
+            echo "in place: $drop"
+            grep -E '^Handle' "$drop" | sed 's/^/          /'
+        else
+            echo "in place: nothing — logind's defaults apply (lid closed = suspend)"
+        fi
+        ;;
+    apply)
+        [[ -f "$f" ]] || { echo "no settings file at $f" >&2; exit 1; }
+        command -v jq >/dev/null || { echo "jq is not installed" >&2; exit 1; }
+        bat="$(read_lid lidClosedBattery)"
+        ac="$(read_lid lidClosedAc)"
+
+        tmp="$(mktemp)"
+        {
+            echo "# Written by bhctl power apply. Edit the Power page instead —"
+            echo "# this file is rewritten from shell.json."
+            echo "[Login]"
+            echo "HandleLidSwitch=$bat"
+            echo "HandleLidSwitchExternalPower=$ac"
+        } > "$tmp"
+
+        if [[ "$(id -u)" == "0" ]]; then
+            install -Dm644 "$tmp" "$drop"
+        elif command -v sudo >/dev/null; then
+            sudo install -Dm644 "$tmp" "$drop"
+        else
+            echo "writing $drop needs root, and sudo is not installed" >&2
+            rm -f "$tmp"
+            exit 1
+        fi
+        rc=$?
+        rm -f "$tmp"
+        [[ "$rc" == "0" ]] || { echo "could not write $drop" >&2; exit 1; }
+
+        echo "lid: battery=$bat  mains=$ac  -> $drop"
+        # ⚠️ SAID RATHER THAN DONE. Restarting systemd-logind mid-session is not
+        # something a settings change should do behind your back: it has been
+        # known to take sessions with it. The honest version is to say when it
+        # takes effect.
+        echo "takes effect after the next reboot, or:"
+        echo "  sudo systemctl restart systemd-logind"
+        ;;
+    *)
+        usage
+        exit 1
+        ;;
+    esac
     ;;
 wallpaper)
     shift

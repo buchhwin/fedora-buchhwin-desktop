@@ -86,6 +86,13 @@ FocusScope {
         { id: "lock",     icon: "lock",          title: "Lock Screen",
           source: "pages/LockPage.qml",
           blurb: "What the screen shows while the session is locked." },
+        // ⚠️ `battery_full`, which NotchWide already draws — so it is a name
+        // this font is known to have. tests/icons.sh measures the glyph rather
+        // than trusting the name, and a missing one comes out as an 800 px
+        // fallback box.
+        { id: "power",    icon: "battery_full",  title: "Power",
+          source: "pages/PowerPage.qml",
+          blurb: "When the screen goes off, when the session locks, when it sleeps, and what the lid does." },
         { id: "system",   icon: "computer",      title: "System",
           source: "pages/SystemPage.qml",
           blurb: "Keyboard, touchpad, graphics, windows, programs, the session and the key bindings." }

@@ -24,7 +24,7 @@ groups were settable and undocumented.
 | `surfaces` | `notifications`, `osd`, `wallpaper` — each on its own |
 | `notifications` | `dnd` (silences toasts, never critical ones), `timeoutMs`, `maxVisible`, `monitors` |
 | `nightlight` | `on` and `temperature` in kelvin — 6500 is neutral, lower is warmer |
-| `timer` | `presets` in minutes, `sound`, `soundFile` — the work timer on Mod+Shift+T |
+| `timer` | `presets` in minutes, `sound`, `soundFile` — the work timer on Mod+Shift+Z (Mod+Shift+T opens the themes) |
 | `bar` / `notch` / `launcher` | geometry, and a monitor list (empty = all) |
 | `programs` | argument **lists**: `terminal`, `browser`, `fileManager`, `editor`, `imageViewer`, `video` |
 | `keys` | `mod` plus `binds`: `{ key, action, arg, desc }` |
@@ -42,6 +42,7 @@ groups were settable and undocumented.
 | `motion` | `speed`, one multiplier over `Theme.durFast/durBase/durSlow` so the RATIO between them survives. It reaches niri's own window animations too |
 | `media` | `preferred` player, and where the track is shown |
 | `lock` | what the lock screen shows: date, avatar, wallpaper |
+| `power` | when the screen goes off, locks and suspends — battery and mains kept apart — plus the lid action, the tuned-ppd profile, and the two battery warning thresholds |
 | `terminal` | the terminal's own cursor: `cursorShape`, `cursorBlinkInterval`, `cursorTrail`, `scrollbackLines`. ⚠️ Not the same thing as `programs.terminal`, which is WHICH terminal |
 | `clipboard` | history length and what is never kept |
 

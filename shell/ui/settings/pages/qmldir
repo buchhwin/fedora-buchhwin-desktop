@@ -21,4 +21,5 @@ LauncherPage 1.0 LauncherPage.qml
 NotifyPage 1.0 NotifyPage.qml
 ControlCenterPage 1.0 ControlCenterPage.qml
 LockPage 1.0 LockPage.qml
+PowerPage 1.0 PowerPage.qml
 SystemPage 1.0 SystemPage.qml

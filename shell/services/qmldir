@@ -7,6 +7,7 @@ singleton Apps 1.0 Apps.qml
 singleton Compositor 1.0 Compositor.qml
 singleton Niri 1.0 Niri.qml
 singleton Power 1.0 Power.qml
+singleton Idle 1.0 Idle.qml
 singleton Audio 1.0 Audio.qml
 singleton Net 1.0 Net.qml
 singleton Bt 1.0 Bt.qml

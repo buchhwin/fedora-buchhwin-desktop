@@ -71,6 +71,16 @@ Scope {
     readonly property string startServices: Services.Location.timezone
     readonly property bool startCountdown: Services.Countdown.active
 
+    // ⚠️ AND THE SAME TRAP WOULD HAVE SWALLOWED THE IDLE WATCHER WHOLE. It owns
+    // four IdleMonitors and nothing else in the shell asks it anything — it has
+    // no readout, no icon, no page. A singleton nobody references is never
+    // built, so the screen would simply never have gone off, and the settings
+    // page would have been a set of numbers that did nothing at all.
+    //
+    // That is the failure the countdown had, and it is worth one line here to
+    // not have it twice.
+    readonly property int startIdle: Services.Idle.screenOffAfter
+
     // ⚠️ AND THE THEMING WATCHER IS STARTED LATE, FOR THE SAME REASON AS
     // WEATHER — but it must be started, because without it changing the palette
     // recolours the shell and nothing else. That was the state until today:

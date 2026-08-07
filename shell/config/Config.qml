@@ -37,6 +37,7 @@ Singleton {
     readonly property alias motion: adapter.motion
     readonly property alias media: adapter.media
     readonly property alias lock: adapter.lock
+    readonly property alias power: adapter.power
     readonly property alias terminal: adapter.terminal
     readonly property alias timer: adapter.timer
     readonly property alias clipboard: adapter.clipboard
@@ -1099,6 +1100,72 @@ Singleton {
                 // the running shell. That is also why it is the one surface
                 // where a mistake is not merely ugly.
                 property bool wallpaper: false
+            }
+
+            // ⚠️ NONE OF THIS EXISTED, on a laptop. No idle, no automatic lock,
+            // no suspend, no lid behaviour: the machine sat awake and unlocked
+            // until the battery ran out. The brief is "eine Energieseite in den   english-ok: quoted brief
+            // Settings wo man automatische Lockzeit, Sperrzeit etc. einstellen    english-ok: quoted brief
+            // kann, du checkst wie bei Windows".                                  english-ok: quoted brief
+            //
+            // ⚠️ AND IT NEEDED NO NEW TECHNOLOGY, which was the opposite of what
+            // the last session concluded. Quickshell 0.2.1 ships `IdleMonitor`
+            // (Quickshell.Wayland, re-exported from _IdleNotify) with `timeout`,
+            // `isIdle` and `respectInhibitors`; niri 26.04 implements
+            // `ext_idle_notifier_v1`, and the lock screen has been here all
+            // along. swayidle was never needed and is not installed.
+            //
+            // ⚠️ EVERY DELAY IS MINUTES FROM THE START OF IDLE, not from the
+            // previous step. Three independent timers, the way Windows counts:
+            // "screen off after 5, lock after 6" is two numbers, not one number
+            // plus an offset that has to be re-derived every time either moves.
+            // 0 means never, everywhere, and it means it consistently — a zero
+            // timeout would otherwise fire instantly, which is the worst
+            // possible reading of "off".
+            property JsonObject power: JsonObject {
+                // Battery first in each pair, because that is the one that
+                // matters and the one people forget to set.
+                property int screenOffBattery: 5
+                property int screenOffAc: 15
+
+                // ⚠️ Locking later than the screen goes off is deliberate. They
+                // are separate because a screen that blanks is not a screen you
+                // have walked away from — a minute of grace turns "I looked away
+                // to read something" into a keypress rather than a password.
+                property int lockBattery: 6
+                property int lockAc: 20
+
+                property int suspendBattery: 20
+                // Never, on mains: a machine that is plugged in is usually
+                // plugged in because something should keep running.
+                property int suspendAc: 0
+
+                // ⚠️ THESE THREE ARE logind's OWN WORDS, not ours. They are
+                // written verbatim into /etc/systemd/logind.conf.d/ by
+                // `bhctl power apply`, so inventing friendlier names here would
+                // mean a translation table that can drift. "lock" is a real
+                // HandleLidSwitch value; systemd 259 on this machine.
+                property string lidClosedBattery: "suspend"
+                property string lidClosedAc: "suspend"
+
+                // balanced | performance | power-saver — exactly the three
+                // tuned-ppd offers on this machine over
+                // net.hadess.PowerProfiles. Measured rather than assumed, and
+                // polkit's allow_active is `yes`, so the shell may switch it
+                // without a prompt while its session is the active one.
+                property string profile: "balanced"
+
+                // ⚠️ THE TWO THRESHOLDS docs/CHECKLIST.md HAS NAMED FOR WEEKS
+                // and nothing ever read. Power.qml hard-coded 15 and 5, so the
+                // documented numbers and the real ones agreed by luck.
+                property int warnAt: 15
+                property int criticalAt: 5
+
+                // Half brightness shortly before the screen goes off, restored
+                // the moment anything happens. It is the difference between a
+                // screen that dies without warning and one that tells you it is
+                // about to.
+                property bool dimBeforeOff: true
             }
 
             property JsonObject look: JsonObject {
