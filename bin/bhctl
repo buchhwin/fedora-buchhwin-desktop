@@ -260,6 +260,16 @@ niri)
     diff)
         tmp="$(mktemp -d)"; mkdir -p "$tmp/niri" "$tmp/environment.d"
         XDG_CONFIG_HOME="$tmp" run_tool niri || { rm -rf "$tmp"; exit 1; }
+        # ⚠️ PUT THE REAL CONFIG HOME BACK BEFORE COMPARING, or this never says
+        # "no changes". The generator writes absolute paths out of
+        # XDG_CONFIG_HOME — `LG_CONFIG_FILE` is one — and this runs it against a
+        # temporary directory, so that line differed on every single run
+        # regardless of whether anything had actually changed.
+        #
+        # It went unnoticed because nothing depended on the answer until
+        # `doctor` started asking. A comparison that always reports a difference
+        # is the same as no comparison at all.
+        sed -i "s|$tmp|$CONFIG_HOME|g" "$tmp/niri/config.kdl"
         if diff -u "$cfg" "$tmp/niri/config.kdl" 2>/dev/null; then
             echo "no changes"
         fi
@@ -268,6 +278,46 @@ niri)
     *) usage; exit 2 ;;
     esac
     ;;
+binds)
+    # ⚠️ THE ONE HANDLE THAT UNFREEZES A MACHINE. `doctor` can only report that
+    # shell.json carries its own copy of the key bindings; this removes it, and
+    # from then on the built-in set applies again — including every key added
+    # since the file was written.
+    #
+    # ⚠️ It DELETES a key from his settings file, so it says what it is about to
+    # do and only does it when asked by name. Anything he bound himself is in
+    # that list too, and there is no way to tell his entries from the frozen
+    # ones — see Migrations.qml step 7 -> 8, which only removes the list when
+    # every single entry is one of ours.
+    case "${2:-}" in
+    reset)
+        cfg="$CONFIG_HOME/buchhwin/shell.json"
+        [[ -f "$cfg" ]] || { echo "no shell.json — nothing to reset"; exit 0; }
+        python3 - "$cfg" <<'PYEOF'
+import json, os, sys
+path = sys.argv[1]
+with open(path) as fh:
+    cfg = json.load(fh)
+n = len(cfg.get("binds") or [])
+if not n:
+    print("binds: already the built-in set — nothing to do")
+    raise SystemExit(0)
+del cfg["binds"]
+tmp = path + ".buchhwin-tmp"
+with open(tmp, "w") as fh:
+    json.dump(cfg, fh, indent=2)
+    fh.write("\n")
+os.replace(tmp, path)
+print("binds: removed %d frozen entries — the built-in set applies again" % n)
+PYEOF
+        # The generator has to run, or the file is right and the compositor
+        # still has yesterday's config. This is the half people forget.
+        exec "$0" niri apply
+        ;;
+    *)  echo "usage: bhctl binds reset" >&2; exit 2 ;;
+    esac
+    ;;
+
 doctor)
     printf 'niri        %s\n' "$(niri --version 2>/dev/null | head -1 || echo MISSING)"
     printf 'quickshell  %s\n' "$(qs --version 2>/dev/null | cut -d, -f1 || echo MISSING)"
@@ -282,6 +332,76 @@ doctor)
     else
         printf 'niri config MISSING — run: bhctl niri apply\n'
     fi
+    # ─────────────────────────────────────────────────────────────────────
+    # ⚠️ IS THIS MACHINE STILL LISTENING TO THE DEFAULTS?
+    #
+    # He reported on 07.08.2026 that Super+F does not toggle fullscreen and that
+    # the window title bars are still there. Both work on a fresh install —
+    # `Mod+F` is bound, `toggle-windowed-fullscreen` is a real niri action, the
+    # generated config validates, and `prefer-no-csd` is in it. So the fault is
+    # not in the code; it is that HIS machine never received them.
+    #
+    # There are exactly two ways that happens, and neither says a word on its
+    # own. This is where they get to.
+    cfg="$CONFIG_HOME/buchhwin/shell.json"
+    kdl="$CONFIG_HOME/niri/config.kdl"
+
+    if [[ -f "$cfg" ]]; then
+        # ⚠️ ONE: a `binds` array in shell.json FREEZES the keys for ever.
+        # It should not be there at all. It got there when `keys.binds` was a
+        # `var` inside a nested JsonObject and carried the defaults as its own
+        # default value — so the file was written with all 63 of them in it.
+        # "The file wins as soon as it says anything" then means every LATER
+        # default is ignored: a key added months afterwards simply never
+        # appears. That is the whole of his fullscreen report.
+        n_binds="$(python3 -c "
+import json,sys
+try: d=json.load(open(sys.argv[1]))
+except Exception: print(-1); raise SystemExit
+b=d.get('binds')
+print(len(b) if isinstance(b,list) else 0)" "$cfg" 2>/dev/null || echo -1)"
+        if [[ "$n_binds" == "-1" ]]; then
+            printf 'binds       shell.json is not readable as JSON\n'
+        elif [[ "$n_binds" == "0" ]]; then
+            printf 'binds       ok (the built-in set)\n'
+        else
+            printf 'binds       FROZEN: %s in shell.json — new keys will NEVER appear\n' "$n_binds"
+            printf '            run: bhctl binds reset\n'
+        fi
+
+        # TWO: the generated config does not match the settings it came from.
+        # A `bhctl theme apply` does not rewrite config.kdl, and neither does
+        # copying the repo across — only `bhctl niri apply` does.
+        #
+        # ⚠️ THE CONTENT, NOT THE TIMESTAMP. The first version compared mtimes,
+        # and it cried wolf immediately: `bhctl binds reset` writes shell.json
+        # and then regenerates — but the generator does not rewrite a file whose
+        # content is unchanged, so config.kdl keeps its old mtime and looked
+        # stale while being perfectly current. A check that is wrong when
+        # everything is fine gets ignored the day it is right, which is the same
+        # failure the hand-typed verb list in tools/smoke.qml had this week.
+        #
+        # `bhctl niri diff` already answers the real question: generate into a
+        # temporary directory and compare. Reusing it also means the two can
+        # never disagree.
+        if [[ -f "$kdl" ]]; then
+            if [[ -n "$("$0" niri diff 2>/dev/null | grep -v '^no changes$')" ]]; then
+                printf 'niri config STALE — it does not match shell.json\n'
+                printf '            run: bhctl niri apply   (see: bhctl niri diff)\n'
+            else
+                printf 'niri config ok (matches shell.json)\n'
+            fi
+            # And the two things he named, checked directly rather than implied.
+            grep -q "Mod+F " "$kdl" \
+                && printf 'Mod+F       ok (in config.kdl)\n' \
+                || printf 'Mod+F       MISSING from config.kdl — run: bhctl niri apply\n'
+            grep -q "prefer-no-csd" "$kdl" \
+                && printf 'no title bar ok (prefer-no-csd in config.kdl)\n' \
+                || printf 'no title bar MISSING — run: bhctl niri apply\n'
+        fi
+    fi
+    # ─────────────────────────────────────────────────────────────────────
+
     # ⚠️ The SERVICE line, not the first line containing an "@". systemd-analyze
     # prints two sentences of explanation first — and one of them contains the
     # word "@" — so the old grep reported "The time when unit became active or

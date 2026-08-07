@@ -50,7 +50,8 @@ POLICY
     # ⚠️ AND THE COLOURS, which the policy above does not touch. His reference
     # is 2026-08-07/vorlage-brave-gefaerbt.png: the whole browser chrome — tab
     # strip, navigation row, empty content — in the palette's dark green, not
-    # Brave's own grey. "bei brave soll das theme genau so greifen."
+    # Brave's own grey — his words, quoted: "bei brave soll das theme genau     english-ok: the request, quoted
+    # so greifen."                                                              english-ok: the request, quoted
     #
     # ⚠️ ONE SETTING, NOT A GENERATOR. `extensions.theme.system_theme = 1` is
     # Chromium's "follow the GTK theme", and we ALREADY generate a GTK theme
@@ -93,7 +94,17 @@ except Exception:
     # No profile yet: a Preferences file with only this in it is valid, and
     # Brave fills in the rest on first run.
     prefs = {}
-prefs.setdefault("extensions", {}).setdefault("theme", {})["system_theme"] = 1
+# ⚠️ `browser.theme.follows_system_colors`, and NOT
+# `extensions.theme.system_theme`. The second one is what this used to write,
+# it is a name from an older Chromium, and Brave 151 does not register it — so
+# Brave dropped the key on every start and the chrome stayed grey. Found by
+# asking the programme itself rather than remembering:
+#
+#     strings /opt/brave.com/brave/brave | grep '^browser\.theme'
+#     browser.theme.follows_system_colors
+#     browser.theme.user_color
+#     browser.theme.color_scheme / color_variant / is_grayscale
+prefs.setdefault("browser", {}).setdefault("theme", {})["follows_system_colors"] = True
 tmp = path + ".buchhwin-tmp"
 with open(tmp, "w") as fh:
     json.dump(prefs, fh, separators=(",", ":"))

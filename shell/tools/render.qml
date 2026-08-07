@@ -294,6 +294,34 @@ Scope {
     // ⚠️ And it is written per COLOUR, not as one blanket rule on `window`.
     // libadwaita paints several surfaces — the window, the view, the sidebar —
     // and a single translucent rule underneath opaque ones changes nothing.
+    // ⚠️ HALFWAY BETWEEN TWO PALETTE COLOURS, and it exists because his Nautilus
+    // reference asks for a step the palette does not contain.
+    //
+    // Measured off 2026-08-06/vorlage-nautilus.png, sidebar against content:
+    //
+    //   reference    [10, 21, 25]  vs  [13, 24, 28]   ->  -3 per channel
+    //   ours         mantle #15191e   vs  base #1b2027 ->  -6 per channel
+    //
+    // Twice the separation the picture has, which is exactly his report:
+    // "und nautilus ist links die leiste immer noch dunkel". The note beside     english-ok: the report, quoted
+    // the image says the same in words — the sidebar is set off "nur durch die   english-ok: the reference note, quoted
+    // Fläche, nicht durch eine Linie", a step you barely notice.                 english-ok: the reference note, quoted
+    //
+    // There is no palette name half a step from `base`, so it is computed. Still
+    // no literal anywhere: both ends come from the palette, and a different
+    // palette moves both.
+    function mix(hexA, hexB, t) {
+        var a = Qt.color(hexA), b = Qt.color(hexB)
+        // ⚠️ Returns a STRING, because `alphaOf` below takes one and hands it
+        // to Qt.color(). Handing it a colour object instead is the kind of
+        // mismatch QML answers with `undefined` rather than an error, and an
+        // undefined colour renders as transparent black — a hole where the
+        // sidebar should be.
+        return Qt.rgba(a.r + (b.r - a.r) * t,
+                       a.g + (b.g - a.g) * t,
+                       a.b + (b.b - a.b) * t, 1).toString()
+    }
+
     function alphaOf(hex, a) {
         var c = Qt.color(hex)
         return "rgba(" + Math.round(c.r * 255) + ", " + Math.round(c.g * 255)
@@ -313,7 +341,9 @@ Scope {
             "@define-color popover_fg_color " + col(m, "text") + ";\n" +
             "@define-color card_bg_color " + col(m, "surface0") + ";\n" +
             "@define-color card_fg_color " + col(m, "text") + ";\n" +
-            "@define-color sidebar_bg_color " + alphaOf(col(m, "mantle"), a) + ";\n" +
+            // Half a step, not a whole one — see mix() above for the measurement.
+            "@define-color sidebar_bg_color "
+            + alphaOf(mix(col(m, "base"), col(m, "mantle"), 0.5), a) + ";\n" +
             "@define-color sidebar_fg_color " + col(m, "text") + ";\n" +
             "@define-color dialog_bg_color " + col(m, "surface0") + ";\n" +
             "@define-color dialog_fg_color " + col(m, "text") + ";\n" +
@@ -451,16 +481,30 @@ Scope {
             // same shade makes the notch disappear on a machine with no
             // wallpaper. This is what shows THROUGH, so it stays a step lighter.
             "    background-color \"" + col(m, "base") + "\"\n" +
-            "    border {\n" +
-            "        active-color \"" + accentOf(m) + "\"\n" +
-            "        inactive-color \"" + col(m, "overlay1") + "\"\n" +
-            "        urgent-color \"" + col(m, "red") + "\"\n" +
-            "    }\n" +
-            "    focus-ring {\n" +
-            "        active-color \"" + accentOf(m) + "\"\n" +
-            "        inactive-color \"" + col(m, "overlay1") + "\"\n" +
-            "        urgent-color \"" + col(m, "red") + "\"\n" +
-            "    }\n" +
+            // ⚠️ NO BLOCK FOR SOMETHING THAT IS SWITCHED OFF, and this is the
+            // green bar he asked about. Both of these used to be written
+            // unconditionally, with a comment in tools/niri.qml claiming that
+            // "colors.kdl carries colours only and never decides visibility".
+            //
+            // The main config says `focus-ring { off }` and, with
+            // `look.borderWidth` at 0, `border { off }`. colors.kdl is included
+            // AFTER it — so if niri merges a later block by replacing the
+            // earlier one, a colours-only block silently switches the feature
+            // back ON at its default width. On a scrolling layout the focused
+            // window is usually at the left edge, and a ring around it reads as
+            // exactly what he described: "was macht der grüne balken links?"    // english-ok: the report, quoted
+            //
+            // Writing colours for a feature that is off buys nothing even if
+            // the merge behaves the other way, so the conditional is right
+            // regardless of which it turns out to be. His decision on
+            // 07.08.2026 was "ganz weg", so the ring gets no block at all.      // english-ok: his words, quoted
+            (Config.look.borderWidth > 0
+             ? "    border {\n" +
+               "        active-color \"" + accentOf(m) + "\"\n" +
+               "        inactive-color \"" + col(m, "overlay1") + "\"\n" +
+               "        urgent-color \"" + col(m, "red") + "\"\n" +
+               "    }\n"
+             : "") +
             // ⚠️ `inactive-color` IS WRITTEN, and it is not a nicety. niri's own
             // default for it is "a more transparent color", and how much more is
             // its business rather than ours. Measured on the running machine at

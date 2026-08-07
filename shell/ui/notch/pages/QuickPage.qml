@@ -84,7 +84,11 @@ RowLayout {
     // and `space_dashboard` are both MISSING from "Material Icons Round", which
     // is how "Overview" ended up as `dashboard`.
     IconRail {
-        Layout.alignment: Qt.AlignTop
+        // ⚠️ `fillHeight` AND `spread`, not `AlignTop`. The rail used to be four
+        // pills tall in a panel whose left column is as tall as a month grid,
+        // so three quarters of the strip was empty. His words on 07.08.2026.
+        Layout.fillHeight: true
+        spread: true
         currentIndex: root.tab
         entries: [
             { icon: "dashboard",     tooltip: "Overview" },

@@ -24,7 +24,11 @@ cd "$(dirname "$0")/.." || exit 2
 
 fail=0
 
+# Same fallback as tests/english.sh, and for the same reason: the working copy
+# on the test machine has no .git, and a check that cannot enumerate there is a
+# check that never runs where the code runs.
 files=$(git ls-files 'shell/ui/*.qml' 'shell/ui/**/*.qml' 2>/dev/null)
+[[ -n "$files" ]] || files=$(find shell/ui -name '*.qml' -type f 2>/dev/null)
 [[ -n "$files" ]] || { echo "  found no ui files to check"; exit 2; }
 
 # Brace depth, the same technique tests/icons.sh uses to find Icon { } blocks:

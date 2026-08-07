@@ -313,10 +313,28 @@ PanelWindow {
     // switches them off — it had been sitting in the config with nothing
     // reading it since M4, so turning it off changed nothing and the setting
     // was a lie. The keys still work; they just stop showing a panel about it.
+    //
+    // ⚠️ AND NOT WHILE A SURFACE IS ALREADY SHOWING THAT SLIDER. This is his
+    // report of 07.08.2026: "wenn ich den lautstärke regler bewege soll man im   english-ok: the report, quoted
+    // quickpanel bleiben". Dragging the volume row inside the quick panel        english-ok: the report, quoted
+    // changed the volume, which fired this, which replaced the whole panel with
+    // the one-slider readout — the page vanished from under the finger.
+    //
+    // The condition is not "who changed it" but "is something already showing
+    // it". Tracking the origin would mean a flag set by every caller and
+    // cleared by hand, and the first one to forget it brings the bug back. The
+    // quick panel HAS a volume row, so the readout has nothing to add there.
+    //
+    // ⚠️ `Ipc.page`, not a property of this surface: the quick panel and this
+    // readout are two pages of the same notch, and which one is up is the
+    // notch's business. Reading it here is reading the same value the page
+    // switch reads.
+    readonly property bool sliderAlreadyVisible: Ipc.page === "quick"
+
     Connections {
         target: Services.Audio
         enabled: Services.Audio.available && root.notchEnabled
-                 && Config.surfaces.osd
+                 && Config.surfaces.osd && !root.sliderAlreadyVisible
         function onVolumeChanged() { Ipc.show("volume") }
         function onMutedChanged() { Ipc.show("volume") }
     }

@@ -70,8 +70,29 @@ words+='|Lautstärke|Lautstaerke|Helligkeit|Verbindung|verbunden|getrennt|Passwo
 # above: not a function word, not a sentence — a two-word label. It is in now.
 words+='|weitere|weiteren|Meldung|Meldungen|Mitteilung|Mitteilungen'
 
+# ⚠️ `git ls-files` FIRST, `find` WHEN THERE IS NO GIT — and the fallback is the
+# point, not a nicety. The working copy on the test machine is an rsync without
+# .git, so the git form answered with nothing and this check printed a green
+# tick over ZERO files for a whole session. A check that only works in a
+# checkout does not run where the code actually runs.
 files=$(git ls-files 'shell/*.qml' 'shell/**/*.qml' 'docs/*.md' 'README.md' \
                     'lib/*.sh' 'bin/*' 'install.sh' 'tests/*.sh' 2>/dev/null)
+if [[ -z "$files" ]]; then
+    files=$(find shell docs lib bin tests -type f \
+                 \( -name '*.qml' -o -name '*.md' -o -name '*.sh' -o -path 'bin/*' \) \
+                 2>/dev/null; ls README.md install.sh 2>/dev/null)
+fi
+
+# ⚠️ AN EMPTY LIST IS A BROKEN CHECK, NOT A CLEAN REPOSITORY — and this one
+# reported "ok" for a whole session. `git ls-files` answers with nothing outside
+# a git checkout, and the working copy on the test VM is an rsync WITHOUT .git.
+# So every green tick this printed there was over zero files.
+#
+# Found on 07.08.2026 by installing onto a fresh machine: tap-targets.sh, which
+# already had this guard, went red at once and pointed at the hole. Same guard
+# here, and exit 2 rather than 1 so it reads as "could not check" instead of
+# "checked and clean".
+[[ -n "$files" ]] || { echo "  found no files to check — not a git checkout?"; exit 2; }
 
 for file in $files; do
     # This file names the words it forbids, so it cannot check itself.

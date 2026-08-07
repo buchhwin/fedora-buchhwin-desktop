@@ -157,8 +157,13 @@ Scope {
         s += "    gaps " + L.gapsOut + "\n"
         s += "    center-focused-column \"never\"\n"
         // on/off belongs HERE and nowhere else. In an INCLUDED file a bare
-        // `border {}` does nothing, while in the main config it means "on" —
-        // so colors.kdl carries colours only and never decides visibility.
+        // ⚠️ THAT COMMENT USED TO CLAIM colors.kdl "carries colours only and
+        // never decides visibility", and the green bar he asked about on
+        // 07.08.2026 is the evidence against it. colors.kdl is included AFTER
+        // this file, so a colours-only `focus-ring` block there can switch the
+        // ring back on at its default width — the exact thing `off` below is
+        // for. tools/render.qml now writes no block at all for a feature that
+        // is switched off, which is correct whichever way niri merges.
         s += "    border {\n"
         s += (L.borderWidth > 0 ? "        on\n        width " + L.borderWidth + "\n"
                                 : "        off\n")

@@ -45,6 +45,18 @@ phase_desktop() {
         fi
     done
 
-    sudo systemctl enable sddm.service >/dev/null 2>&1 || warn "could not enable sddm"
+    # ⚠️ AND THE GRAPHICAL TARGET WITH IT. Enabling sddm.service alone leaves a
+    # machine whose default target is still multi-user, so it boots to a text
+    # console and the enabled unit never runs. Both halves, and both checked
+    # rather than assumed — a login manager that does not come up is the one
+    # failure nobody can recover from without another computer.
+    if rpm -q sddm >/dev/null 2>&1; then
+        sudo systemctl enable sddm.service >/dev/null 2>&1 \
+            || warn "sddm is installed but would not enable"
+        sudo systemctl set-default graphical.target >/dev/null 2>&1 \
+            || warn "could not set the graphical target — it will boot to a console"
+    else
+        warn "sddm is NOT installed — there will be no graphical login"
+    fi
     ok "niri $(niri --version 2>/dev/null | head -1), quickshell $(qs --version 2>/dev/null | cut -d, -f1)"
 }

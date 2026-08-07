@@ -43,7 +43,23 @@ Item {
     property int currentIndex: 0
     signal activated(int index)
 
+    // ⚠️ TWO WAYS TO SIT, AND THE COMPONENT OWNS BOTH. His request of
+    // 07.08.2026: "kannst du im quick panel die settings button links besser    english-ok: the request, quoted
+    // aufteilen ... das sich die über die ganze höhe irgendwie schön hin        english-ok: the request, quoted
+    // passen". With `spread` the four symbols share the height they are given
+    // instead of stacking at the top and leaving the rest of the strip empty
+    // beside a tall calendar.
+    //
+    // It is a property rather than a second component because the settings
+    // window (M8) has the same strip and wants the other behaviour — a sidebar
+    // of ten pages fills its height on its own and must not be stretched.
+    // Building that separately is how the predecessor grew two sidebars.
+    property bool spread: false
+
     implicitWidth: rail.implicitWidth
+    // ⚠️ Only the NATURAL height is declared, never the spread one. A spread
+    // rail takes the height its parent gives it, and asking for that height
+    // back as an implicit size is a layout that sizes itself from itself.
     implicitHeight: rail.implicitHeight
 
     // ⚠️ STACKED ABOVE ITS SIBLINGS, and that belongs to the component rather
@@ -58,6 +74,10 @@ Item {
         id: rail
         anchors.top: parent.top
         anchors.left: parent.left
+        // ⚠️ Anchored to the BOTTOM as well when spreading, which is what turns
+        // `Layout.fillHeight` on the pills into real distribution: a layout
+        // only has room to share out if something gave it a height.
+        anchors.bottom: root.spread ? parent.bottom : undefined
         spacing: Theme.space2
 
         Repeater {
@@ -68,7 +88,15 @@ Item {
                 required property int index
                 required property var modelData
 
-                Layout.alignment: Qt.AlignHCenter
+                // ⚠️ `AlignVCenter` TOGETHER WITH `fillHeight`, and the pair is
+                // the whole trick. `fillHeight` alone hands the pill the whole
+                // cell and it STRETCHES into a tall lozenge with a small glyph
+                // adrift in it. With a vertical alignment as well, QtQuick.
+                // Layouts gives the cell the space and the pill keeps its own
+                // height inside it — so the GAPS grow and the buttons do not.
+                Layout.alignment: root.spread ? Qt.AlignHCenter | Qt.AlignVCenter
+                                              : Qt.AlignHCenter
+                Layout.fillHeight: root.spread
                 interactive: true
                 active: root.currentIndex === railPill.index
 

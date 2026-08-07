@@ -5,6 +5,18 @@
 # its shipped default config even has `spawn-at-startup "waybar"`. We replace
 # all four, so pulling them in would put a second bar on the screen.
 niri
+# ⚠️ THE LOGIN MANAGER, AND IT WAS IN NO PACKAGE LIST AT ALL. lib/30-desktop.sh
+# has enabled `sddm.service` since the beginning and nobody ever installed it,
+# so a fresh machine finished the install sitting on multi-user.target with no
+# graphical login — found the first time the installer was run from bare
+# (07.08.2026). It only ever "worked" because the test VMs already had it.
+#
+# ⚠️ AND IT STAYS UNTIL M9, which is a decision rather than an oversight —
+# docs/CHECKLIST.md says it in full: "SDDM is still installed and will only be
+# removed once our own greetd greeter demonstrably reaches a desktop — a broken
+# greeter would mean no way to log in." Whoever builds the greeter removes this
+# line, and not before their own one has been logged into.
+sddm
 quickshell
 qt6-qtdeclarative           # quickshell's runtime
 qt6-qtdeclarative-devel     # qmllint/qmlformat, used by CI and `bhctl doctor`
