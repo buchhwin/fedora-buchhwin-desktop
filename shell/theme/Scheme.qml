@@ -54,8 +54,94 @@ Singleton {
     // re-evaluates once it does, so the guard costs a frame of the fallback and
     // nothing else; without it the binding throws and QML keeps whatever the
     // property had, which is the empty string.
-    property string name: (Config.theme ? Config.theme.palette : "")
-                          || "everforest-dark"
+    // ⚠️ THE LIGHT/DARK SWITCH DECIDES HERE, not in a service. `name` is the one
+    // place the palette is chosen, and a service that wrote `theme.palette`
+    // instead would DESTROY the dark one every morning — there would be nothing
+    // left to switch back to. Nothing is written at all; the choice is a
+    // binding, so it survives a restart with no state to keep in step.
+    //
+    // It also avoids a circle: services/ import theme/, so a Scheme that
+    // imported a service back would close one, and this project's failure mode
+    // for that is "Type Config unavailable" with a stack naming the wrong file.
+    readonly property bool lightNow:
+        Config.theme && Config.theme.autoLight === "schedule" && root._withinLight
+
+    property string name: {
+        if (!Config.theme) return "everforest-dark"
+        var n = root.lightNow ? Config.theme.lightPalette : Config.theme.palette
+        return n || "everforest-dark"
+    }
+
+    // ---------------------------------------------------------- the schedule
+    // ⚠️ ONE TIMER, SET TO THE NEXT BOUNDARY — never an hourly wake-up. The
+    // laptop rule this project is held to: a machine that wakes sixty times a
+    // day to ask "is it seven yet" is doing the work of one alarm clock badly.
+    // After each switch the timer is set again from the new time.
+    //
+    // ⚠️ And it is not running at all while `autoLight` is off, so the ordinary
+    // case costs nothing.
+    property bool _withinLight: false
+    property int _tick: 0        // bumped by the timer to re-evaluate the clock
+
+    function _minutesOf(hhmm) {
+        var m = /^(\d{1,2}):(\d{2})$/.exec(String(hhmm || ""))
+        if (!m) return -1
+        var h = parseInt(m[1]), mi = parseInt(m[2])
+        return (h >= 0 && h < 24 && mi >= 0 && mi < 60) ? h * 60 + mi : -1
+    }
+
+    function _recompute() {
+        if (!Config.theme || Config.theme.autoLight !== "schedule") {
+            root._withinLight = false
+            boundary.stop()
+            return
+        }
+        var from = root._minutesOf(Config.theme.lightFrom)
+        var until = root._minutesOf(Config.theme.lightUntil)
+        // A time we cannot read is not a reason to guess at one: stay dark and
+        // stop, rather than switching at some hour nobody asked for.
+        if (from < 0 || until < 0 || from === until) {
+            root._withinLight = false
+            boundary.stop()
+            return
+        }
+        var now = new Date()
+        var mins = now.getHours() * 60 + now.getMinutes()
+        // Wrapping is normal: "light from 19:00 until 07:00" is a legitimate
+        // way to say it, and treating it as an error would be a rule nobody
+        // expects.
+        root._withinLight = from < until ? (mins >= from && mins < until)
+                                         : (mins >= from || mins < until)
+        var next = root._withinLight ? until : from
+        var delta = next - mins
+        if (delta <= 0) delta += 24 * 60
+        // Plus a few seconds, so the timer cannot land a hair BEFORE the minute
+        // it is waiting for and immediately re-arm for the same one.
+        boundary.interval = delta * 60000 + 5000
+        boundary.restart()
+    }
+
+    Timer {
+        id: boundary
+        repeat: false
+        onTriggered: root._recompute()
+    }
+
+    // ⚠️ A BINDING ON THE VALUES, NOT `Config.onSettledChanged`. That was the
+    // first attempt and it fires ONCE, when the file first settles — so editing
+    // the schedule changed nothing until the next restart. Measured: mode
+    // switched to "schedule" with a window covering the current minute, and
+    // gtk-theme stayed adw-gtk3-dark.
+    //
+    // Concatenating the three into one string gives a single change signal that
+    // fires whenever any of them moves, which is exactly when the schedule has
+    // to be worked out again.
+    readonly property string _sched: Config.theme
+        ? (Config.theme.autoLight + "|" + Config.theme.lightFrom
+           + "|" + Config.theme.lightUntil)
+        : ""
+    on_SchedChanged: root._recompute()
+    Component.onCompleted: root._recompute()
 
     // Honest readiness: the data is what matters, not the file object's state
     // — and it must be the data for the palette we are asking about NOW.

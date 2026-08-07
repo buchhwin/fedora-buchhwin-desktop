@@ -122,6 +122,15 @@ Singleton {
                 // three lines up, applied on the way in this time instead of
                 // after somebody noticed the pointer never changed.
                 Config.cursor.theme, Config.cursor.size,
+                // ⚠️ The light/dark schedule. Scheme decides the palette from
+                // these three, so a change to any of them has to move the
+                // fingerprint or the generators keep yesterday's colours until
+                // something else happens to nudge them. Fifth time this rule is
+                // being applied on the way in rather than after a bug report.
+                Config.theme ? Config.theme.autoLight : "",
+                Config.theme ? Config.theme.lightFrom : "",
+                Config.theme ? Config.theme.lightUntil : "",
+                Config.theme ? Config.theme.lightPalette : "",
                 JSON.stringify(Config.autostart),
                 JSON.stringify(Config.workspaces),
                 JSON.stringify(Config.outputs),

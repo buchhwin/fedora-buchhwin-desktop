@@ -600,8 +600,23 @@ Singleton {
             property JsonObject theme: JsonObject {
                 property string palette: "everforest-dark"
                 property string accent: "green"
-                // "" = follow `palette`; a name here switches on a schedule later.
+                // The light half of the pair. `palette` is the one in force by
+                // day-or-night default; this is what `autoLight` swaps to.
                 property string lightPalette: "everforest-light"
+
+                // ⚠️ THE SCHEDULE THAT `lightPalette` WAS WAITING FOR. The
+                // comment beside it used to say "a name here switches on a
+                // schedule later" — and later never came, so the key sat there
+                // for months being read by nobody. tests/key-readers.sh found
+                // it; he chose to build the switch rather than drop the key.
+                //
+                // "off" or "schedule". Sunrise/sunset is the obvious third mode
+                // and is deliberately NOT declared yet: a mode nothing
+                // implements is the same lie this key just stopped telling.
+                property string autoLight: "off"
+                // Local time, 24 hour. Light between these two.
+                property string lightFrom: "07:00"
+                property string lightUntil: "19:00"
                 // Used when `palette` is "custom": one colour, and the whole
                 // 26-name scheme is calculated from it. The same calculation
                 // the wallpaper goes through — the image only ever contributed
