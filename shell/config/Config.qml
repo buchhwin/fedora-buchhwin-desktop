@@ -30,6 +30,7 @@ Singleton {
     readonly property alias surfaces: adapter.surfaces
     readonly property alias notifications: adapter.notifications
     readonly property alias nightlight: adapter.nightlight
+    readonly property alias cursor: adapter.cursor
     readonly property alias brightness: adapter.brightness
     readonly property alias timer: adapter.timer
     readonly property alias clipboard: adapter.clipboard
@@ -676,6 +677,34 @@ Singleton {
             // backlight needs no settings — it either exists or it does not —
             // but an external monitor is talked to over I²C, and that is slow
             // enough and odd enough per model to deserve two switches.
+            // ⚠️ THE POINTER, AND NOTHING SET IT BEFORE. It came from whatever
+            // gsettings happened to hold — `Adwaita` at 24 on the test VM —
+            // and niri's own `cursor {}` block carried only `hide-when-typing`,
+            // so the desktop had no opinion about its own pointer at all.
+            //
+            // Two writers, and BOTH are needed: niri draws the pointer over the
+            // desktop and over any surface that does not set its own, while GTK
+            // applications read `org.gnome.desktop.interface cursor-theme` and
+            // ignore the compositor entirely. Setting one leaves the other
+            // wrong, which shows up as a pointer that changes shape when it
+            // crosses a window edge. Verified from niri's shipped documentation
+            // (Configuration: Miscellaneous.md:20) that the block accepts
+            // `xcursor-theme` and `xcursor-size` — not from memory.
+            property JsonObject cursor: JsonObject {
+                // `Breeze_Dark` ships with Fedora's breeze-cursor-theme.
+                // `McMojave-cursors` is his choice for a macOS-like pointer —
+                // a free GPL-3 rebuild, because Apple's own cursors are not
+                // redistributable. The installer fetches it pinned, with a
+                // checksum; see lib/50-fonts.sh, which already does that for
+                // the Nerd font.
+                property string theme: "Breeze_Dark"
+                // 24 is the GNOME default and what the VM was running. It is a
+                // separate key from `look.scale` on purpose: the pointer is
+                // drawn by the compositor at its own size and does not follow
+                // the shell's grid.
+                property int size: 24
+            }
+
             property JsonObject brightness: JsonObject {
                 // Whether to look for DDC/CI monitors at all. Measured on a
                 // machine with none: `ddcutil detect` answers in 0.01 s and

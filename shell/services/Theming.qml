@@ -118,6 +118,10 @@ Singleton {
                 // adds it here as well; that is the whole contract of this string
                 // and it has now been broken twice in one day.
                 Config.surfaces.hotCorners,
+                // ⚠️ BOTH GENERATORS READ THESE, so they belong here — the rule
+                // three lines up, applied on the way in this time instead of
+                // after somebody noticed the pointer never changed.
+                Config.cursor.theme, Config.cursor.size,
                 JSON.stringify(Config.autostart),
                 JSON.stringify(Config.workspaces),
                 JSON.stringify(Config.outputs),

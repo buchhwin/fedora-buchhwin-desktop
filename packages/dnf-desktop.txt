@@ -28,6 +28,10 @@ google-noto-sans-cjk-fonts
 jetbrains-mono-fonts
 
 # The five things quickshell genuinely cannot do, driven through Process.
+breeze-cursor-theme         # `Breeze_Dark` is look.cursor.theme's default,
+                            # and it was in no package list at all — the VM had
+                            # only Adwaita, so the shipped default named a theme
+                            # that did not exist on the machine
 brightnessctl               # no brightness API
 ddcutil                     # external monitor brightness
 cliphist                    # no clipboard-history API

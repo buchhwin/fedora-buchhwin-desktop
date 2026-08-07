@@ -938,7 +938,8 @@ Scope {
         var iface = "org.gnome.desktop.interface"
         if (mode === "off")
             return "command -v gsettings >/dev/null || exit 0; "
-                 + "for k in icon-theme gtk-theme color-scheme font-name; do "
+                 + "for k in icon-theme gtk-theme color-scheme font-name "
+                 + "cursor-theme cursor-size; do "
                  + "gsettings reset " + iface + " $k; done"
         var icons = Theme.dark ? "Papirus-Dark" : "Papirus-Light"
         var gtk = Theme.dark ? "adw-gtk3-dark" : "adw-gtk3"
@@ -948,7 +949,15 @@ Scope {
              + "gsettings set " + iface + " icon-theme '" + icons + "'; "
              + "gsettings set " + iface + " gtk-theme '" + gtk + "'; "
              + "gsettings set " + iface + " color-scheme '" + scheme + "'; "
-             + "gsettings set " + iface + " font-name '" + font + "'"
+             + "gsettings set " + iface + " font-name '" + font + "'; "
+             // ⚠️ THE POINTER GOES HERE TOO, not only into niri's config. GTK
+             // reads it from gsettings and never asks the compositor, so
+             // setting only one of the two gives a pointer that changes shape
+             // when it crosses from the desktop onto a window.
+             + "gsettings set " + iface + " cursor-theme '"
+             + Config.cursor.theme + "'; "
+             + "gsettings set " + iface + " cursor-size "
+             + Config.cursor.size
     }
 
     Process { id: gsettingsApply }

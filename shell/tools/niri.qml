@@ -246,7 +246,14 @@ Scope {
         s += Config.windows.noCsd ? "prefer-no-csd\n" : ""
         s += "screenshot-path "
              + q(root.picturesDir() + "/Screenshots/%Y-%m-%d %H-%M-%S.png") + "\n"
-        s += "\ncursor {\n    hide-when-typing\n}\n"
+        // ⚠️ `xcursor-theme` and `xcursor-size`, straight from niri's own
+        // documentation (Configuration: Miscellaneous.md:20) rather than from
+        // memory. This block used to carry only `hide-when-typing`, so nothing
+        // in the whole desktop chose its pointer.
+        s += "\ncursor {\n"
+        s += "    xcursor-theme \"" + Config.cursor.theme + "\"\n"
+        s += "    xcursor-size " + Config.cursor.size + "\n"
+        s += "    hide-when-typing\n}\n"
 
         // ⚠️ NIRI'S OWN HOT CORNER IS ON BY DEFAULT, top-left, and it toggles
         // the overview. Its docs: "Put your mouse at the very top-left corner of

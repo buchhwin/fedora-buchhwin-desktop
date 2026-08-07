@@ -51,6 +51,7 @@ run_phase base
 run_phase desktop
 run_phase apps
 run_phase fonts
+run_phase cursors
 run_phase shell
 run_phase services
 run_phase summary
