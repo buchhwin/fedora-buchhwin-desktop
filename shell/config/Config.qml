@@ -232,6 +232,27 @@ Singleton {
                     { key: "Mod+Ctrl+F",  action: "toggle-windowed-fullscreen",
                       desc: "Fullscreen inside the working area (keeps the wallpaper)" },
                     { key: "Mod+Shift+F", action: "maximize-column",   desc: "Maximise column" },
+                    // ⚠️ THE ACTION EXISTED, ON KEYS HE NEVER FOUND. A window
+                    // opens at half the screen and he asked for a key to make it
+                    // full width — `maximize-column` has been on Mod+Ctrl+Up and
+                    // Mod+Shift+F all along, and `switch-preset-column-width` on
+                    // Mod+Ctrl+Down. A binding nobody finds is worth about as
+                    // much as one that does not exist, which is the same lesson
+                    // the notch size taught in the settings window.
+                    //
+                    // His own suggestion, and it is a better one: the arrow keys
+                    // point the way the window grows. Mod+Alt was completely
+                    // free — checked against all sixty-three before writing.
+                    //
+                    // `expand-column-to-available-width` rather than
+                    // `maximize-column`: it takes the room that is actually free
+                    // beside the window instead of a fixed proportion, which is
+                    // what "make it as big as it can be" means with a column on
+                    // screen next to it.
+                    { key: "Mod+Alt+Right", action: "expand-column-to-available-width",
+                      desc: "Widen the window as far as it goes" },
+                    { key: "Mod+Alt+Left", action: "switch-preset-column-width-back",
+                      desc: "Step the window back to a narrower size" },
                     { key: "Mod+W",       action: "toggle-column-tabbed-display", desc: "Column as tabs" },
                     { key: "Mod+O",       action: "toggle-overview",   desc: "Overview" },
                     { key: "Mod+Shift+Slash", action: "show-hotkey-overlay", desc: "Keyboard shortcuts" },

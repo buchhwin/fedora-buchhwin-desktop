@@ -48,7 +48,13 @@ RowLayout {
     // session page all do exactly this; the panel you reach for most often was
     // the one you could not dismiss.
     focus: true
-    Keys.onEscapePressed: Ipc.collapse()
+    // ⚠️ INNERMOST FIRST. With a WiFi or Bluetooth list open, Esc closes THAT and
+    // leaves the panel — closing both at once throws away two steps of
+    // navigation for one keypress, and there is no way back to where you were.
+    Keys.onEscapePressed: {
+        if (!quickSettings.closeDrawer())
+            Ipc.collapse()
+    }
 
     // Which view is showing. The value lives in Ipc, not here: the gear on the
     // bar opens this panel already on the settings view, and this page is built
@@ -321,6 +327,7 @@ RowLayout {
         // His decision on 06.08.2026 — the space beside the calendar was empty,
         // and the deep settings are going to M8 anyway. Five tabs became four.
         QuickSettings {
+            id: quickSettings
             Layout.fillWidth: true
         }
 

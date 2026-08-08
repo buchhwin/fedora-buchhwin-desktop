@@ -35,6 +35,18 @@ ColumnLayout {
     // It is also easier to read.
     readonly property bool soundOpen: root.open === "sound"
 
+    // ⚠️ SO ESC CAN CLOSE THE DRAWER BEFORE THE PANEL. "auch bei allen             // english-ok: quoted brief
+    // unterfenstern" — with a WiFi list open, Esc closing the whole panel throws
+    // away two steps of navigation at once, and there is no way back to where
+    // you were. Returns whether it had anything to close, so the caller knows
+    // whether to keep going.
+    function closeDrawer() {
+        if (root.open.length === 0)
+            return false
+        root.open = ""
+        return true
+    }
+
     function show(which) {
         root.open = root.open === which ? "" : which
     }

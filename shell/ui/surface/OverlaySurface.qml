@@ -56,11 +56,26 @@ PanelWindow {
 
     // Pages that are typed into need the keyboard; the rest must not steal it,
     // or opening the volume readout would take focus away from your editor.
+    // ⚠️ THIS WHITELIST IS WHY ESC WORKED ON SOME PAGES AND NOT OTHERS, and it
+    // was reported exactly that way: "bei manchen nur Esc, bei manchen nix".      // english-ok: quoted brief
+    // A page that is not named here never receives keyboard focus, so its Esc
+    // handler — if it even had one — could never fire. Nine of sixteen pages had
+    // no handler and five of those could not have used one.
+    //
+    // The split is not "which page has a text field" but "did you OPEN this, or
+    // did it appear at you". Volume, brightness and the microphone readout are
+    // raised BY a key you just pressed and dismiss themselves; taking the
+    // keyboard for them would pull focus out of the editor mid-sentence, which
+    // is the fault the original comment is guarding against. Everything you open
+    // on purpose can be closed with Esc.
     readonly property bool wantsKeys:
         Ipc.page === "event" || Ipc.page === "wallpaper" || Ipc.page === "session"
         || Ipc.page === "theme"
         || Ipc.page === "calendar" || Ipc.page === "quick"
         || Ipc.page === "clipboard" || Ipc.page === "calculator"
+        || Ipc.page === "notifications" || Ipc.page === "timer"
+        || Ipc.page === "tray" || Ipc.page === "workspaces"
+        || Ipc.page === "media"
 
     anchors { top: true }
     exclusionMode: ExclusionMode.Ignore
@@ -86,9 +101,21 @@ PanelWindow {
 
     mask: Region { item: card }
 
+    // ⚠️ ESC LIVES HERE, ONCE, rather than in every page. Seven of sixteen pages
+    // carried their own handler and nine did not, so closing a surface depended
+    // on which surface it was — and every new page would have had to remember.
+    // The host knows how to close itself; a page does not need to.
+    //
+    // Pages keep their own handlers where Esc means something ELSE first (the
+    // calculator clears, the calendar returns to today). Those consume it and
+    // this never sees it, which is the correct precedence: the innermost thing
+    // that has an answer wins.
     Item {
         id: card
         anchors.centerIn: parent
+
+        focus: true
+        Keys.onEscapePressed: Ipc.collapse()
 
         implicitWidth: content.implicitWidth
         implicitHeight: content.implicitHeight
