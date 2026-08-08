@@ -145,6 +145,10 @@ Item {
             radius: Theme.radiusMd
             color: Theme.menuBg
 
+            // motion-ok: the menu unrolling IS a height change, and it is
+            // reparented to the window's contentItem (see the note above), so it
+            // sits in no layout and nothing is laid out around it. `clip: true`
+            // is what turns the height into a reveal rather than a squash.
             Behavior on height {
                 enabled: Theme.animate
                 NumberAnimation { duration: Theme.durFast; easing.type: Theme.easing }

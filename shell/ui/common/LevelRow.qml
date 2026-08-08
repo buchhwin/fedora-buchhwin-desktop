@@ -130,6 +130,12 @@ RowLayout {
             // The grow, and the shrink back. Short, because this is an answer to
             // a touch rather than a movement of its own — anything slower reads
             // as the control being late.
+            //
+            // motion-ok: the track is anchored (left/right/verticalCenter), so
+            // its height is its own and does not size the row around it. It used
+            // to be `implicitHeight`, which IS a layout size, and that relaid out
+            // the whole page on every press — reported as sliders jittering while
+            // dragged.
             Behavior on height {
                 enabled: Theme.animate
                 NumberAnimation { duration: Theme.durFast; easing.type: Theme.easing }
@@ -150,6 +156,10 @@ RowLayout {
 
                 // The fill follows the value rather than jumping to it, which is
                 // what makes a key held down feel continuous instead of stepped.
+                //
+                // motion-ok: this width IS the reading. It is the level itself,
+                // drawn inside a track of fixed width, and nothing lays out
+                // around it.
                 Behavior on width {
                     enabled: Theme.animate
                     NumberAnimation { duration: Theme.durFast; easing.type: Theme.easing }

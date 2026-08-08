@@ -85,6 +85,8 @@ ColumnLayout {
             width: parent.width * Math.max(0, Math.min(1,
                 Services.Countdown.remaining / Math.max(1, Services.Countdown.total)))
 
+            // motion-ok: this width IS the progress. It is drawn inside a bar of
+            // fixed width and nothing lays out around it.
             Behavior on width {
                 enabled: Theme.animate
                 NumberAnimation { duration: Theme.durBase; easing.type: Theme.easing }

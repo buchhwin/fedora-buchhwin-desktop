@@ -188,9 +188,49 @@ Item {
     Loader {
         id: loader
         anchors.centerIn: parent
+
+        // ⚠️ THIS IS A CIRCLE, AND IT IS THE CHEAPER END OF ONE. `implicitWidth`
+        // above measures the card FROM this loader's content, and this line
+        // hands the loader a width derived from the card. So a page is measured
+        // inside a width that came from the page's own measurement, and the two
+        // only agree after a second pass.
+        //
+        // The cost is real and it is measured: opening the quick panel produces
+        // `set_size(672, 306)` immediately followed by `set_size(712, 376)`, and
+        // the 40 px is exactly `pagePadding * 2` — the circle written out in
+        // numbers. Two layer-surface re-sizes for one opening instead of one.
+        //
+        // ⚠️ AND THE OBVIOUS FIX IS WORSE. Reading this loader's own
+        // `implicitWidth` here instead closes the loop the other way — the page
+        // fills the loader, so the loader's implicit width depends on the width
+        // it is being given. `tests/surfaces.sh` caught it in the journal on the
+        // first run: `QML Loader: Binding loop detected for property "width"`.
+        // A binding loop is unbounded work every frame; a second layout pass is
+        // bounded work twice per opening. Kept deliberately, with the number
+        // written down rather than the intent.
+        //
+        // Doing better means pages that declare a natural width instead of
+        // filling one, which is a change to every page and not to this line.
         width: parent.width - root.pagePadding * 2
+
         active: root.expanded
-        asynchronous: true
+
+        // ⚠️ SYNCHRONOUS, AND IT IS THE SAME FAULT THE COMMENT ABOVE DESCRIBES —
+        // it was fixed for the hovered content and this one was left behind.
+        //
+        // The page decides the card's size, and the card decides the layer
+        // surface's size. Loading it asynchronously means the surface is first
+        // told the collapsed size, then a partial size, then the real one, as
+        // the page assembles. Measured on the VM, opening the quick panel:
+        // `set_size(150, 34)` → `set_size(672, 306)` → `set_size(712, 376)`.
+        // Three re-sizes for one opening, and each one is a round trip with
+        // niri plus a new buffer.
+        //
+        // It is also what it LOOKS like: the panel arrives at the wrong size and
+        // grows twice while you watch. Synchronous costs one page build on the
+        // main thread at open time — one page, not the twenty-one that made the
+        // settings search freeze, which is a different thing entirely.
+        asynchronous: false
         sourceComponent: root.page === "volume" ? volumePage
                        : root.page === "media" ? mediaPage
                        : root.page === "notifications" ? notificationsPage

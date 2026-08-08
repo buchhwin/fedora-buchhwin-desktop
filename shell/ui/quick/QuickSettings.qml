@@ -152,7 +152,14 @@ ColumnLayout {
     Loader {
         Layout.fillWidth: true
         active: root.open !== ""
-        asynchronous: true
+        // ⚠️ SYNCHRONOUS ON PURPOSE. What this loader builds decides the size of
+        // the card, and the card decides the size of the layer surface. Loading
+        // it a frame late means the surface is configured at one size and then
+        // re-configured when the content lands — a round trip with niri and a
+        // new buffer, and on screen a panel that opens at the wrong size and
+        // grows while you look at it. It is one small view, not the twenty-one
+        // settings pages whose synchronous build was a real freeze.
+        asynchronous: false
         sourceComponent: root.open === "wifi" ? networkList
                        : root.open === "bt" ? bluetoothList
                        : root.open === "sound" ? soundList

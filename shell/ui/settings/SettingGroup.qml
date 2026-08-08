@@ -113,6 +113,12 @@ ColumnLayout {
         property bool settled: false
         Component.onCompleted: Qt.callLater(function () { card.settled = true })
 
+        // motion-ok: folding the card IS a height change — the cards below have
+        // to move up, so there is no transform that says the same thing. It is
+        // inside the settings window, which is a floating window of its own and
+        // is not re-sized by it, so this costs a local relayout and no compositor
+        // traffic. The `settled` gate above is what keeps it from firing on every
+        // build.
         Behavior on implicitHeight {
             enabled: Theme.animate && card.settled
             NumberAnimation { duration: Theme.durBase; easing.type: Theme.easing }

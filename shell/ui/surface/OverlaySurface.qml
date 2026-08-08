@@ -144,14 +144,32 @@ PanelWindow {
             enabled: Theme.animate
             NumberAnimation { duration: Theme.durFast; easing.type: Theme.easing }
         }
-        Behavior on implicitWidth {
-            enabled: Theme.animate
-            NumberAnimation { duration: Theme.durBase; easing.type: Theme.easing }
-        }
-        Behavior on implicitHeight {
-            enabled: Theme.animate
-            NumberAnimation { duration: Theme.durBase; easing.type: Theme.easing }
-        }
+        // ⚠️⚠️ THE SIZE IS SET, NOT ANIMATED, AND THAT IS THE WHOLE REASON THIS
+        // SURFACE FEELS DIFFERENT NOW. There used to be a `Behavior` on
+        // `implicitWidth` and one on `implicitHeight` here — and this window's
+        // own `implicitWidth`/`implicitHeight` are bound to them, so every frame
+        // of every open re-sized a Wayland layer surface.
+        //
+        // That is protocol, not drawing: `set_size` plus an `ack_configure`
+        // round trip with niri, a buffer of a new size (the swapchain discarded
+        // every frame), a fresh blur and corner-radius calculation for the new
+        // geometry, and a new input region. Measured on the VM at 60 Hz, ONE
+        // opening of the quick panel: 11 × `set_size`, 9 × `ack_configure`.
+        // One per frame. At 144 Hz, about 21.
+        //
+        // ⚠️ AND UNLIKE THE NOTCH THIS SURFACE CANNOT SIMPLY BE OVERSIZED. The
+        // notch has blur and shadow switched off (`surface("buchhwin-notch",
+        // notchRadius, false, false)`) so spare room costs nothing there; this
+        // one is translucent and blurred, and niri applies both to the WHOLE
+        // surface, so a surface bigger than what it draws comes out as the
+        // blurred, colour-fringed halo described at the top of this file.
+        //
+        // So the size lands on the target immediately — ONE re-size per page
+        // instead of one per frame — and the motion is carried by `scale` and
+        // `opacity` above, which are GPU transforms the compositor never hears
+        // about. The card growing from 0.92 while fading in is what "grows out
+        // of the notch" actually looks like; the surface underneath it was never
+        // the part anybody could see.
 
         NotchContent {
             id: content

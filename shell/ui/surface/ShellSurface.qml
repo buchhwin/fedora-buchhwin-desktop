@@ -76,12 +76,45 @@ PanelWindow {
     //
     // The shoulders now curve within the island's own width instead, so what
     // the surface covers and what it paints are the same rectangle.
-    implicitWidth: root.barEnabled ? 0 : Math.max(1, root.islandW)
+    // ⚠️⚠️ THE SURFACE IS SIZED TO THE LARGEST SHAPE IT WILL EVER HOLD, AND IT
+    // DOES NOT FOLLOW THE ANIMATION. This is the single biggest thing in the
+    // shell for how the animations FEEL, and it was wrong for a long time
+    // behind a comment that called it a feature: `implicitHeight` used to read
+    // `root.islandH`, which is animated, so the window "followed the shape
+    // down".
+    //
+    // Following the shape means re-sizing a WAYLAND LAYER SURFACE once per
+    // frame, and that is not drawing — it is protocol. Every frame paid for a
+    // `set_size` plus an `ack_configure` round trip with niri, a buffer of a new
+    // size (so the swapchain is thrown away every frame), a fresh corner-radius
+    // calculation, and a new input region. Measured on the VM at 60 Hz, ONE
+    // opening of the quick panel: 11 × `set_size`, 9 × `ack_configure` — one per
+    // frame. On his 144 Hz laptop that is about 21.
+    //
+    // That is why two rounds of tuning durations and easing curves changed
+    // nothing and he reported it as still stuttering both times: the cost was
+    // never in the numbers.
+    //
+    // ⚠️ AND IT IS ONLY SAFE HERE. The rule the rest of this shell lives by —
+    // a surface must be exactly as big as what it draws — exists because niri
+    // draws blur and shadow behind the WHOLE surface, so spare room comes out
+    // as a halo. The notch is the one surface with both switched off:
+    // tools/niri.qml calls `surface("buchhwin-notch", notchRadius, false, false)`
+    // and the signature is `(ns, radius, blur, shadow)`. No blur, no shadow, no
+    // halo to mis-size. OverlaySurface.qml is translucent and blurred, so it
+    // solves the same problem a different way — see the note there.
+    //
+    // The shape still animates; it just animates INSIDE a surface that stays
+    // put. `Silhouette` paints from y=0 downwards and takes the island's size as
+    // parameters, so a taller surface changes nothing about what is drawn.
+    readonly property real maxIslandWidth:
+        Math.max(Config.notch.collapsedWidth, notch.implicitWidth)
 
-    // `islandH` is animated, so the window follows the shape down rather than
-    // snapping to the collapsed size at the START of a close, which would cut
-    // the closing animation off halfway.
-    implicitHeight: Math.max(1, root.islandH)
+    readonly property real maxIslandHeight:
+        Math.max(Config.notch.hoverHeight, Config.notch.collapsedHeight, root.barH)
+
+    implicitWidth: root.barEnabled ? 0 : Math.max(1, root.maxIslandWidth)
+    implicitHeight: Math.max(1, root.maxIslandHeight)
 
     exclusionMode: ExclusionMode.Ignore
     color: "transparent"            // literal-ok: absence of colour, not a colour
@@ -97,8 +130,49 @@ PanelWindow {
     // Measured both ways with a real pointer. What is wanted is a click that
     // does NOTHING there, so the region stays and the handler stands down —
     // see the island's TapHandler below.
+    // ⚠️ AND BECAUSE THE SURFACE IS NOW BIGGER THAN THE SHAPE, THE MASK HAS TO
+    // FOLLOW THE SHAPE RATHER THAN THE WINDOW. It used to be `item: hitArea`,
+    // and `hitArea` fills the window — which was the same rectangle back when
+    // the window tracked the island. It is not any more: masking the window
+    // would turn the whole reserved box into a click trap, and would make the
+    // HoverHandler below fire anywhere in it, so the notch would open while the
+    // pointer was over empty space beside it.
+    //
+    // The mask is the surface's INPUT REGION, so this is also what keeps the
+    // hover honest: pointer events outside it are never delivered to this
+    // window at all. Shape in, shape out.
+    //
+    // `Region` combines its children by default — verified in the type
+    // description shipped with quickshell (`PendingRegion`, defaultProperty
+    // "regions", Intersection.Combine first), not assumed.
+    readonly property real hitW:
+        root.mode === "hidden" ? Config.notch.collapsedWidth : root.islandW
+    readonly property real hitH:
+        root.mode === "hidden" ? Config.notch.collapsedHeight : root.islandH
+
     mask: Region {
-        item: hitArea
+        // The bar spans the screen when it is on and is zero-height when it is
+        // not, so this needs no condition of its own.
+        Region { item: barStrip }
+
+        // ⚠️ NEVER EMPTY, and that is a bug fix rather than caution. An earlier
+        // attempt emptied the region while the notch is hidden and it made
+        // things WORSE, measured both ways with a real pointer: the click fell
+        // through to the fullscreen ClickCatcher underneath, which closed the
+        // page just the same. What is wanted there is a click that does
+        // NOTHING, so the region stays at the collapsed size and the island's
+        // TapHandler stands down instead.
+        //
+        // The floor is deliberately NOT applied in "strip" mode. The strip is a
+        // hairline over fullscreen content and hovering it brings the notch
+        // back; a 34 px invisible band there would pop the notch out whenever
+        // the pointer went near the top of a video.
+        Region {
+            x: Math.round((root.width - root.hitW) / 2)
+            y: 0
+            width: Math.round(root.hitW)
+            height: Math.round(root.hitH)
+        }
     }
 
     // ---------------------------------------------------------------- state
@@ -193,11 +267,15 @@ PanelWindow {
     // the wide shape the rest of the time. On the window rather than on the
     // island, so the thin strip is easy to find.
     //
-    // ⚠️ THE HIT AREA GROWS WITH THE SHAPE, which is what keeps the wide state
-    // stable: the mask follows `hitArea`, `hitArea` fills the window, and the
-    // window follows `islandW`/`islandH`. If it did not, the pointer would leave
-    // the collapsed rectangle the moment the shape opened past it and the notch
-    // would flicker between the two sizes.
+    // ⚠️ THE HIT REGION GROWS WITH THE SHAPE, which is what keeps the wide state
+    // stable: the mask is built from `hitW`/`hitH` above, and those track the
+    // animated island. If it did not, the pointer would leave the collapsed
+    // rectangle the moment the shape opened past it and the notch would flicker
+    // between the two sizes.
+    //
+    // It used to say `hitArea` here, and that was the same rectangle only
+    // because the window tracked the island. The window is fixed now — see the
+    // note on `implicitWidth` — so the region is built from the shape directly.
     HoverHandler { id: hover }
 
     Silhouette {

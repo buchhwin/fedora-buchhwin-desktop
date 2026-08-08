@@ -209,7 +209,14 @@ RowLayout {
         Layout.fillWidth: true
         active: root.tab === Ipc.quickNotifications
         visible: active
-        asynchronous: true
+        // ⚠️ SYNCHRONOUS ON PURPOSE. What this loader builds decides the size of
+        // the card, and the card decides the size of the layer surface. Loading
+        // it a frame late means the surface is configured at one size and then
+        // re-configured when the content lands — a round trip with niri and a
+        // new buffer, and on screen a panel that opens at the wrong size and
+        // grows while you look at it. It is one small view, not the twenty-one
+        // settings pages whose synchronous build was a real freeze.
+        asynchronous: false
         sourceComponent: notificationsTab
     }
 
@@ -221,7 +228,14 @@ RowLayout {
         Layout.fillWidth: true
         active: root.tab === Ipc.quickTimer
         visible: active
-        asynchronous: true
+        // ⚠️ SYNCHRONOUS ON PURPOSE. What this loader builds decides the size of
+        // the card, and the card decides the size of the layer surface. Loading
+        // it a frame late means the surface is configured at one size and then
+        // re-configured when the content lands — a round trip with niri and a
+        // new buffer, and on screen a panel that opens at the wrong size and
+        // grows while you look at it. It is one small view, not the twenty-one
+        // settings pages whose synchronous build was a real freeze.
+        asynchronous: false
         // ⚠️ `timerTab`, not `TimerPage {}`. This one was left behind when the
         // other two were fixed, in the same file, four lines above the comment
         // that explains why it is wrong — a recipe is what a Loader wants, and
