@@ -16,6 +16,7 @@
 // clearest possible violation of it.
 import QtQuick
 import QtQuick.Layouts
+import QtQuick.Window
 import "../../theme"
 
 Item {
@@ -91,112 +92,133 @@ Item {
     }
 
     // -------------------------------------------------------------- the menu
-    // ⚠️ A CHILD OF THE ROW, NOT A POPUP WINDOW. A layer surface for a list of
-    // fourteen strings would be a second window with its own focus, its own
-    // stacking and its own way of failing to close. Inside the page it is drawn
-    // by the same scene and cannot outlive the row that owns it.
+    // ⚠️ IT LIVES IN THE WINDOW, NOT IN THE ROW, and the first version did not —
+    // reported as "das dropdown menu ist unter dem rest, man kann nichts        // english-ok: quoted brief
+    // auswählen und es lässt sich nicht schließen".                             // english-ok: quoted brief
     //
-    // The cost is honest: it is clipped by the Flickable, so a menu opened at
-    // the very bottom of a page scrolls into view rather than hanging over the
-    // edge. That is a fair trade for not owning a window.
-    Rectangle {
-        id: menu
-        anchors.top: field.bottom
-        anchors.topMargin: Theme.space1
-        anchors.right: field.right
-        width: Math.max(field.width, list.implicitWidth + Theme.space2 * 2)
+    // Two reasons it could never have worked as a child of the row. The group
+    // card sets `clip: true` so it can animate shut, which cuts the menu off at
+    // the card's edge. And `z` only orders SIBLINGS, so a menu inside row three
+    // is still painted before rows four and five whatever its z says.
+    //
+    // Reparenting to the window's contentItem takes it out of both problems: it
+    // is a sibling of everything else in the window, and nothing clips it. The
+    // position has to be mapped across, because the coordinates it was written
+    // in are no longer the ones it lives in.
+    Item {
+        id: overlay
+        parent: root.Window.contentItem
+        anchors.fill: parent
+        z: 1000                      // literal-ok: above the window's own content, not a theme value
+        visible: menu.visible
+        enabled: menu.visible
 
-        // Grows out of the field rather than appearing at full size.
-        height: menu.visible ? Math.min(list.implicitHeight + Theme.space2 * 2,
-                                        Theme.space6 * 8) : 0
-        clip: true
-        visible: false
-        opacity: menu.visible ? 1 : 0
+        // Anywhere else closes it. Full-window, and only while open — a
+        // permanent invisible catcher is the bug nobody suspects.
+        TapHandler { onTapped: menu.visible = false }
 
-        radius: Theme.radiusMd
-        color: Theme.menuBg
-        z: 10
+        // Esc closes it before the window does. Without this the settings window
+        // would close underneath an open menu, which is two steps in one key.
+        focus: menu.visible
+        Keys.onEscapePressed: menu.visible = false
 
-        Behavior on height {
-            enabled: Theme.animate
-            NumberAnimation { duration: Theme.durFast; easing.type: Theme.easing }
-        }
-        Behavior on opacity {
-            enabled: Theme.animate
-            NumberAnimation { duration: Theme.durFast; easing.type: Theme.easing }
-        }
+        Rectangle {
+            id: menu
 
-        Flickable {
-            anchors.fill: parent
-            anchors.margins: Theme.space2
-            contentWidth: width
-            contentHeight: list.implicitHeight
-            boundsBehavior: Flickable.StopAtBounds
+            // Where the field is, expressed in the window's coordinates.
+            readonly property point anchor:
+                root.mapToItem(overlay, 0, field.height + Theme.space1)
+
+            x: Math.max(Theme.space2,
+                        Math.min(menu.anchor.x, overlay.width - menu.width - Theme.space2))
+            y: Math.min(menu.anchor.y,
+                        Math.max(Theme.space2, overlay.height - menu.height - Theme.space2))
+            width: Math.max(root.width, list.implicitWidth + Theme.space2 * 2)
+
+            // Grows out of the field rather than appearing at full size.
+            height: menu.visible ? Math.min(list.implicitHeight + Theme.space2 * 2,
+                                            Theme.space6 * 8) : 0
             clip: true
+            visible: false
+            opacity: menu.visible ? 1 : 0
 
-            ColumnLayout {
-                id: list
-                width: parent.width
-                spacing: 0      // literal-ok: rows meet, separated by their own padding
+            radius: Theme.radiusMd
+            color: Theme.menuBg
 
-                Repeater {
-                    model: root.options
+            Behavior on height {
+                enabled: Theme.animate
+                NumberAnimation { duration: Theme.durFast; easing.type: Theme.easing }
+            }
+            Behavior on opacity {
+                enabled: Theme.animate
+                NumberAnimation { duration: Theme.durFast; easing.type: Theme.easing }
+            }
 
-                    Rectangle {
-                        id: entry
-                        required property var modelData
+            // The menu itself must not close when it is clicked ON — the catcher
+            // above covers the whole window, and without this every pick would
+            // be swallowed by it before reaching an entry.
+            TapHandler { onTapped: {} }
 
-                        readonly property bool chosen:
-                            String(root.current) === String(entry.modelData.value)
+            Flickable {
+                anchors.fill: parent
+                anchors.margins: Theme.space2
+                contentWidth: width
+                contentHeight: list.implicitHeight
+                boundsBehavior: Flickable.StopAtBounds
+                clip: true
 
-                        Layout.fillWidth: true
-                        implicitHeight: label.implicitHeight + Theme.space2 * 2
-                        radius: Theme.radiusSm
-                        color: entry.chosen ? Theme.accent
-                             : entryHover.hovered ? Theme.pillHover
-                             : "transparent"       // literal-ok: absence of colour
+                ColumnLayout {
+                    id: list
+                    width: parent.width
+                    spacing: 0      // literal-ok: rows meet, separated by their own padding
 
-                        Behavior on color {
-                            enabled: Theme.animate
-                            ColorAnimation { duration: Theme.durFast; easing.type: Theme.easing }
-                        }
+                    Repeater {
+                        model: menu.visible ? root.options : []
 
-                        HoverHandler { id: entryHover }
-                        TapHandler {
-                            onTapped: {
-                                root.picked(entry.modelData.value)
-                                menu.visible = false
+                        Rectangle {
+                            id: entry
+                            required property var modelData
+
+                            readonly property bool chosen:
+                                String(root.current) === String(entry.modelData.value)
+
+                            Layout.fillWidth: true
+                            implicitHeight: label.implicitHeight + Theme.space2 * 2
+                            radius: Theme.radiusSm
+                            color: entry.chosen ? Theme.accent
+                                 : entryHover.hovered ? Theme.pillHover
+                                 : "transparent"       // literal-ok: absence of colour
+
+                            Behavior on color {
+                                enabled: Theme.animate
+                                ColorAnimation { duration: Theme.durFast; easing.type: Theme.easing }
                             }
-                        }
 
-                        BarText {
-                            id: label
-                            anchors.left: parent.left
-                            anchors.right: parent.right
-                            anchors.verticalCenter: parent.verticalCenter
-                            anchors.leftMargin: Theme.space3
-                            anchors.rightMargin: Theme.space3
-                            text: entry.modelData.label !== undefined
-                                ? entry.modelData.label : entry.modelData.value
-                            color: entry.chosen ? Theme.accentFg : Theme.fg
-                            elide: Text.ElideRight
+                            HoverHandler { id: entryHover }
+                            TapHandler {
+                                onTapped: {
+                                    root.picked(entry.modelData.value)
+                                    menu.visible = false
+                                }
+                            }
+
+                            BarText {
+                                id: label
+                                anchors.left: parent.left
+                                anchors.right: parent.right
+                                anchors.verticalCenter: parent.verticalCenter
+                                anchors.leftMargin: Theme.space3
+                                anchors.rightMargin: Theme.space3
+                                text: entry.modelData.label !== undefined
+                                    ? entry.modelData.label : entry.modelData.value
+                                color: entry.chosen ? Theme.accentFg : Theme.fg
+                                elide: Text.ElideRight
+                            }
                         }
                     }
                 }
             }
         }
-    }
-
-    // Anywhere else closes it. ⚠️ Enabled only while it is open, because a
-    // full-page invisible tap catcher that is always there is the kind of bug
-    // nobody suspects — the same reasoning ClickCatcher carries.
-    Item {
-        parent: root.parent
-        anchors.fill: parent
-        z: 9
-        enabled: menu.visible
-        visible: menu.visible
-        TapHandler { onTapped: menu.visible = false }
     }
 
     function close() { menu.visible = false }
