@@ -137,7 +137,18 @@ Singleton {
     // evidence that the setting did anything.
     property bool settingsOpen: false
 
+    // ⚠️ WHICH PAGE, and it is a property rather than a call because the window
+    // may not exist yet. `open` and a page name arrive together; the content is
+    // built by a Loader on `settingsOpen`, so a function call into it would be
+    // a call into nothing on the first open. A property the content watches is
+    // the same shape `notch.page` already uses, and it works in both orders.
+    property string settingsPage: ""
+
     function showSettings() { root.settingsOpen = true }
+    function showSettingsPage(id) {
+        root.settingsPage = id
+        root.settingsOpen = true
+    }
     function hideSettings() { root.settingsOpen = false }
     function toggleSettings() { root.settingsOpen = !root.settingsOpen }
 
@@ -288,5 +299,39 @@ Singleton {
         function open(): void { root.showSettings() }
         function hide(): void { root.hideSettings() }
         function state(): string { return root.settingsOpen ? "open" : "closed" }
+
+        // ⚠️ ONE PARAMETERLESS FUNCTION PER PAGE, exactly like the notch above,
+        // and for the same measured reason: `qs ipc call settings page theming`
+        // answers "The following argument was not expected" in quickshell 0.2.1
+        // whichever order the options come in. The interface is shaped to what
+        // the tool can do rather than to what its own listing suggests.
+        //
+        // It is not scaffolding. Every page of this window is now reachable from
+        // a key binding or a script — "open the settings on Wallpaper" was
+        // impossible before, and a surface you can only reach by clicking
+        // through another one is the same debt as a themed tool with no key,
+        // which this project has paid twice.
+        function currentPage(): string { return root.settingsPage }
+        function colours(): void { root.showSettingsPage("colours") }
+        function wallpaper(): void { root.showSettingsPage("wallpaper") }
+        function shape(): void { root.showSettingsPage("shape") }
+        function effects(): void { root.showSettingsPage("effects") }
+        function type(): void { root.showSettingsPage("type") }
+        function theming(): void { root.showSettingsPage("theming") }
+        function bar(): void { root.showSettingsPage("bar") }
+        function control(): void { root.showSettingsPage("control") }
+        function launcher(): void { root.showSettingsPage("launcher") }
+        function notify(): void { root.showSettingsPage("notify") }
+        function clock(): void { root.showSettingsPage("clock") }
+        function media(): void { root.showSettingsPage("media") }
+        function lock(): void { root.showSettingsPage("lock") }
+        function motion(): void { root.showSettingsPage("motion") }
+        function keyboard(): void { root.showSettingsPage("keyboard") }
+        function keys(): void { root.showSettingsPage("keys") }
+        function pointing(): void { root.showSettingsPage("pointing") }
+        function windows(): void { root.showSettingsPage("windows") }
+        function power(): void { root.showSettingsPage("power") }
+        function programs(): void { root.showSettingsPage("programs") }
+        function machine(): void { root.showSettingsPage("machine") }
     }
 }

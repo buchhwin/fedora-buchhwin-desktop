@@ -42,6 +42,8 @@ FocusScope {
         Services.Gpu.probe()
         // The row index, built between frames from now on — see `buildIndex`.
         root.buildIndex()
+        // A page asked for before this window existed — see `takePage`.
+        root.takePage()
     }
 
     // ⚠️ ONE ENTRY IS THE WHOLE REGISTRATION, and it used to be three. A page
@@ -156,6 +158,33 @@ FocusScope {
         root.historyIndex = h.length - 1
     }
 
+    // ⚠️ THE PAGE ASKED FOR FROM OUTSIDE, and it is watched rather than called.
+    // `Ipc.settingsPage` is set by the twenty-one verbs on the `settings` target
+    // and may be set BEFORE this content exists — the window is behind a Loader
+    // on `Ipc.settingsOpen`, so the first `ipc call settings theming` sets the
+    // property and builds the window in the same breath. Reading it on
+    // completion as well as on change is what makes both orders work.
+    //
+    // ⚠️ AND IT IS CLEARED AFTER USE. Left standing, the next plain `settings
+    // open` would jump to whatever page was asked for last time, which is a
+    // window that remembers something nobody told it to.
+    function takePage() {
+        var want = Ipc.settingsPage
+        if (!want.length)
+            return
+        Ipc.settingsPage = ""
+        for (var i = 0; i < root.pages.length; i++)
+            if (root.pages[i].id === want) {
+                root.navigate(want)
+                return
+            }
+    }
+
+    Connections {
+        target: Ipc
+        function onSettingsPageChanged() { root.takePage() }
+    }
+
     function back() { if (root.historyIndex > 0) root.historyIndex-- }
     function forward() { if (root.historyIndex < root.history.length - 1) root.historyIndex++ }
 
@@ -184,13 +213,21 @@ FocusScope {
     property var rowIndex: null
 
     // Rows are found by asking for the properties rather than by matching the
-    // type name — a row is something with a `key` and a `kind`, which is what
-    // the rest of the system means by one. Matching `SettingRow` by name would
-    // go blind the day one gets wrapped.
+    // type name — a row is something with a `key` and a control. Matching
+    // `SettingRow` by name would go blind the day one gets wrapped.
+    //
+    // ⚠️ AND THERE ARE TWO SPELLINGS OF "A CONTROL". The App Theming page lays
+    // its thirteen programs out as a table of ThemingRows, which carry `states`
+    // instead of `kind`. Asking only for `kind` dropped all thirteen from the
+    // index — so searching for "kitty" or "lazygit" would have found nothing,
+    // silently, on a page where they are plainly written. Caught by
+    // tools/pages-check.qml, which counts the index against the rows it built:
+    // 151 against 164.
     function harvest(obj, page, into) {
         if (!obj)
             return
-        if (obj.key !== undefined && obj.kind !== undefined && String(obj.key).length)
+        if (obj.key !== undefined && String(obj.key).length
+            && obj.label !== undefined)
             into.push({ key: String(obj.key),
                         label: String(obj.label === undefined ? "" : obj.label),
                         hint: String(obj.hint === undefined ? "" : obj.hint),

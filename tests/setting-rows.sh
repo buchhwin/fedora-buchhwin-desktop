@@ -135,12 +135,19 @@ want="$(comm -23 <(sort -u <<< "$paths") <(sort <<< "$EXEMPT"))"
 printf '  %-34s ' "no row without a setting"
 
 invented="$(comm -13 <(sort -u <<< "$paths") <(sort -u <<< "$rows"))"
+# ⚠️ TWO ROW TYPES NOW, AND THIS IS NOT A LOOSENING. The App Theming page lays
+# its thirteen programs out as a table, so they are ThemingRows — a different
+# LAYOUT, not a different promise: a ThemingRow reads and writes through one
+# dotted `key` exactly as a SettingRow does, and declares it as a literal on its
+# own line. What the count asks is unchanged — every declaring block has a key
+# and every key belongs to a block — it just knows both spellings of a block.
+#
 # A row is a SettingRow, and a SettingRow without a key is the same fault seen
 # from the other side — it would not appear above, because it names nothing.
 missing_key=""
 while read -r f; do
     [[ -z "$f" ]] && continue
-    declared="$(grep -cE '^[[:space:]]*SettingRow[[:space:]]*\{' "$f")"
+    declared="$(grep -cE '^[[:space:]]*(Setting|Theming)Row[[:space:]]*\{' "$f")"
     keyed="$(grep -cE '^[[:space:]]*key:[[:space:]]*"' "$f")"
     [[ "$declared" == "$keyed" ]] \
         || missing_key+="$f: $declared rows, $keyed keys"$'\n'

@@ -114,6 +114,7 @@ Item {
     property var cmdRow: null
     property var colourRow: null
     property var timeRow: null
+    property var themingPage: null
     property int step: 0
 
     Timer {
@@ -329,6 +330,80 @@ Item {
             root.check("time: 24:00, 7pm, 07-00 and half past are refused",
                        !tf.valid("24:00") && !tf.valid("7pm")
                        && !tf.valid("07-00") && !tf.valid("half past"), "")
+            break
+
+        // ── "set all to" reaches every program, without a second list ──────
+        //
+        // ⚠️ THE WHOLE POINT OF THE BUTTON IS THAT IT CANNOT DRIFT. It walks the
+        // rows that are on the page and sets each one's own key, rather than
+        // keeping its own copy of the thirteen names — because a second list is
+        // a second thing to forget, and forgetting it means "all to Neutral"
+        // quietly leaves one program coloured. That is the same one-sided drift
+        // the explicit switch in tools/render.qml exists to prevent, and it is
+        // only true while something checks it.
+        case 23:
+            var comp = Qt.createComponent("../ui/settings/pages/AppThemingPage.qml")
+            if (comp.status === Component.Error) {
+                root.check("theming table: the page compiles", false,
+                           String(comp.errorString()))
+                root.step = 90
+                break
+            }
+            root.themingPage = comp.createObject(root)
+            root.check("theming table: the page builds", root.themingPage !== null)
+            break
+
+        case 24:
+            // ⚠️ findFn RETURNS THE OWNER, NOT THE FUNCTION — and calling the
+            // owner is how this check spent three rounds blaming the page.
+            // `setAll("neutral")` called a SettingGroup, threw
+            // "SettingGroup(0x…) is not a function", and the throw was silent,
+            // so the page looked like it was doing nothing. Two "fixes" went
+            // into the page for a fault that was in here.
+            var group = root.findFn(root.themingPage, "setAll", 0)
+            if (!group) {
+                root.check("theming table: \"set all\" is reachable", false)
+                root.step = 90
+                break
+            }
+            root.check("theming table: \"set all\" is reachable", true)
+            try {
+                group.setAll("neutral")
+            } catch (e) {
+                // ⚠️ A THROW IN A QML FUNCTION IS SILENT and abandons the rest
+                // of it. This button was written three times before it worked,
+                // and the second version threw here — thirteen writes skipped,
+                // no error anywhere, a button that simply did nothing. Reported
+                // rather than swallowed, or the next version fails the same way.
+                root.check("theming table: \"set all\" runs without throwing",
+                           false, String(e) + " | " + String(e.stack).split("\n").slice(0,3).join(" << "))
+            }
+            break
+
+        case 25:
+            probe.path = ""
+            probe.path = Quickshell.env("XDG_CONFIG_HOME") + "/buchhwin/shell.json"
+            var th = JSON.parse(probe.text()).theming
+            // The thirteen names, written out here on purpose: this is the one
+            // place a SECOND list is right, because its whole job is to disagree
+            // with the page if the page ever loses one.
+            var want = ["gtk", "qt", "kitty", "alacritty", "niri", "btop", "bat",
+                        "fastfetch", "delta", "tmux", "starship", "lazygit", "vscode"]
+            var missed = []
+            for (var i = 0; i < want.length; i++)
+                if (String(th[want[i]]) !== "neutral")
+                    missed.push(want[i] + "=" + th[want[i]])
+            root.check("theming table: all thirteen programs were set",
+                       missed.length === 0,
+                       missed.length ? missed.join(" ") : "13 of 13")
+            // ⚠️ AND IT MUST NOT HAVE TOUCHED THE TWO THAT ARE NOT PROGRAMS.
+            // `theming.enabled` is a switch and `theming.mode` is the default
+            // state; a walk that matched on the "theming." prefix alone would
+            // have set both to "neutral" and turned the whole feature off.
+            root.check("theming table: it left enabled and mode alone",
+                       th.enabled === true && String(th.mode) !== "neutral",
+                       "enabled=" + th.enabled + " mode=" + th.mode)
+            root.themingPage.destroy()
             break
 
         default:

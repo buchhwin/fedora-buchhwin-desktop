@@ -38,6 +38,7 @@ cat > "$tmp/config/buchhwin/shell.json" <<'JSON'
 {
   "theme": { "palette": "everforest-dark", "customColor": "#111111", "lightFrom": "01:00" },
   "windows": { "blurred": [] },
+  "theming": { "enabled": true, "mode": "colour" },
   "programs": { "terminal": ["kitty"] }
 }
 JSON
@@ -58,7 +59,7 @@ sed -e 's/^  ok /  \x1b[38;5;114mok\x1b[0m /' \
 # and gives up if it cannot find them; without this line, a walk that found
 # nothing would print an empty file and exit 0.
 n="$(grep -c '^  ok ' "$out")"
-if (( n < 13 )); then
+if (( n < 17 )); then
     printf '  \033[38;5;203mFAIL\033[0m %s\n' "only $n checks ran — the tool stopped early"
     exit 1
 fi

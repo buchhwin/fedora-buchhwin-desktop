@@ -52,13 +52,21 @@ Scope {
     // Walk an object tree and collect everything that looks like a settings row.
     //
     // ⚠️ IT ASKS FOR THE PROPERTIES, it does not match the type name. A row is a
-    // row here because it carries `key` and `kind`, which is what the rest of the
-    // system means by one — and a check that matched `SettingRow` by name would
-    // go quietly blind the day somebody wraps one.
+    // row here because it carries `key` and a control, which is what the rest of
+    // the system means by one — and a check that matched `SettingRow` by name
+    // would go quietly blind the day somebody wraps one.
+    //
+    // ⚠️ AND `kind` IS NO LONGER THE ONLY CONTROL. The App Theming page lays its
+    // thirteen programs out as a table of ThemingRows, which carry `states`
+    // rather than `kind` — same promise, different geometry. Asking only for
+    // `kind` counted 151 built against 164 declared and blamed the pages for it,
+    // which is the check going blind in exactly the way its own note warns
+    // about. Widened to what a row really is, not to whatever happens to pass.
     function harvest(obj, into) {
         if (!obj)
             return
-        if (obj.key !== undefined && obj.kind !== undefined && String(obj.key).length)
+        if (obj.key !== undefined && String(obj.key).length
+            && obj.label !== undefined)
             into.push({ key: String(obj.key),
                         label: String(obj.label === undefined ? "" : obj.label) })
 
