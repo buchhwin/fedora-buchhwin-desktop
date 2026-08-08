@@ -456,9 +456,107 @@ Singleton {
     ]
 
     // What everything reads. The file wins when it says anything at all.
-    readonly property var binds:
-        (adapter.binds && adapter.binds.length)
-            ? adapter.binds : root.defaultBinds
+    //
+    // ⚠️ REBINDING WRITES AN OVERRIDE, NOT A COPY OF THE WHOLE LIST, and this is
+    // the difference between a feature and a trap. `adapter.binds` is
+    // all-or-nothing: the moment it holds anything the built-in set is gone, so
+    // rebinding one key by writing the resolved list would freeze the other
+    // sixty-seven at whatever they were that day, and every default added
+    // afterwards would be invisible on this machine. That has already happened
+    // once here — a shell.json carried 63 frozen bindings for weeks — and
+    // migration 7→8 exists to clean it up.
+    //
+    // So an override says only "the binding that ships on THIS key now lives on
+    // that one". The default key is the identifier because the default keys are
+    // unique and the actions are not: 68 bindings, 68 distinct keys, 30 distinct
+    // actions. Changing a default key later makes its override stop applying,
+    // which leaves the binding at the new default — the safe direction.
+    //
+    // An override to the empty string unbinds. That is a real thing to want and
+    // it cannot be said any other way, since a missing entry means "unchanged".
+    readonly property var binds: {
+        var base = (adapter.binds && adapter.binds.length)
+                       ? adapter.binds : root.defaultBinds
+        var over = adapter.rebinds || []
+        if (!over.length)
+            return base
+
+        var by = ({})
+        for (var i = 0; i < over.length; i++)
+            if (over[i] && over[i].from !== undefined)
+                by[String(over[i].from)] = String(over[i].to === undefined ? "" : over[i].to)
+
+        var out = []
+        for (var j = 0; j < base.length; j++) {
+            var b = base[j]
+            var to = by[String(b.key)]
+            if (to === undefined) { out.push(b); continue }
+            if (to === "") continue                  // unbound on purpose
+            // ⚠️ A COPY. Writing `b.key = to` would edit `defaultBinds`, which
+            // is a readonly property holding one shared array — the override
+            // would survive being removed, and only until the next restart, so
+            // it would look like a bug in the file rather than in this loop.
+            var c = ({})
+            for (var k in b) c[k] = b[k]
+            c.key = to
+            out.push(c)
+        }
+        return out
+    }
+
+    // Which default key this one currently sits on, or "" when it is unbound.
+    // The list is short enough that a scan is cheaper than an index nobody else
+    // needs.
+    function rebindOf(defaultKey) {
+        var over = adapter.rebinds || []
+        for (var i = 0; i < over.length; i++)
+            if (over[i] && String(over[i].from) === String(defaultKey))
+                return String(over[i].to === undefined ? "" : over[i].to)
+        return undefined
+    }
+
+    // ⚠️ THE CONFLICT CHECK IS THE POINT OF THE WHOLE FEATURE, and it has to run
+    // BEFORE the write. Two bindings on one key is a KDL parse error, and niri
+    // does not start with a config it cannot parse — so the cost of finding out
+    // afterwards is a session that will not come up, on the machine of somebody
+    // who was changing a shortcut.
+    //
+    // Returns the binding that is in the way, or null.
+    function bindClash(defaultKey, wantedKey) {
+        if (!wantedKey || wantedKey.length === 0)
+            return null                     // unbinding cannot clash
+        var all = root.binds
+        for (var i = 0; i < all.length; i++) {
+            var b = all[i]
+            if (String(b.key) !== String(wantedKey)) continue
+            // The binding being moved is allowed to keep its own key.
+            var home = root.rebindOf(defaultKey)
+            var itsCurrent = (home === undefined) ? String(defaultKey) : home
+            if (String(b.key) === itsCurrent && itsCurrent === String(wantedKey))
+                continue
+            return b
+        }
+        return null
+    }
+
+    function setRebind(defaultKey, wantedKey) {
+        var over = []
+        var existing = adapter.rebinds || []
+        for (var i = 0; i < existing.length; i++)
+            if (existing[i] && String(existing[i].from) !== String(defaultKey))
+                over.push(existing[i])
+        // An override back onto the default key is not an override; dropping it
+        // keeps the file free of entries that say nothing.
+        if (String(wantedKey) !== String(defaultKey))
+            over.push({ from: String(defaultKey), to: String(wantedKey) })
+        adapter.rebinds = over
+        root.flush()
+    }
+
+    function clearRebinds() {
+        adapter.rebinds = []
+        root.flush()
+    }
 
     function save() { file.writeAdapter() }
 
@@ -1726,6 +1824,20 @@ Singleton {
             //
             // ⚠️ Empty means "use Config.defaultBinds", not "no bindings".
             property var binds: []
+
+            // Rebinding, as a list of `{ from, to }` — "the binding that ships
+            // on `from` now lives on `to`", and `to: ""` unbinds it.
+            //
+            // ⚠️ TOP LEVEL FOR THE REASON WRITTEN ABOVE. It is the third `var`
+            // in this adapter and it is up here with the other two; nested, it
+            // would bring back the startup segfault, and an empty list is
+            // enough to do that.
+            //
+            // ⚠️ AND IT IS AN OVERRIDE RATHER THAN A COPY OF `binds`. Writing
+            // the whole resolved list to rebind one key is what froze 63
+            // bindings on this machine once already — see the note beside
+            // `Config.binds`.
+            property var rebinds: []
 
             property var outputs: []
 

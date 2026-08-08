@@ -59,9 +59,15 @@ PENDING=""
 #   binds     63 key bindings; a list with its own view, not a row. ⚠️ And an
 #             empty list means "the built-in set", so "no bindings at all" needs
 #             an explicit marker rather than an empty box (see Config.qml).
+#   rebinds   the overrides that move a binding off the key it ships on, as
+#             {from,to} pairs. Same view as `binds` and for the same reason —
+#             ⚠️ and it is separate from `binds` deliberately: `binds` is
+#             all-or-nothing, so rebinding by writing that list would freeze
+#             every other binding at whatever it was that day. See Config.binds.
 #   outputs   one object per monitor, with a scale and a mode inside it
 EXEMPT="version
 binds
+rebinds
 outputs"
 
 paths="$(python3 - shell/config/Config.qml <<'PY'

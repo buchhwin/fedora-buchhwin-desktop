@@ -474,6 +474,30 @@ Singleton {
         debounce.restart()
     }
 
+    // ⚠️ THE NIRI HALF ON ITS OWN, and it exists because of a rule this project
+    // set itself: no key without an answer. Key bindings are deliberately NOT in
+    // the fingerprint — a palette change must not rewrite config.kdl — so
+    // nothing at all happened when they changed, and the only way to make a
+    // rebinding real was to type `bhctl niri apply` in a terminal. A settings
+    // window that needs a terminal afterwards has not finished the job.
+    //
+    // Only the generator runs, not the renderer: a moved shortcut has nothing to
+    // do with colours, and re-rendering fifteen foreign configs to move one line
+    // in config.kdl is the kind of cost that is invisible until it is on a
+    // battery. tools/niri.qml compares before it writes, so an unchanged config
+    // still costs nothing but the process.
+    function applyNiri() {
+        if (root.busy) {
+            // A render is mid-flight and it ends with this same generator, so
+            // the change is already going to be picked up.
+            root.log("niri apply asked for while busy — the running pass covers it")
+            return
+        }
+        root.busy = true
+        root.log("running the niri generator on its own")
+        niriProc.running = true
+    }
+
     function render() {
         if (root.busy) {
             // Something changed while we were writing. Go round once more when
