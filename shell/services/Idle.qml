@@ -108,19 +108,58 @@ Singleton {
         command: ["niri", "msg", "action", "power-on-monitors"]
     }
 
-    // ⚠️ ONE LOCK SCREEN AT A TIME. It is a separate process that exits when it
-    // unlocks, so `running` is exactly the question "is the screen locked by
-    // us" — and starting a second one would leave two processes holding PAM
-    // state for one screen.
+    // ⚠️⚠️ THE LOCK SCREEN IS NOT A CHILD OF THIS SHELL, AND THAT IS A LOCKOUT
+    // FIX RATHER THAN TIDINESS.
+    //
+    // It used to be a plain `Process`, which put it inside
+    // buchhwin-shell.service's control group — and that unit is
+    // KillMode=control-group, so restarting the shell killed the lock screen.
+    // Measured on a locked session, before and after:
+    //
+    //   locked                          3 qs processes   LockedHint=yes
+    //   after restarting the shell      2 qs processes   LockedHint=yes
+    //                                   …and typing the password does nothing
+    //
+    // niri keeps the session locked when the locking client dies. That is
+    // correct and it is the whole security property of ext-session-lock — but
+    // what is left behind is a machine nobody can get back into without a
+    // second terminal. Every path that restarts this unit reaches it: the
+    // rescue key, `bhctl update`, and `Restart=always` after a crash, which
+    // this shell has had.
+    //
+    // A transient unit of its own is the fix — its own control group, out of
+    // reach of anything done to the shell. Measured that killing the caller
+    // leaves the unit running.
+    //
+    // ⚠️ AND THE UNIT NAME IS NOW THE "ONE AT A TIME" GUARD, which is stronger
+    // than the flag it replaces. A `running` property resets to false when this
+    // shell restarts, so the old guard would have started a SECOND lock screen
+    // on top of the first — two processes holding PAM state for one screen.
+    // systemd refuses a second start of a name that is taken, and goes on
+    // refusing across a restart of this shell.
+    //
+    // `--collect` so a lock screen that fails does not leave its name held in a
+    // failed state, which would be a lock screen that never comes up again; the
+    // reset-failed in front of it covers a name left over from before this flag
+    // was there.
     Process {
         id: locker
-        command: ["sh", "-c", "BUCHHWIN_MODE=lock qs -c buchhwin"]
+        command: ["sh", "-c",
+            "systemctl --user reset-failed buchhwin-lock 2>/dev/null; "
+            + "exec systemd-run --user --quiet --collect --unit=buchhwin-lock "
+            + "--description='buchhwin lock screen' "
+            + "sh -c 'BUCHHWIN_MODE=lock qs -c buchhwin'"]
     }
-    readonly property bool locked: locker.running
 
+    // ⚠️ THERE IS NO `locked` PROPERTY ANY MORE, and removing it was the point
+    // rather than a side effect. It read `locker.running`, which after the
+    // change above is only "is systemd-run still going" — a tenth of a second,
+    // and false for the whole time the screen is actually locked. Nothing read
+    // it, so the choice was between a property that lies and no property; a
+    // reader that needs the answer should ask systemd, which is the one place
+    // that knows.
     function lock() {
-        if (!locker.running)
-            locker.running = true
+        locker.running = true
     }
 
     Process {
