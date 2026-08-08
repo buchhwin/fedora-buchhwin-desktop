@@ -112,8 +112,35 @@ Item {
     }
 
     ColumnLayout {
+        id: face
         anchors.centerIn: parent
         spacing: Theme.space5
+
+        // ⚠️ THE FACE ARRIVES, THE SCREEN DOES NOT. This was the one surface in
+        // the shell with no motion at all — clock, avatar and field simply
+        // existed the instant the process did.
+        //
+        // ⚠️ AND IT IS ONLY THE FACE, deliberately. The lock surface underneath
+        // has to be opaque from its very first frame: LockScreen.qml paints
+        // `Theme.bgDeep` for exactly that reason, because anything that starts
+        // transparent shows the unlocked desktop through it while it fades. So
+        // the background is instant and only what is drawn ON it moves — the
+        // same 0.94 and the same durations as the launcher, the panels and the
+        // toasts.
+        property bool shown: false
+        opacity: shown ? 1 : 0
+        scale: shown ? 1 : 0.94
+        transformOrigin: Item.Center
+        Component.onCompleted: face.shown = true
+
+        Behavior on opacity {
+            enabled: Theme.animate
+            NumberAnimation { duration: Theme.durBase; easing.type: Theme.easing }
+        }
+        Behavior on scale {
+            enabled: Theme.animate
+            NumberAnimation { duration: Theme.durBase; easing.type: Theme.easing }
+        }
 
         // ------------------------------------------------------------- clock
         BarText {

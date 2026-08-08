@@ -45,10 +45,31 @@ report="$(awk '
     BEGIN {
         # QML grouped properties and JS globals: real names that are declared
         # nowhere in the file because they belong to Qt or to the language.
-        split("anchors font layer border margins padding sourceSize anchors " \
+        # ⚠️ `easing` joined this list the day the lock screen got its first
+        # Behavior. It is the grouped property of NumberAnimation — `easing.type`
+        # — and it read as a name declared nowhere, which is exactly the shape of
+        # a real fault, so the check was right to ask. Adding a genuine Qt name
+        # here is the answer; silencing the line would not have been.
+        #
+        # The second block holds the properties an Item already has, which QML
+        # lets you name without a prefix. Qt declares them, so a bare `width` is
+        # a reference to something real and not the fault this looks for.
+        #
+        # ⚠️ TWO WAYS TO BREAK THIS FILE, BOTH MET WHILE WRITING THIS COMMENT.
+        # The awk program is one single-quoted shell string, so an apostrophe
+        # anywhere in it — writing "an Item" with a possessive — closes the
+        # quote and hands the rest of the program to the shell. And awk ends a
+        # line at `#`, so a comment inside the split() below truncates it
+        # silently. Both printed "command not found" for awk source text.
+        split("anchors font layer border margins padding sourceSize easing " \
               "console parent modelData point event Math JSON Date parseInt " \
               "parseFloat String Number Array Object Boolean RegExp isNaN " \
-              "undefined arguments this window", g, " ")
+              "undefined arguments this window " \
+              "width height implicitWidth implicitHeight x y z opacity scale " \
+              "rotation visible enabled clip focus activeFocus contentWidth " \
+              "contentHeight childrenRect state states transitions text " \
+              "color radius source running interval repeat spacing " \
+              "transformOrigin smooth antialiasing", g, " ")
         for (i in g) known[g[i]] = 1
     }
     {
@@ -103,6 +124,31 @@ report="$(awk '
             # right, and an upper-case first letter is a type or a singleton.
             if (pre == "." || u ~ /^[A-Z]/) continue
             uses[u] = uses[u] FILENAME ":" FNR " "
+        }
+
+        # ---- and the names with no dot after them ----------------------
+        # ⚠️ THE CHECK ABOVE ONLY EVER LOOKED AT THE HEAD OF A DOTTED CHAIN, so
+        # a bare name was never examined at all. `field` instead of `input` was
+        # caught because it was written `field.text`; `opacity: shwon` sails
+        # straight through, and it is the same fault with the same silence — the
+        # binding throws a ReferenceError nobody sees and the value stays at its
+        # default.
+        #
+        # Only the right-hand side of a binding is read. The left is the name
+        # being DECLARED, and a property called `shown` must not count as a use
+        # of itself.
+        if (match(line, /^[ \t]*[A-Za-z_][A-Za-z0-9_.]*[ \t]*:/)) {
+            rhs = substr(line, RSTART + RLENGTH)
+            gsub(/[A-Za-z_][A-Za-z0-9_]*[ \t]*\(/, " ", rhs)   # calls
+            gsub(/[A-Za-z_][A-Za-z0-9_]*\.[A-Za-z0-9_.]*/, " ", rhs)  # chains
+            n = split(rhs, w, /[^A-Za-z0-9_]+/)
+            for (i = 1; i <= n; i++) {
+                b = w[i]
+                if (b == "" || b ~ /^[0-9]/ || b ~ /^[A-Z]/) continue
+                if (b ~ /^(true|false|null|undefined|if|else|return|function|new|typeof|void|in|of|var|let|const|this|for|while|do|break|continue|switch|case|default|try|catch|finally|throw|delete|instanceof)$/)
+                    continue
+                uses[b] = uses[b] FILENAME ":" FNR " "
+            }
         }
     }
     END {

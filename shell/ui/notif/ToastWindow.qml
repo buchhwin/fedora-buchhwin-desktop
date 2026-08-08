@@ -33,6 +33,16 @@ PanelWindow {
 
     // Sliding the WINDOW rather than the card inside it: the surface is the
     // size of the card, so there is no room to move within it.
+    //
+    // motion-ok: this re-configures the layer surface once per frame, the same
+    // cost class that made the notch and the panels stutter — and it is kept,
+    // deliberately, because the sums are different. Those two paid it on every
+    // open and hover, several times a minute; this pays it for 150 ms when a
+    // notification is dismissed and the cards close ranks. The alternative is
+    // cards that jump, and the usual escape — oversize the surface and move the
+    // card inside it — is closed here: toasts are blurred (`surface(
+    // "buchhwin-toast", paneRadius, blurOn)`), so spare surface comes back as
+    // the halo described at the top of ToastSurface.qml.
     Behavior on margins.top {
         enabled: Theme.animate
         NumberAnimation { duration: Theme.durBase; easing.type: Theme.easing }

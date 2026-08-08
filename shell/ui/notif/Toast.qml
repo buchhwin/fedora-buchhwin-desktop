@@ -45,11 +45,24 @@ Item {
     // Fades in where it stands. It cannot slide: the window is exactly the size
     // of the card, so there is nowhere inside it to slide from — and moving the
     // window instead would drag its shadow and blur along the screen edge.
+    //
+    // ⚠️ BUT IT CAN SCALE, and it did not, which is why a toast was the one
+    // thing in this shell that simply blinked into existence while every panel
+    // grew into place. `scale` is a transform inside the item's own bounds: it
+    // never leaves the surface, so the objection above does not apply to it and
+    // the compositor is never told anything. Same 0.94 the launcher and the
+    // hovered notch content use, so all three arrive alike.
     property bool shown: false
     opacity: shown ? 1 : 0
+    scale: shown ? 1 : 0.94
+    transformOrigin: Item.Center
     Component.onCompleted: shown = true
 
     Behavior on opacity {
+        enabled: Theme.animate
+        NumberAnimation { duration: Theme.durBase; easing.type: Theme.easing }
+    }
+    Behavior on scale {
         enabled: Theme.animate
         NumberAnimation { duration: Theme.durBase; easing.type: Theme.easing }
     }

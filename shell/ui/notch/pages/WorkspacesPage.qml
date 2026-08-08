@@ -44,7 +44,17 @@ ColumnLayout {
 
     // How tall one workspace box is. The width follows from the columns in it,
     // so a busy workspace is a wider box — which is itself information.
-    readonly property int boxHeight: Theme.space6 * 3
+    //
+    // ⚠️ IT WAS `space6 * 3` AND THAT WAS TOO SMALL TO USE — reported exactly
+    // that way about the switcher. `space6` is 32, so a workspace was a 64×96
+    // box holding 24 px window tiles with 13 px icons on them. At that size the
+    // tiles are colour, not information: you cannot tell a terminal from a
+    // browser, which is the one question this surface exists to answer.
+    //
+    // Doubled, and the tiles and icons with it — see the tile below. It stays
+    // derived from the spacing scale rather than becoming a key of its own, so
+    // the `look.uiScale` slider still moves it along with everything else.
+    readonly property int boxHeight: Theme.space6 * 6
 
     // The workspaces, each with its own windows already gathered. Done once
     // here rather than filtered again inside every delegate: with n workspaces
@@ -98,7 +108,7 @@ ColumnLayout {
                 required property var modelData
                 required property int index
 
-                implicitWidth: Math.max(Theme.space6 * 2,
+                implicitWidth: Math.max(Theme.space6 * 4,
                                         tiles.implicitWidth + Theme.space2 * 2)
                 implicitHeight: root.boxHeight
                 radius: Theme.radiusSm
@@ -174,9 +184,17 @@ ColumnLayout {
                                 readonly property real w:
                                     (modelData.layout && modelData.layout.tile_size)
                                         ? modelData.layout.tile_size[0] : 1
+                                // ⚠️ The divisor and both clamps moved with the
+                                // box height. At /24 with a 24..64 px clamp a
+                                // 1920 px window came out 64 px wide and a
+                                // 640 px one came out 27 — nearly everything
+                                // landed on a clamp, so the proportion the
+                                // comment above promises was mostly not there.
+                                // At /12 with 32..128 the middle of the range
+                                // is where real windows actually sit.
                                 Layout.preferredWidth:
-                                    Math.max(Theme.space5, Math.min(Theme.space6 * 2,
-                                             tile.w / 24))
+                                    Math.max(Theme.space6, Math.min(Theme.space6 * 4,
+                                             tile.w / 12))
                                 Layout.fillHeight: true
                                 radius: Theme.radiusXs
                                 color: modelData.is_focused ? Theme.accentAlt
@@ -193,7 +211,15 @@ ColumnLayout {
                                     anchors.centerIn: parent
                                     source: tile.modelData.app_id || ""
                                     appName: tile.modelData.app_id || ""
-                                    size: Theme.fontSizeLg
+                                    // ⚠️ Was `fontSizeLg`, which is 13 px — an
+                                    // icon that small is a coloured smudge, and
+                                    // telling one window from another is the
+                                    // whole job here. Never wider than the tile
+                                    // it sits on, so a narrow column still gets
+                                    // an icon that fits rather than one that
+                                    // overhangs.
+                                    size: Math.min(Theme.space5,
+                                                   tile.width - Theme.space1 * 2)
                                 }
 
                                 // Click focuses that window, wherever it is.

@@ -81,6 +81,27 @@ while IFS= read -r file; do
             fi
         done
     done < <(grep -nE '^[[:space:]]*implicit(Width|Height)[[:space:]]*:' "$file" 2>/dev/null)
+
+    # ⚠️ AND THE POSITION COUNTS TOO. A layer surface is re-configured when it
+    # MOVES, not only when it re-sizes — `Behavior on margins.top` in
+    # ToastWindow.qml is the same protocol cost by a different property, and the
+    # first version of this check walked straight past it. Anything animating a
+    # window margin has to say why.
+    while IFS=: read -r line text; do
+        [[ -z "${line:-}" ]] && continue
+        [[ "$text" == *"motion-ok"* ]] && continue
+        found=0
+        n=$((line - 1))
+        while (( n > 0 )); do
+            prev=$(sed -n "${n}p" "$file")
+            trimmed=${prev#"${prev%%[![:space:]]*}"}
+            [[ "$trimmed" == //* ]] || break
+            if [[ "$prev" == *"motion-ok"* ]]; then found=1; break; fi
+            n=$((n - 1))
+        done
+        (( found )) && continue
+        report "surface  $file:$line" "a window margin is animated"
+    done < <(grep -nE '^[[:space:]]*Behavior on margins\.' "$file" 2>/dev/null)
 done < <(find shell -name '*.qml' -type f | sort)
 
 # ---------------------------------------------------------------------- soft
