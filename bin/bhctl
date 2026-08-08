@@ -25,7 +25,33 @@ bhctl doctor                         check the installation
 bhctl binds reset                    drop frozen key bindings from shell.json
 bhctl prune                          drop the instance dirs quickshell leaves
 bhctl shell reset                    restore default settings and restart
+bhctl update                         pull the repository and run the installer
+bhctl backup [<file>]                write a tar of everything this desktop owns
+bhctl restore <file>                 put one back
 EOF
+}
+
+# ---------------------------------------------------------------- what we own
+#
+# ⚠️ THE LIST IS NAMED, NOT GUESSED. "Back up the config directory" would sweep
+# in every other program's settings, and a restore built on that would put a
+# stranger's Firefox profile back along with the desktop. These are the paths
+# this project writes, and nothing else.
+#
+# ⚠️ AND THE GENERATED FILES ARE IN IT ON PURPOSE, even though `bhctl niri
+# apply` and a theme render can rebuild them. A backup is taken to be restored
+# on a bad day, and "it will regenerate" assumes a working shell — which is the
+# one thing you do not have when you reach for a backup.
+owned_paths() {
+    printf '%s\n' \
+        "$CONFIG_HOME/buchhwin" \
+        "$CONFIG_HOME/niri" \
+        "$CONFIG_HOME/kitty" \
+        "$CONFIG_HOME/alacritty" \
+        "$CONFIG_HOME/btop" \
+        "$CONFIG_HOME/qt6ct" \
+        "$CONFIG_HOME/gtk-3.0" \
+        "$CONFIG_HOME/gtk-4.0"
 }
 
 # Quickshell leaves an instance directory behind for EVERY run and never removes
@@ -875,5 +901,75 @@ except Exception:
     systemctl --user restart buchhwin-shell 2>/dev/null
     echo "settings reset (previous kept as shell.json.bak)"
     ;;
+"update")
+    # ⚠️ REFUSES ON A DIRTY TREE. `git pull` on top of local edits either
+    # conflicts or silently merges, and the person running this is asking for
+    # "make it current", not "resolve my half-finished change". Saying so costs
+    # one line; the other way costs an evening.
+    cd "$REPO_DIR" || exit 2
+    if ! git rev-parse --git-dir >/dev/null 2>&1; then
+        echo "$REPO_DIR is not a git checkout — nothing to pull" >&2
+        echo "  (this is normal on a machine the tree was rsynced to)" >&2
+        exit 1
+    fi
+    if [[ -n "$(git status --porcelain)" ]]; then
+        echo "there are uncommitted changes here — refusing to pull over them" >&2
+        git status --short >&2
+        exit 1
+    fi
+    before="$(git rev-parse --short HEAD)"
+    git pull --ff-only || { echo "pull failed" >&2; exit 1; }
+    after="$(git rev-parse --short HEAD)"
+    if [[ "$before" == "$after" ]]; then
+        echo "already current at $after"
+        exit 0
+    fi
+    echo "$before → $after"
+    # ⚠️ The installer, not just a shell restart. A pull can change package
+    # lists, units and the generated niri config, and none of those reach the
+    # machine by restarting quickshell — that is the same "a change with nobody
+    # to apply it" fault this project keeps finding.
+    exec bash "$REPO_DIR/install.sh"
+    ;;
+
+"backup")
+    out="${2:-$HOME/buchhwin-backup-$(date +%Y%m%d-%H%M%S).tar.gz}"
+    # Only the paths that exist; tar treats a missing one as an error and would
+    # write nothing at all because of a directory somebody never installed.
+    mapfile -t have < <(owned_paths | while read -r p; do [[ -e "$p" ]] && echo "$p"; done)
+    if (( ${#have[@]} == 0 )); then
+        echo "nothing of this desktop is installed here" >&2
+        exit 1
+    fi
+    tar -czf "$out" -C / "${have[@]#/}" 2>/dev/null || {
+        echo "could not write $out" >&2; exit 1; }
+    echo "wrote $out"
+    printf '  %s\n' "${have[@]}"
+    ;;
+
+"restore")
+    src="${2:-}"
+    [[ -n "$src" && -f "$src" ]] || { echo "usage: bhctl restore <file>" >&2; exit 2; }
+    # ⚠️ LISTED BEFORE IT IS UNPACKED, and refused if it holds anything outside
+    # what this project owns. A tar is a file somebody can hand you, and
+    # unpacking one into $HOME on trust is how a backup tool becomes a way in.
+    bad="$(tar -tzf "$src" 2>/dev/null | while read -r entry; do
+        case "/$entry" in
+            "$CONFIG_HOME"/buchhwin*|"$CONFIG_HOME"/niri*|"$CONFIG_HOME"/kitty*|\
+            "$CONFIG_HOME"/alacritty*|"$CONFIG_HOME"/btop*|"$CONFIG_HOME"/qt6ct*|\
+            "$CONFIG_HOME"/gtk-3.0*|"$CONFIG_HOME"/gtk-4.0*) ;;
+            *) echo "$entry" ;;
+        esac
+    done | head -5)"
+    if [[ -n "$bad" ]]; then
+        echo "that archive holds paths this desktop does not own — refusing:" >&2
+        sed 's/^/  /' <<< "$bad" >&2
+        exit 1
+    fi
+    tar -xzf "$src" -C / || { echo "restore failed" >&2; exit 1; }
+    echo "restored from $src"
+    echo "  run: bhctl niri apply && systemctl --user restart buchhwin-shell"
+    ;;
+
 *) usage ;;
 esac
