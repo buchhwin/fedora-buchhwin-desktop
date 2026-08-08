@@ -232,6 +232,28 @@ Scope {
     }
     function offCss(target) { return "/*\n" + offText(" *", target) + " */\n" }
 
+    // ⚠️⚠️ A KEY FILE MUST HAVE A GROUP, EVEN WHEN IT IS EMPTY — and without
+    // this every GTK 3 program printed our fault into its own stderr:
+    //
+    //   Gtk-WARNING: Failed to parse ~/.config/gtk-3.0/settings.ini:
+    //   Key file does not have group "Settings"
+    //
+    // Found in Brave's log while chasing something else, on a machine where
+    // theming happened to be switched off. GLib refuses a file that is only
+    // comments, so "we override nothing" was being said in a way the reader
+    // treats as a broken file rather than as an empty one.
+    //
+    // It matters more than a warning: someone looking into why GTK theming does
+    // not work sees that line and starts there — which is exactly the wrong
+    // place, and exactly the kind of false trail this project keeps paying for.
+    //
+    // ⚠️ AND THE FILE IS NOT DELETED INSTEAD. We generate it, but we cannot know
+    // it was ours: a settings.ini that existed before this desktop was ever
+    // installed would be somebody's own, and "theming off" is not permission to
+    // remove it. An empty, VALID file overrides nothing, which is the exact
+    // promise being made.
+    function offIni(target) { return offText("#", target) + "[Settings]\n" }
+
     // One file, one state. The try/catch does not swallow anything — it
     // TRANSLATES.
     //
@@ -1152,7 +1174,7 @@ Scope {
             emitFile(mGtk, f1, root.cfg + "/gtk-3.0/gtk.css",
                      gtk3Css, offCss("gtk"), "gtk3 colours", "gtk")
             emitFile(mGtk, f2, root.cfg + "/gtk-3.0/settings.ini",
-                     gtkSettings, offText("#", "gtk"), "gtk3 settings", "gtk")
+                     gtkSettings, offIni("gtk"), "gtk3 settings", "gtk")
             emitFile(mGtk, f3, root.cfg + "/gtk-4.0/gtk.css",
                      gtk4Css, offCss("gtk"), "gtk4 colours", "gtk")
             gsettingsApply.command = ["sh", "-c", root.gsettingsScript(mGtk)]
@@ -1160,7 +1182,7 @@ Scope {
             note("  set    gtk desktop settings via gsettings (" + mGtk + ")")
 
             emitFile(mGtk, f4, root.cfg + "/gtk-4.0/settings.ini",
-                     gtkSettings, offText("#", "gtk"), "gtk4 settings", "gtk")
+                     gtkSettings, offIni("gtk"), "gtk4 settings", "gtk")
             emitFile(mKitty, f5, root.cfg + "/kitty/theme.conf",
                      kittyTheme, offText("#", "kitty"), "kitty", "kitty")
             emitFile(mNiri, f6, root.cfg + "/niri/colors.kdl",

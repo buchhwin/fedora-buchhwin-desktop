@@ -45,8 +45,13 @@ PanelWindow {
     exclusionMode: ExclusionMode.Ignore
     color: "transparent"                    // literal-ok: absence of colour
 
-    implicitWidth: Math.max(1, card.implicitWidth)
-    implicitHeight: Math.max(1, card.implicitHeight)
+    // motion-ok: the chain ends in CONFIG, not in content. LauncherContent
+    // declares `implicitWidth: Config.launcher.width` and the same for height,
+    // so this surface is a fixed size that happens to be expressed through the
+    // card. Typing filters the list inside a box that does not change — which is
+    // what the check cannot see from the text, and why it is said here.
+    implicitWidth: Math.max(1, card.implicitWidth)    // motion-ok: ends in Config.launcher.width
+    implicitHeight: Math.max(1, card.implicitHeight)  // motion-ok: ends in Config.launcher.height
 
     mask: Region { item: card }
 

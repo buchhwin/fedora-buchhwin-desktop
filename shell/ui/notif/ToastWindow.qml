@@ -51,8 +51,13 @@ PanelWindow {
     exclusionMode: ExclusionMode.Ignore
     color: "transparent"                    // literal-ok: absence of colour
 
-    implicitWidth: Math.max(1, card.implicitWidth)
-    implicitHeight: Math.max(1, card.implicitHeight)
+    // motion-ok: a toast is measured ONCE, when its notification arrives, and
+    // then does not change for as long as it is up. The fault this check exists
+    // for is a surface that re-sizes while nobody asked — the notch followed a
+    // ticking clock. This one follows an event that happens once per toast, and
+    // the surface has to fit the text or the text is clipped.
+    implicitWidth: Math.max(1, card.implicitWidth)    // motion-ok: measured once per toast
+    implicitHeight: Math.max(1, card.implicitHeight)  // motion-ok: measured once per toast
 
     mask: Region { item: card }
 

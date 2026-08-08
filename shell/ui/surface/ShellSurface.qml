@@ -64,7 +64,40 @@ PanelWindow {
     //
     // With the bar on, full width is correct — the bar really does span the
     // screen. With it off, the surface is the island plus its shoulders.
-    anchors { top: true; left: root.barEnabled; right: root.barEnabled }
+    // ⚠️⚠️ FULL WIDTH, ALWAYS — AND THIS IS THE WOBBLE HE REPORTED.
+    //
+    // It used to be `left: root.barEnabled; right: root.barEnabled`, so with the
+    // bar off the surface was only as wide as its own content:
+    //
+    //     implicitWidth : max(collapsedWidth, notch.implicitWidth)   ← CONTENT
+    //     island.x      : (parent.width - islandW) / 2               ← WINDOW
+    //
+    // The island is centred in the WINDOW, and the window is sized by the
+    // CONTENT. So every time the content changed width — the clock, a media
+    // title, the timer counting down, an icon resolving — the window resized AND
+    // the island slid sideways to stay centred in it. Fast, repeated, horizontal.
+    // That is "alles wackelt ganz schnell von links nach rechts".               // english-ok: quoted brief
+    //
+    // ⚠️ tests/motion.sh did NOT catch it, and that is worth writing down: it
+    // checks that no surface size follows an ANIMATED property. This one
+    // followed a CONTENT property, which is a different sentence with the same
+    // consequence — a Wayland surface re-sized out from under a running
+    // animation. The check has been widened.
+    //
+    // Anchored to both edges the width is the SCREEN's, so it is constant: the
+    // centre never moves, the window is never re-sized, and the shape animates
+    // inside a surface that genuinely stays put. That is the rule this shell
+    // already had — what decides layout is SET, what moves is ANIMATED — applied
+    // to the one place that was still breaking it.
+    //
+    // ⚠️ AND IT IS SAFE HERE, for the reason the note below spells out: niri
+    // draws blur and shadow behind the WHOLE surface, so spare room usually
+    // comes out as a halo — but this is the one surface with both switched off
+    // (tools/niri.qml: `surface("buchhwin-notch", notchRadius, false, false)`).
+    // The input region already follows the drawn shape rather than the window,
+    // and Silhouette paints around `width / 2`, so a wider surface changes
+    // nothing about what is painted or what answers a click.
+    anchors { top: true; left: true; right: true }
 
     //
     // ⚠️ AND IT HAS NO INVISIBLE MARGIN. From niri's own layer-rule docs:
@@ -107,13 +140,14 @@ PanelWindow {
     // The shape still animates; it just animates INSIDE a surface that stays
     // put. `Silhouette` paints from y=0 downwards and takes the island's size as
     // parameters, so a taller surface changes nothing about what is drawn.
-    readonly property real maxIslandWidth:
-        Math.max(Config.notch.collapsedWidth, notch.implicitWidth)
-
     readonly property real maxIslandHeight:
         Math.max(Config.notch.hoverHeight, Config.notch.collapsedHeight, root.barH)
 
-    implicitWidth: root.barEnabled ? 0 : Math.max(1, root.maxIslandWidth)
+    // ⚠️ NO `implicitWidth` ANY MORE, deliberately. The anchors above give the
+    // surface the screen's width; an implicitWidth derived from the content is
+    // exactly what made the window follow the content and the island slide with
+    // it. The height stays, and every term in it is a CONFIG value — nothing
+    // animated, nothing measured from a child.
     implicitHeight: Math.max(1, root.maxIslandHeight)
 
     exclusionMode: ExclusionMode.Ignore

@@ -22,10 +22,26 @@
 # which is the difference between a cost that scales with the refresh rate and
 # one that does not.
 #
-# So there are two checks here, and the first one is the important one:
+# ⚠️⚠️ AND AN ANIMATED PROPERTY WAS ONLY HALF OF IT — the other half was
+# reported months later as "everything wobbles fast from left to right".        # english-ok: quoted brief
+# ShellSurface's width read the CONTENT:
+#
+#     implicitWidth : max(collapsedWidth, notch.implicitWidth)   ← content
+#     island.x      : (parent.width - islandW) / 2               ← window
+#
+# The island is centred in the window and the window is sized by the content, so
+# every content change — the clock, a media title, a timer counting down, an
+# icon resolving — re-sized the surface AND slid the island sideways to stay
+# centred in it. Nothing here was animated, so check 1 stayed green through all
+# of it. Same consequence, different sentence: a Wayland surface re-sized out
+# from under a running animation.
+#
+# So there are three checks here, and the first two are the important ones:
 #
 #   1. HARD — a PanelWindow's implicit size may not be bound to a property that
 #      something animates. This is the fault that cost two rounds.
+#   1b HARD — nor to a CHILD's implicit size, which is the same thing arriving
+#      from the other direction.
 #   2. SOFT — a `Behavior` on any layout size has to say why. Some are correct
 #      (a level bar's fill really is a width; a card that folds really does
 #      change height). Each one states its reason at the site, so the next
@@ -81,6 +97,39 @@ while IFS= read -r file; do
             fi
         done
     done < <(grep -nE '^[[:space:]]*implicit(Width|Height)[[:space:]]*:' "$file" 2>/dev/null)
+
+    # ── 1b · …and it may not follow a CHILD either ──────────────────────────
+    #
+    # `implicitWidth: Math.max(1, card.implicitWidth)` is a surface that grows
+    # and shrinks with whatever it happens to contain. Legitimate for an ordinary
+    # Item, wrong for a layer surface: the compositor is told a new size every
+    # time the content changes, and anything positioned from the window's own
+    # width — a centred child most of all — slides with it. That is the "wobbles
+    # from left to right" fault, and check 1 stayed green through all of it
+    # because nothing involved was animated.
+    #
+    # ⚠️ EXACTLY FOUR SPACES **AND THE ROOT MUST BE THE WINDOW**, which took two
+    # tries. Four spaces alone matched fifteen perfectly correct lines — an Item
+    # measuring its child is what Items are for — and it also fired on
+    # Dropdown.qml, whose root is an `Item` with a PopupWindow inside it. Both
+    # halves are needed: the indentation says "this is the root object's own
+    # property" and the root type says "and that object is a layer surface".
+    #
+    # A surface sized from CONFIG or from a constant is untouched — that is what
+    # a fixed surface reads. An exception says why on the line.
+    if grep -qE '^PanelWindow[[:space:]]*\{' "$file"; then
+        while IFS= read -r hit; do
+            ln=${hit%%:*}
+            text=${hit#*:}
+            [[ "$text" == *"motion-ok"* ]] && continue
+            rhs=${text#*:}
+            if printf '%s' "$rhs" \
+               | grep -qE '[A-Za-z_][A-Za-z0-9_]*\.implicit(Width|Height)'; then
+                report "surface  $file:$ln" \
+                       "surface size follows a child's implicit size"
+            fi
+        done < <(grep -nE '^    implicit(Width|Height)[[:space:]]*:' "$file" 2>/dev/null)
+    fi
 
     # ⚠️ AND THE POSITION COUNTS TOO. A layer surface is re-configured when it
     # MOVES, not only when it re-sizes — `Behavior on margins.top` in

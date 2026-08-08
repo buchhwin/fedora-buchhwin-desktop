@@ -96,8 +96,47 @@ PanelWindow {
     // so nothing is covered that anybody is looking at.
     margins.top: 0
 
-    implicitWidth: Math.max(1, card.implicitWidth)
-    implicitHeight: Math.max(1, card.implicitHeight)
+    // ⚠️⚠️ THE SIZE IS TAKEN ONCE THE LAYOUT HAS STOPPED MOVING, not on every
+    // measurement — and this is the last visible step of the stutter.
+    //
+    // Bound straight to `card.implicitWidth` the window followed the layout
+    // through BOTH of its passes. Measured with WAYLAND_DEBUG on one opening of
+    // the quick panel:
+    //
+    //     set_size(150, 34)     the idle shape
+    //     set_size(672, 306)    first pass
+    //     set_size(712, 376)    second pass — exactly pagePadding * 2 wider
+    //
+    // The 40 px is the circle NotchContent's loader documents: a page is
+    // measured inside a width that came from the page's own measurement, so the
+    // two only agree after a second pass. That second `set_size` lands WHILE the
+    // scale-and-fade is running, so the card visibly grows a second time in the
+    // middle of its own animation. Not a stutter in the numbers — a re-target.
+    //
+    // `Qt.callLater` collapses repeated calls in the same turn of the event
+    // loop into one, so both passes are absorbed and the window is told the
+    // final size once. It does NOT fix the circle — that needs pages with a
+    // natural width, which is a change to every page — it stops the circle from
+    // reaching the compositor.
+    //
+    // ⚠️ NOT a Timer with a duration. Guessing a number that is "long enough for
+    // the layout" is the flake that comes back on a slower machine; callLater is
+    // ordering, and ordering is what the fault is made of.
+    property real settledW: 1
+    property real settledH: 1
+    function settleSize() {
+        root.settledW = Math.max(1, card.implicitWidth)
+        root.settledH = Math.max(1, card.implicitHeight)
+    }
+
+    Connections {
+        target: card
+        function onImplicitWidthChanged() { Qt.callLater(root.settleSize) }
+        function onImplicitHeightChanged() { Qt.callLater(root.settleSize) }
+    }
+
+    implicitWidth: root.settledW
+    implicitHeight: root.settledH
 
     mask: Region { item: card }
 
