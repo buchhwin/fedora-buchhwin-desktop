@@ -106,6 +106,20 @@ Singleton {
     function acknowledge() {
         root.rang = false
         root.remaining = 0
+        // ⚠️ AND IT HAS TO BE WRITTEN DOWN, which it was not — this is the
+        // second half of a fix that shipped as a half.
+        //
+        // `rang` is restored from disk on every start (`_restore` reads it
+        // back), and clearing it only in memory left `rang: true` in the file
+        // for ever. So the minute-timer below dutifully cleared it, the file
+        // disagreed, and the next shell start put `0:00` back in the notch —
+        // reported as "der timer ist immer noch sichtbar bei 0:00", after the   // english-ok: quoted brief
+        // self-acknowledge had already been built and believed.
+        //
+        // Every other writer of `rang` in this file calls `_save()`. This one
+        // was the exception, and an exception nobody noticed is how a fixed bug
+        // comes back looking exactly the same.
+        root._save()
     }
 
     // ⚠️ AND IT ACKNOWLEDGES ITSELF AFTER A MINUTE, because otherwise it never

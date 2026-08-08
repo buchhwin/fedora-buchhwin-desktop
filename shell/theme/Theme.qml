@@ -259,18 +259,23 @@ Singleton {
     readonly property int durBase: animate ? Math.round(150 / motionSpeed) : 0
     readonly property int durSlow: animate ? Math.round(250 / motionSpeed) : 0
 
-    // ⚠️ AND THIS IS THE "CLEAN" HALF. OutCubic leaves 25 % of its distance in
-    // the last quarter of its time, so a shape drifts into place — visible at
-    // 144 Hz as motion that never quite lands. OutExpo puts most of the
-    // distance up front and lets the tail vanish, which reads as decisive
-    // rather than soft.
+    // ⚠️ THIS WAS OutExpo FOR ONE ROUND AND THAT WAS MY MISTAKE. The argument
+    // was that niri opens windows with `ease-out-expo`, so matching it would
+    // make the compositor and the shell move alike. The argument is fine and
+    // the application was wrong: niri uses expo for a window's OPACITY AND
+    // SCALE as it appears, and SPRINGS for anything that changes size.
     //
-    // It is niri's `ease-out-expo`, deliberately the same one: the compositor
-    // opens a window with that curve, and a panel of ours opening with a
-    // different one is two systems moving in front of each other. This is the
-    // only easing token in the shell, so every Behavior inherits it — which is
-    // also why it must never become a per-site choice.
-    readonly property int easing: Easing.OutExpo
+    // OutExpo puts about 99 % of the distance into the first third of the
+    // duration and then crawls. On a fade that reads as decisive. On a SHAPE it
+    // reads as a snap followed by a drift — and since every Behavior in this
+    // shell inherits this one token, every panel, notch and card got the snap.
+    // He reported it as the animations still being buggy after a commit whose
+    // whole subject was fixing them.
+    //
+    // OutCubic lands. The snappiness comes from the duration being 150 ms
+    // instead of 200, which is a number, rather than from a curve that arrives
+    // early and then waits.
+    readonly property int easing: Easing.OutCubic
 
     readonly property bool effects: Config.look.profile !== "minimal"
     readonly property bool blur:    Config.look.blur && effects
