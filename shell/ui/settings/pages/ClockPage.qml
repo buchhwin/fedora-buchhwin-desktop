@@ -13,12 +13,25 @@ import Quickshell
 import ".."
 import "../../common"
 import "../../../common"
+import "../../../services" as Services
 import "../../../theme"
 
 ColumnLayout {
     id: root
 
     spacing: Theme.space5
+
+    // ⚠️ TAKEN ONCE, WHEN THE PAGE OPENS, and not bound to a running clock. The
+    // two rows below preview a date pattern by writing today out in it, and a
+    // binding on the time would rebuild ten formatted strings every minute for
+    // a preview that changes once a day. The honest cost of taking it once is
+    // that a settings window left open past midnight shows yesterday in the
+    // examples; the honest cost of the other way is work in an idle window,
+    // which is the thing this desktop is measured on.
+    property var today: new Date()
+    Component.onCompleted: root.today = new Date()
+
+    readonly property var dateFormats: Services.Suggest.dateFormats(root.today)
 
     SettingGroup {
         Layout.fillWidth: true
@@ -56,7 +69,8 @@ ColumnLayout {
             key: "clock.dateFormat"
             label: "Date on the lock screen"
             hint: "A Qt pattern: d day, ddd short weekday, dddd weekday, M month, MMM short month, MMMM month, yyyy year. The names come from your system language."
-            kind: "field"
+            kind: "pick"
+            options: root.dateFormats
             placeholder: "dddd, d MMMM"
         }
         SettingRow {
@@ -64,7 +78,8 @@ ColumnLayout {
             key: "clock.dateFormatShort"
             label: "Date on the island"
             hint: "The same patterns, in a pill rather than on a screen."
-            kind: "field"
+            kind: "pick"
+            options: root.dateFormats
             placeholder: "ddd, d MMM"
         }
     }

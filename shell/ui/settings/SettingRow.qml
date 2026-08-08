@@ -29,6 +29,7 @@ import QtQuick
 import QtQuick.Layouts
 import "../common"
 import "../../config"
+import "../../ipc"
 import "../../theme"
 
 ColumnLayout {
@@ -47,6 +48,12 @@ ColumnLayout {
     // the eight below, which catches the same typo AND keeps the row table
     // readable from outside QML.
     // switch | slider | choice | field | strings | pick | picks | command
+    //        | time | colour | folder | image
+    //
+    // ⚠️ THE LAST FOUR ARE NOT "MORE OF THE SAME". Each exists because its value
+    // has a shape that suggestions cannot express: a time of day is checked
+    // rather than offered, a colour is chosen rather than listed, and a folder
+    // and an image are looked for rather than named.
     property string kind: "switch"
 
     // --- pick / picks / command: the values this machine actually has. These
@@ -304,6 +311,10 @@ ColumnLayout {
                        : root.kind === "pick" ? pickControl
                        : root.kind === "picks" ? picksControl
                        : root.kind === "command" ? commandControl
+                       : root.kind === "time" ? timeControl
+                       : root.kind === "colour" ? colourControl
+                       : root.kind === "folder" ? folderControl
+                       : root.kind === "image" ? imageControl
                        : null
     }
 
@@ -1023,6 +1034,203 @@ ColumnLayout {
                       + " more — type to narrow it down"
                 font.pixelSize: Theme.fontSizeSm
                 color: Theme.fgMuted
+            }
+        }
+    }
+
+    // ⚠️ A TIME THAT IS CHECKED, because the reader does not check and does not
+    // complain. Scheme.qml turns these two into minutes with a split on ":" and
+    // a Number(); "7pm" gives NaN, the comparison is then false in both
+    // directions, and the light palette simply never arrives. No warning, no
+    // log line — a setting that looks set and does nothing, which is the exact
+    // fault this project has now found six times.
+    //
+    // So an unreadable value is REFUSED and the old one stays, and the row says
+    // why while you are still typing it.
+    Component {
+        id: timeControl
+
+        RowLayout {
+            id: time
+            spacing: Theme.space2
+
+            readonly property string stored:
+                root.current === undefined || root.current === null ? "" : String(root.current)
+            // 00:00 to 23:59, one or two digits for the hour, because 7:00 is
+            // what a person types.
+            function valid(s) { return /^([01]?\d|2[0-3]):[0-5]\d$/.test(String(s).trim()) }
+
+            TextField {
+                id: timeField
+                Layout.fillWidth: true
+                enabled: root.usable
+                text: time.stored
+                placeholder: root.placeholder.length > 0 ? root.placeholder : "07:00"
+
+                function commit() {
+                    if (time.valid(timeField.text)) {
+                        Config.set(root.key, timeField.text.trim())
+                        Config.flush()
+                    }
+                }
+                onAccepted: timeField.commit()
+                Connections {
+                    target: timeField.input
+                    function onActiveFocusChanged() {
+                        if (!timeField.input.activeFocus)
+                            timeField.commit()
+                    }
+                }
+            }
+
+            BarText {
+                visible: !time.valid(timeField.text)
+                text: "Needs HH:MM"
+                font.pixelSize: Theme.fontSizeSm
+                color: Theme.warn
+            }
+
+            Pill {
+                interactive: true
+                visible: timeField.text !== time.stored && time.valid(timeField.text)
+                active: true
+                BarText { text: "Apply"; color: Theme.accentFg }
+                onClicked: timeField.commit()
+            }
+        }
+    }
+
+    Component {
+        id: colourControl
+
+        ColourPicker {
+            usable: root.usable
+            value: root.current === undefined || root.current === null
+                       ? "" : String(root.current)
+            onPicked: function (hex) {
+                // ⚠️ NOT flushed on every drag step. Config.save writes the WHOLE
+                // file, and a finger on the saturation square moves once per
+                // frame — sixty full writes a second on a laptop. Config.set
+                // debounces at 250 ms, which is what that debounce is for; the
+                // colour is settled long before anybody looks away.
+                Config.set(root.key, hex)
+            }
+        }
+    }
+
+    // ⚠️ THE PATH IS SHOWN, NOT TYPED. A folder is looked for, not remembered —
+    // and the box that was here asked you to know the spelling of a path before
+    // you could use it. It stays readable rather than editable because the
+    // picker can reach anywhere the box could.
+    Component {
+        id: folderControl
+
+        RowLayout {
+            id: folderRow
+            spacing: Theme.space2
+
+            readonly property string stored:
+                root.current === undefined || root.current === null ? "" : String(root.current)
+
+            Rectangle {
+                id: pathBox
+                Layout.fillWidth: true
+                implicitHeight: pathText.implicitHeight + Theme.space2 * 2
+                radius: Theme.radiusSm
+                color: Theme.surfaceHigh
+                opacity: root.usable ? 1 : Theme.dimmed
+
+                BarText {
+                    id: pathText
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    anchors.verticalCenter: parent.verticalCenter
+                    anchors.leftMargin: Theme.space3
+                    anchors.rightMargin: Theme.space3
+                    text: folderRow.stored.length > 0 ? folderRow.stored
+                                                      : (root.placeholder.length > 0
+                                                         ? root.placeholder : "Not set")
+                    color: folderRow.stored.length > 0 ? Theme.fg : Theme.fgMuted
+                    // Elided from the LEFT: a path is identified by its end.
+                    elide: Text.ElideLeft
+                    maximumLineCount: 1
+                }
+            }
+
+            Pill {
+                interactive: root.usable
+                BarText { text: "Browse"; color: Theme.fg }
+                onClicked: picker.show()
+            }
+
+            FolderPicker {
+                id: picker
+                current: folderRow.stored
+                anchorItem: pathBox
+                onChosen: function (path) {
+                    Config.set(root.key, path)
+                    Config.flush()
+                }
+            }
+        }
+    }
+
+    // ⚠️ IT OPENS THE CHOOSER THAT EXISTS RATHER THAN GROWING A SECOND ONE.
+    // The wallpaper grid is already a notch page on Mod+Shift+W, with the
+    // thumbnails, the sourceSize work and the palette preview in it. A second
+    // grid here would be a second thing to keep in step, and the two would
+    // disagree about which folder they read within a month.
+    Component {
+        id: imageControl
+
+        RowLayout {
+            id: imageRow
+            spacing: Theme.space3
+
+            readonly property string stored:
+                root.current === undefined || root.current === null ? "" : String(root.current)
+            readonly property string fileName: {
+                var parts = imageRow.stored.split("/")
+                return parts[parts.length - 1]
+            }
+
+            Rectangle {
+                implicitWidth: Theme.space6 * 2
+                implicitHeight: Theme.space6
+                radius: Theme.radiusSm
+                clip: true
+                color: Theme.surfaceHigh
+                opacity: root.usable ? 1 : Theme.dimmed
+
+                Image {
+                    anchors.fill: parent
+                    visible: imageRow.stored.length > 0
+                    source: imageRow.stored.length > 0 ? "file://" + imageRow.stored : ""
+                    fillMode: Image.PreserveAspectCrop
+                    asynchronous: true
+                    // ⚠️ READ AT THE SIZE IT IS DRAWN. The wallpapers here are
+                    // 4–6 MB PNGs and this is a thumbnail; without sourceSize
+                    // the full image is decoded into memory to be shown at
+                    // sixty pixels tall. WallpaperPage learned this already.
+                    sourceSize.width: Theme.space6 * 2
+                    sourceSize.height: Theme.space6
+                }
+            }
+
+            BarText {
+                Layout.fillWidth: true
+                text: imageRow.fileName.length > 0 ? imageRow.fileName
+                                                   : (root.placeholder.length > 0
+                                                      ? root.placeholder : "Not set")
+                color: imageRow.fileName.length > 0 ? Theme.fg : Theme.fgMuted
+                elide: Text.ElideMiddle
+                maximumLineCount: 1
+            }
+
+            Pill {
+                interactive: root.usable
+                BarText { text: "Choose"; color: Theme.fg }
+                onClicked: Ipc.show("wallpaper")
             }
         }
     }

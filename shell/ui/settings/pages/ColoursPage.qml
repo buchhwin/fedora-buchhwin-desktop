@@ -61,7 +61,7 @@ ColumnLayout {
             key: "theme.customColor"
             label: "Your own colour"
             hint: "Used when the palette is set to \"custom\". A hex value like #7fbbb3."
-            kind: "field"
+            kind: "colour"
             // The example you TYPE, not a colour anything is drawn in — a Theme
             // token here would show whatever palette is loaded and teach the
             // wrong format.
@@ -90,7 +90,7 @@ ColumnLayout {
             Layout.fillWidth: true
             key: "theme.lightFrom"
             label: "Light from"
-            kind: "field"
+            kind: "time"
             placeholder: "07:00"
             usable: Config.theme.autoLight === "schedule"
         }
@@ -98,7 +98,7 @@ ColumnLayout {
             Layout.fillWidth: true
             key: "theme.lightUntil"
             label: "Light until"
-            kind: "field"
+            kind: "time"
             placeholder: "19:00"
             usable: Config.theme.autoLight === "schedule"
         }

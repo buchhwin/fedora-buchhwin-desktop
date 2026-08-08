@@ -31,7 +31,7 @@ ColumnLayout {
             key: "wallpaper.folder"
             label: "Folder"
             hint: "Where Mod+Shift+W looks for pictures."
-            kind: "field"
+            kind: "folder"
             placeholder: "~/Pictures/Wallpapers"
         }
         SettingRow {
@@ -39,7 +39,7 @@ ColumnLayout {
             key: "wallpaper.current"
             label: "Current picture"
             hint: "A file:// address. Easier to choose with Mod+Shift+W."
-            kind: "field"
+            kind: "image"
             placeholder: "file:///…"
         }
         SettingRow {

@@ -22,29 +22,20 @@ cd "$(dirname "$0")/.." || exit 2
 # ─────────────────────────────────────────────────────────────────────────────
 # ROWS THAT ARE ALLOWED TO STAY A PLAIN TEXT BOX, each with the reason.
 #
-# Every one of these is answered in the next change; the list is where they are
-# tracked meanwhile rather than in somebody's head.
+# ⚠️ IT IS DOWN TO THREE, and the three are not a backlog — they are the rows
+# where a list would be the wrong answer rather than a missing one. Everything
+# else that was a text box now has a control that fits its value.
 #
-#   clock.dateFormat       a Qt format string. The machine can show what today
-#   clock.dateFormatShort  looks like in it, which is a `pick` with labels.
-#   theme.customColor      a colour. It gets a colour picker, not a list.
-#   theme.lightFrom        a time of day. It gets a checked HH:MM field —
-#   theme.lightUntil       Scheme.qml parses it and silently ignores the rest.
-#   wallpaper.folder       a directory. It gets the folder picker (A4).
-#   wallpaper.current      an image. It gets the wallpaper grid that exists.
-#   location.name          ⚠️ THESE THREE STAY FREE TEXT ON PURPOSE. There is no
-#   location.lat           list of places this machine knows, and the three are
-#   location.lon           filled together by the search above them — which is
-#                          an ActionRow precisely because one row may only ever
-#                          write one key.
+#   location.name          ⚠️ THESE THREE ARE THE ONLY ONES LEFT, AND THEY STAY.
+#   location.lat           There is no list of places this machine knows, so
+#   location.lon           there is nothing to suggest — what there is, is a
+#                          search, and ui/common/LocationPicker.qml is it. It
+#                          sits above these three rows on the same page and
+#                          fills all three at once, which is exactly why it is
+#                          NOT a SettingRow: a row reads and writes one dotted
+#                          path, and that rule is what gives
+#                          tests/setting-rows.sh its meaning.
 FREETEXT="
-clock.dateFormat
-clock.dateFormatShort
-theme.customColor
-theme.lightFrom
-theme.lightUntil
-wallpaper.folder
-wallpaper.current
 location.name
 location.lat
 location.lon

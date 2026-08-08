@@ -5,6 +5,7 @@
 import QtQuick
 import QtQuick.Layouts
 import ".."
+import "../../common"
 import "../../../config"
 import "../../../services" as Services
 import "../../../theme"
@@ -183,6 +184,24 @@ ColumnLayout {
         // Its own group rather than a line in "Session", because it is used by
         // two different things — the weather and the light/dark schedule — and
         // neither of them owns it.
+
+        // ⚠️ THE SEARCH THAT FILLS ALL THREE, and it is the reason these three
+        // rows are allowed to stay plain text boxes. There is no list of places
+        // this machine knows, so there is nothing to suggest — what there is, is
+        // a search, and ui/common/LocationPicker.qml has been it since M4. Its
+        // own header says it was made a component rather than markup in the
+        // quick panel because "the settings window will need exactly this on
+        // its System page"; this is that page.
+        //
+        // ⚠️ IT IS NOT A SettingRow, and it cannot be. It writes name, latitude
+        // and longitude together — one control, three keys — and the rule that
+        // a row reads and writes exactly ONE dotted path is what makes
+        // tests/setting-rows.sh able to say anything at all. Bending it here to
+        // save three lines would cost the check its meaning everywhere.
+        LocationPicker {
+            Layout.fillWidth: true
+        }
+
         SettingRow {
             Layout.fillWidth: true
             key: "location.name"

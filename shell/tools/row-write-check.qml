@@ -112,6 +112,8 @@ Item {
 
     property var picksRow: null
     property var cmdRow: null
+    property var colourRow: null
+    property var timeRow: null
     property int step: 0
 
     Timer {
@@ -236,6 +238,97 @@ Item {
                        root.same(empty, []),
                        JSON.stringify(empty))
             root.cmdRow.destroy()
+            break
+
+        // ── colour: the hex survives the round trip ─────────────────────────
+        //
+        // ⚠️ THIS IS THE ONE THAT COULD ROUND. The picker holds hue, saturation
+        // and value as reals and writes back an 8-bit hex, so a colour typed in
+        // goes #rrggbb → hsv → #rrggbb. If that drifts by a step, every visit
+        // to this page would nudge the seed of the whole scheme — quietly, and
+        // in one direction. Measured rather than reasoned about.
+        case 14:
+            Config.set("theme.customColor", "#7fbbb3")   // literal-ok: a fixture — the colour is what is being measured, not what is drawn
+            Config.flush()
+            break
+
+        case 15:
+            root.colourRow = rowComp.createObject(root, {
+                key: "theme.customColor",
+                kind: "colour"
+            })
+            break
+
+        case 16:
+            var picker = root.findFn(root.colourRow, "_adopt", 0)
+            if (!picker) {
+                root.check("colour: the picker is reachable", false)
+                root.step = 90
+                break
+            }
+            root.check("colour: the picker is reachable", true)
+            root.check("colour: it reads the value it was given",
+                       picker._adopt("#7fbbb3"), "")   // literal-ok: a fixture — the colour is what is being measured, not what is drawn
+            picker._emit()
+            break
+
+        case 17:
+            probe.path = ""
+            probe.path = Quickshell.env("XDG_CONFIG_HOME") + "/buchhwin/shell.json"
+            var back = JSON.parse(probe.text()).theme.customColor
+            root.check("colour: #7fbbb3 comes back as itself",
+                       String(back).toLowerCase() === "#7fbbb3", String(back))   // literal-ok: a fixture — the colour is what is being measured, not what is drawn
+            break
+
+        case 18:
+            // A second colour, chosen through the square rather than typed —
+            // the path a finger takes. It only has to land somewhere sensible
+            // and stay there; the exact value depends on the geometry.
+            var pk = root.findFn(root.colourRow, "_adopt", 0)
+            pk._adopt("#ff0000")   // literal-ok: a fixture — the colour is what is being measured, not what is drawn
+            pk._emit()
+            break
+
+        case 19:
+            probe.path = ""
+            probe.path = Quickshell.env("XDG_CONFIG_HOME") + "/buchhwin/shell.json"
+            var red = JSON.parse(probe.text()).theme.customColor
+            root.check("colour: a full-saturation red survives too",
+                       String(red).toLowerCase() === "#ff0000", String(red))   // literal-ok: a fixture — the colour is what is being measured, not what is drawn
+            root.colourRow.destroy()
+            break
+
+        // ── time: an unreadable value is refused, not stored ────────────────
+        //
+        // ⚠️ THE READER DOES NOT COMPLAIN, WHICH IS WHY THE ROW HAS TO.
+        // Scheme.qml splits these on ":" and calls Number(); "7pm" gives NaN,
+        // both comparisons are then false, and the light palette simply never
+        // arrives. Nothing logs it.
+        case 20:
+            Config.set("theme.lightFrom", "07:00")
+            Config.flush()
+            break
+
+        case 21:
+            root.timeRow = rowComp.createObject(root, {
+                key: "theme.lightFrom",
+                kind: "time"
+            })
+            break
+
+        case 22:
+            var tf = root.findFn(root.timeRow, "valid", 0)
+            if (!tf) {
+                root.check("time: the control is reachable", false)
+                root.step = 90
+                break
+            }
+            root.check("time: the control is reachable", true)
+            root.check("time: 07:00 and 7:00 and 23:59 are accepted",
+                       tf.valid("07:00") && tf.valid("7:00") && tf.valid("23:59"), "")
+            root.check("time: 24:00, 7pm, 07-00 and half past are refused",
+                       !tf.valid("24:00") && !tf.valid("7pm")
+                       && !tf.valid("07-00") && !tf.valid("half past"), "")
             break
 
         default:

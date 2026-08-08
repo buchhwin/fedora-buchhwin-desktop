@@ -171,6 +171,32 @@ Singleton {
         return out
     }
 
+    // --------------------------------------------------------- date formats
+    //
+    // ⚠️ THE LABEL IS TODAY, WRITTEN OUT. A date pattern is a row of letter
+    // codes — "dddd, d MMMM" — and nobody can tell "ddd" from "dddd" by reading
+    // it. The suggestion shows what the clock will actually say, which is the
+    // only question anybody has here, and the VALUE stays the pattern.
+    //
+    // ⚠️ Qt's formatter, not JavaScript's. Quickshell's engine has no `Intl`, so
+    // toLocaleDateString comes back in a format nobody asked for —
+    // common/Clock.qml carries the same note and formats these exact patterns
+    // the same way, which is what makes the preview honest rather than close.
+    //
+    // ⚠️ AND IT IS A FUNCTION, NOT A BINDING. A property computed once would
+    // freeze yesterday's date into the list on a shell that has been running
+    // overnight — a preview that is quietly a day old.
+    function dateFormats(now) {
+        var patterns = [
+            "dddd, d MMMM", "dddd d MMMM yyyy", "d MMMM yyyy", "ddd, d MMM",
+            "d MMM", "dd.MM.yyyy", "dd.MM.", "yyyy-MM-dd", "MMMM d", "d/M/yyyy"
+        ]
+        var out = []
+        for (var i = 0; i < patterns.length; i++)
+            out.push({ value: patterns[i], label: Qt.formatDate(now, patterns[i]) })
+        return out
+    }
+
     // ------------------------------------------------------------ durations
     //
     // Not a fact about the machine — the one list here that is a suggestion in

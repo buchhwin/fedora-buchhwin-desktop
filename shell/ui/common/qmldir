@@ -13,3 +13,10 @@ Tooltip 1.0 Tooltip.qml
 Toggle 1.0 Toggle.qml
 TextField 1.0 TextField.qml
 Dropdown 1.0 Dropdown.qml
+# Choose a directory without GTK — A4. Qt.labs.folderlistmodel does the reading,
+# so there is no process per navigation step; the package is already quickshell's
+# own runtime.
+FolderPicker 1.0 FolderPicker.qml
+# A colour of your own, for the one row where a list of prepared swatches would
+# be the same closed set the palettes already are.
+ColourPicker 1.0 ColourPicker.qml
