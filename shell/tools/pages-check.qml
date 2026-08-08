@@ -162,7 +162,34 @@ Scope {
         // used to look at ten page titles and ten descriptions, so "blur" found
         // nothing at all — the box worked, it simply did not search the thing
         // anybody wanted. Counting the index is how that stays fixed.
+        //
+        // ⚠️ IT IS BUILT BETWEEN FRAMES NOW, one page per tick, because doing all
+        // twenty-one at once froze the window mid-keystroke. So this has to WAIT
+        // for it rather than read it on the next line — the first version of this
+        // check did exactly that and went red the moment the index went
+        // incremental, which is the check doing its job against its own author.
+        root.pending = content
         content.buildIndex()
+        waiter.start()
+    }
+
+    property var pending: null
+    property int waited: 0
+
+    Timer {
+        id: waiter
+        interval: 50
+        repeat: true
+        onTriggered: {
+            root.waited += 1
+            if (root.pending.rowIndex === null && root.waited < 200)
+                return
+            waiter.stop()
+            root.checkIndex(root.pending)
+        }
+    }
+
+    function checkIndex(content) {
         var idx = content.rowIndex
         root.ok("the search index builds", idx !== null)
         if (idx !== null) {
