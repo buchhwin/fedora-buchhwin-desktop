@@ -5,6 +5,7 @@
 import QtQuick
 import QtQuick.Layouts
 import ".."
+import "../../../config"
 import "../../../services" as Services
 import "../../../theme"
 
@@ -102,6 +103,51 @@ ColumnLayout {
             label: "Longitude"
             kind: "field"
             placeholder: "unset"
+        }
+    }
+
+    // ------------------------------------------------------- backup and reset
+    //
+    // ⚠️ THE WHOLE FILE, not one setting — which is why these are ActionRows and
+    // not SettingRows. See the note at the top of ActionRow.qml for why a new
+    // `kind` would have had to punch a hole in tests/setting-rows.sh.
+    //
+    // ⚠️ The path is fixed and printed rather than chosen. A folder picker
+    // without GTK is still to be built (A4), and a button that opens nothing
+    // would be worse than one that says where it put the file.
+    SettingGroup {
+        Layout.fillWidth: true
+        title: "Backup and reset"
+
+        ActionRow {
+            Layout.fillWidth: true
+            label: "Export settings"
+            hint: "Writes a copy of shell.json to " + Backup.exportPath
+            button: "Export"
+            status: Backup.lastAction === "export" ? Backup.status : ""
+            failed: Backup.failed
+            onTriggered: Backup.exportSettings()
+        }
+
+        ActionRow {
+            Layout.fillWidth: true
+            label: "Import settings"
+            hint: "Reads " + Backup.exportPath + " back in. An older export is migrated forward like any other file."
+            button: "Import"
+            status: Backup.lastAction === "import" ? Backup.status : ""
+            failed: Backup.failed
+            onTriggered: Backup.importSettings()
+        }
+
+        ActionRow {
+            Layout.fillWidth: true
+            label: "Reset everything"
+            hint: "Back to the defaults. The file you have now is kept as shell.json.bak."
+            button: "Reset"
+            destructive: true
+            status: Backup.lastAction === "reset" ? Backup.status : ""
+            failed: Backup.failed
+            onTriggered: Backup.resetSettings()
         }
     }
 }

@@ -2,3 +2,6 @@
 # file outside its own directory.
 singleton Config 1.0 Config.qml
 singleton Migrations 1.0 Migrations.qml
+# Export, import and reset. Separate from Config because they act on the FILE
+# rather than on a setting — see the note at the top of Backup.qml.
+singleton Backup 1.0 Backup.qml
