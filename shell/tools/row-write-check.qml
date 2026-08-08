@@ -12,11 +12,18 @@
 // keep the arguments. Lose them and the key binding still works, still spawns a
 // terminal, and simply stops opening btop; nothing anywhere says why.
 //
-// It cannot be done with synthetic input: the settings window could not be
-// driven with ydotool on the test machine at all — motion arrives, clicks and
-// keystrokes do not — and a check that depends on that would be a check that
-// silently stops running. So the row is built here and its control is called
-// directly, which is the same path a click takes one function further down.
+// ⚠️ IT CALLS THE CONTROL RATHER THAN CLICKING IT, and the earlier version of
+// this note said clicking was impossible on the test machine. That was wrong —
+// measured afterwards: a real click on the settings window works, and the three
+// things that had made it look broken were a locked session, ydotool's
+// `--absolute` on a device with no ABS axes, and niri's overview standing open
+// because a pointer move had crossed the top-left corner. The recipe that works
+// is in buchhwin-desktop-shots/INDEX.md.
+//
+// Calling the control is still the right choice HERE, for a plainer reason: a
+// check that drives the window has to know where every control is on screen, so
+// it breaks whenever the page is rearranged — and it cannot run at all without
+// a session. This one runs headless, in the CI, against a throwaway config.
 //
 // Runs against a throwaway XDG_CONFIG_HOME; tests/row-writes.sh sets it.
 import QtQuick

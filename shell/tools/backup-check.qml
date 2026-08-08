@@ -38,7 +38,21 @@ Item {
     }
 
     FileView { id: log; path: root.out }
-    FileView { id: probe; blockLoading: true; printErrors: false }
+    // ⚠️⚠️ `blockWrites`, AND IT IS WHY THIS TOOL USED TO FLAKE. `setText` posts
+    // a write; it does not perform one. The steps that hand `importSettings` a
+    // deliberately broken file wrote it and called import in the SAME step, so
+    // when the write had not landed yet the import read the PREVIOUS, valid
+    // file, succeeded, and the check reported "import refuses a file that is
+    // not JSON — imported". Measured before the fix: 1 red run in 3, standalone
+    // as well as in the batch, which the handover had recorded as a batch-only
+    // flake.
+    //
+    // ⚠️ A LONGER STEP TIMER WOULD HAVE BEEN THE WRONG FIX — that is guessing
+    // at a duration to paper over an ordering, which is the shape of flake that
+    // comes back on a slower machine. Blocking the write removes the race
+    // rather than widening it. It is safe here and nowhere near Config: this
+    // FileView belongs to the test and writes fixtures, not settings.
+    FileView { id: probe; blockLoading: true; blockWrites: true; printErrors: false }
 
     // The same fresh-read Backup has to do, and for the same reason: assigning
     // a path a view already holds is not a re-read.

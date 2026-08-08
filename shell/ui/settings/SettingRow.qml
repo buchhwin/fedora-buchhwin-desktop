@@ -1189,9 +1189,29 @@ ColumnLayout {
 
             readonly property string stored:
                 root.current === undefined || root.current === null ? "" : String(root.current)
+
+            // ⚠️ THE VALUE IS ALREADY A file:// URL — services/Wallpaper.qml
+            // stores what the picker hands it, and the row's own hint says so.
+            // Prepending a scheme produced "file://file:///…", which Image
+            // cannot open: the preview box stayed empty and the name read
+            // "file:///…". Seen on a screenshot, not by any check, because an
+            // Image that cannot load is silent by design.
+            //
+            // A bare path is still accepted: somebody editing shell.json by hand
+            // writes one, and refusing it would be a row that only understands
+            // its own output.
+            readonly property string url: {
+                if (imageRow.stored.length === 0)
+                    return ""
+                return imageRow.stored.indexOf("file://") === 0
+                     ? imageRow.stored : "file://" + imageRow.stored
+            }
             readonly property string fileName: {
                 var parts = imageRow.stored.split("/")
-                return parts[parts.length - 1]
+                var last = parts[parts.length - 1]
+                // A trailing slash, or the "file:///…" placeholder, leaves
+                // nothing useful — better to say nothing than to draw a stub.
+                return last === "…" ? "" : decodeURIComponent(last)
             }
 
             Rectangle {
@@ -1204,8 +1224,8 @@ ColumnLayout {
 
                 Image {
                     anchors.fill: parent
-                    visible: imageRow.stored.length > 0
-                    source: imageRow.stored.length > 0 ? "file://" + imageRow.stored : ""
+                    visible: imageRow.url.length > 0
+                    source: imageRow.url
                     fillMode: Image.PreserveAspectCrop
                     asynchronous: true
                     // ⚠️ READ AT THE SIZE IT IS DRAWN. The wallpapers here are
