@@ -19,10 +19,33 @@ pragma Singleton
 //
 // So: gnome-online-accounts holds the account and hands out an OAuth token
 // (ONE short call, nothing that can die under us), and this talks CalDAV to
-// Google directly. Also measured: goa-daemon is already running, Google's
-// endpoint is baked into GOA, and the scope GOA requests includes
-// `.../auth/calendar` — read AND write. That is why creating an appointment
-// here puts it on the phone.
+// Google directly.
+//
+// ⚠️⚠️ AND THAT DOES NOT WORK ON HIS MACHINE. Two separate walls, both measured
+// on 08.08.2026, both after this file had been written and believed:
+//
+//   1. THE TOKEN CARRIES NO CALENDAR SCOPE. This header used to claim "the scope
+//      GOA requests includes .../auth/calendar — read AND write". It does not.
+//      `bhctl calendar` asks Google's tokeninfo endpoint and gets back exactly:
+//      email, profile, userinfo.email, userinfo.profile, openid. So Google
+//      answers 403 to everything here, which is the correct answer to the
+//      question being asked. evolution-data-server is not installed, and EDS is
+//      what GOA hands calendars to — with nothing to hand them to, nothing ever
+//      requests the scope.
+//
+//   2. QML's XMLHttpRequest HAS NO `REPORT` METHOD. PROPFIND is accepted;
+//      REPORT — the one CalDAV uses to ask for events — throws "Unsupported HTTP
+//      method type". So even with a perfect token, this file could never have
+//      fetched a single appointment.
+//
+// Either wall alone is fatal, which is why "it does not work" survived so long:
+// fixing one would have changed nothing visible. The way out is EDS after all
+// (installed, then read through it), or Google's REST API, which is a plain GET
+// and needs no method Qt refuses to send.
+//
+// ⚠️ The note above about EDS being unusable was about DRIVING it over `busctl`,
+// and that measurement still stands. It is not an argument against installing
+// it so that GOA has somewhere to put a calendar.
 //
 // The token is held in memory only. It is a bearer credential with about an
 // hour of life; writing it to disk would be writing a password to disk.
@@ -273,7 +296,29 @@ Singleton {
                 root.status = ""
                 root.events = root._readMultistatus(x.responseText, from, to)
             }
-            x.open("REPORT", root.collection)
+            // ⚠️ QML's XMLHttpRequest DOES NOT KNOW `REPORT`, and this threw
+            // "Unsupported HTTP method type" into the journal on every single
+            // refresh — where nobody reads it. PROPFIND is accepted (it comes
+            // back with a real HTTP status), REPORT is not, and REPORT is the
+            // one CalDAV uses to ask for events.
+            //
+            // So even with a token that carried a calendar scope, this could
+            // never have fetched a single appointment. That is worth saying out
+            // loud rather than discovering twice: the CalDAV path in this file
+            // cannot work as written, and the way out is evolution-data-server —
+            // which speaks CalDAV natively and is what GOA hands its accounts to
+            // — or Google's REST API, which is a plain GET.
+            //
+            // Caught rather than left to throw, so it reaches the panel instead
+            // of the log.
+            try {
+                x.open("REPORT", root.collection)
+            } catch (e) {
+                root.status = "This build cannot fetch events: Qt's HTTP client "
+                            + "has no REPORT method, which is the one CalDAV "
+                            + "uses. See docs/CONFIG.md."
+                return
+            }
             x.setRequestHeader("Authorization", "Bearer " + tok)
             x.setRequestHeader("Depth", "1")
             x.setRequestHeader("Content-Type", "application/xml; charset=utf-8")
