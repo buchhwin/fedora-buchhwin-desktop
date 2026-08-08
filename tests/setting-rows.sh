@@ -65,10 +65,23 @@ PENDING=""
 #             all-or-nothing, so rebinding by writing that list would freeze
 #             every other binding at whatever it was that day. See Config.binds.
 #   outputs   one object per monitor, with a scale and a mode inside it
+#   wallpaper.paletteFrom
+#             which image the palette is derived from when that is not the one
+#             on screen. Machinery, not a setting: the slideshow writes it to
+#             pin the colours and choosing a wallpaper clears it again. A text
+#             field holding a file:// path that something else overwrites would
+#             be a row you can only get wrong.
+#   session.apps
+#             what was open last time, maintained by the shell while you work.
+#             Machinery rather than a setting: a text field somebody edits while
+#             a debounced writer overwrites it three seconds later is a control
+#             that loses every argument it has with itself.
 EXEMPT="version
 binds
 rebinds
-outputs"
+outputs
+wallpaper.paletteFrom
+session.apps"
 
 paths="$(python3 - shell/config/Config.qml <<'PY'
 import re, sys

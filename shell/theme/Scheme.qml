@@ -194,8 +194,19 @@ Singleton {
     // For the two calculated modes the "source" is not a file but the input
     // itself — the colour, or the constant "neutral". Same comparison, same
     // cache invalidation, no second mechanism.
+    // ⚠️ `paletteFrom` WINS WHEN IT IS SET, and it exists so a slideshow can
+    // change the picture without repainting the desktop. Every picture change
+    // recalculates all 26 colours and every foreign application's config;
+    // pinning the derivation to one image is what makes "change the picture,
+    // keep the colours" possible at all. Empty — which is the normal state and
+    // what choosing a wallpaper by hand restores — means the one on screen.
+    readonly property string paletteSource:
+        (Config.wallpaper && String(Config.wallpaper.paletteFrom).length)
+            ? String(Config.wallpaper.paletteFrom)
+            : String(Config.wallpaper.current)
+
     readonly property string wantedSource:
-        root.derivedFromImage ? String(Config.wallpaper.current)
+        root.derivedFromImage ? root.paletteSource
       : root.derivedFromColour ? String(Config.theme.customColor)
       : root.derivedNeutral ? "neutral"
       : ""

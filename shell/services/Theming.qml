@@ -259,7 +259,18 @@ Singleton {
                 // "covered indirectly" is not an answer it accepts. The two
                 // arrive within the same 800 ms window and collapse into one
                 // render, so being literal here costs nothing.
-                Config.wallpaper ? Config.wallpaper.current : "",
+                // ⚠️ THE EFFECTIVE PALETTE SOURCE, NOT THE PICTURE ON SCREEN,
+                // and the difference is the whole cost of a slideshow. This
+                // used to be `wallpaper.current`, which was the same string
+                // back when the palette could only come from the image you were
+                // looking at. With the colours pinned they are two things, and
+                // listing the picture would re-render every foreign config on
+                // every slide — the exact repainting the pin exists to prevent.
+                //
+                // Neither generator reads the wallpaper path itself; both were
+                // downstream of it only through the palette, which is why the
+                // one expression Scheme derives from is the right one to watch.
+                Scheme.paletteSource,
                 JSON.stringify(Config.autostart),
                 JSON.stringify(Config.workspaces),
                 JSON.stringify(Config.outputs),

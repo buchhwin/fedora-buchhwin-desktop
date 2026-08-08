@@ -81,6 +81,14 @@ Scope {
     // not have it twice.
     readonly property int startIdle: Services.Idle.screenOffAfter
 
+    // ⚠️ AND THE THIRD ONE, for exactly the same reason. Restore has no readout,
+    // no icon and no page either: it watches the window list and opens things
+    // once at login. Unreferenced it would never be built, and "restore my
+    // session" would be a switch in the settings window that did nothing —
+    // which is the same fault as the countdown and the idle watcher, now three
+    // times in one file. Anything that only acts on a timer needs a line here.
+    readonly property bool startRestore: Services.Restore.settled
+
     // ⚠️ AND THE THEMING WATCHER IS STARTED LATE, FOR THE SAME REASON AS
     // WEATHER — but it must be started, because without it changing the palette
     // recolours the shell and nothing else. That was the state until today:

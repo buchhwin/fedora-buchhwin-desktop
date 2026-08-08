@@ -58,9 +58,66 @@ Singleton {
     // Choosing writes ONE key, and that is the whole persistence story: the
     // image on screen, the derived palette and every foreign application's
     // colours are all downstream of it, on this start and on the next one.
+    //
+    // ⚠️ AND IT CLEARS THE PIN. `paletteFrom` exists so a slideshow can change
+    // the picture without repainting the desktop — but picking a wallpaper on
+    // purpose is the one moment where you certainly do mean the colours too.
+    // Leaving it set would make a deliberate choice the one case that did not
+    // recolour, which is the opposite of what anybody would expect.
     function choose(url) {
         Config.wallpaper.current = String(url)
+        Config.wallpaper.paletteFrom = ""
         Config.save()
+    }
+
+    // ------------------------------------------------------------- slideshow
+    //
+    // ⚠️ THE TIMER RUNS ONLY WHEN THE SLIDESHOW IS ON, and `running` says so in
+    // one expression rather than a start/stop pair that can drift apart. With
+    // it off there is no timer, which is the standard this project holds itself
+    // to: nothing happens at idle.
+    //
+    // ⚠️ AND IT IS MINUTES, NOT SECONDS. A one-second interval typed into a
+    // seconds field would swap the wallpaper sixty times a minute, and each
+    // swap decodes a photograph.
+    function advance() {
+        if (dir.count <= 1)
+            return
+
+        var here = root.indexOf(root.current)
+        var next
+        if (Config.wallpaper.shuffle) {
+            // ⚠️ NEVER THE ONE ALREADY SHOWING. A shuffle that can pick the
+            // current picture looks like a slideshow that sometimes stops.
+            next = here
+            for (var tries = 0; tries < 8 && next === here; tries++)
+                next = Math.floor(Math.random() * dir.count)
+            if (next === here)
+                next = (here + 1) % dir.count
+        } else {
+            next = (here + 1) % dir.count
+        }
+
+        // Pin the colours to the picture that is leaving, so the desktop keeps
+        // the scheme it had when the slideshow started. Written once — after
+        // that `paletteFrom` is already set and this does nothing.
+        if (!Config.wallpaper.slideshowRecolour
+            && String(Config.wallpaper.paletteFrom).length === 0)
+            Config.wallpaper.paletteFrom = String(root.current)
+        else if (Config.wallpaper.slideshowRecolour)
+            Config.wallpaper.paletteFrom = ""
+
+        Config.wallpaper.current = root.pathAt(next)
+        Config.save()
+    }
+
+    Timer {
+        running: Config.wallpaper.slideshow && root.available && dir.count > 1
+        repeat: true
+        // Clamped rather than trusted: the key is an int in a file somebody can
+        // edit, and a 0 there would be a timer firing as fast as the loop runs.
+        interval: Math.max(1, Config.wallpaper.intervalMinutes) * 60000
+        onTriggered: root.advance()
     }
 
     FolderListModel {

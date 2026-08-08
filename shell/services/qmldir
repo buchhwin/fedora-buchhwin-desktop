@@ -6,6 +6,9 @@
 singleton Apps 1.0 Apps.qml
 singleton Compositor 1.0 Compositor.qml
 singleton Niri 1.0 Niri.qml
+# Opens the same programs again after a restart. Records while you work, not at
+# shutdown, and restores once per session rather than once per shell start.
+singleton Restore 1.0 Restore.qml
 singleton Power 1.0 Power.qml
 singleton Idle 1.0 Idle.qml
 singleton Audio 1.0 Audio.qml

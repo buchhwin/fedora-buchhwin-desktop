@@ -73,6 +73,17 @@ ColumnLayout {
             kind: "strings"
             placeholder: "None"
         }
+        // ⚠️ THE LIMIT IS IN THE HINT, not only in the code. We can bring the
+        // PROGRAMS back and not what was in them: Brave and VS Code restore
+        // their own tabs, kitty does not, and nothing outside a program can
+        // know what it had open. Promising "the same state" here would be a
+        // promise broken on the first use.
+        SettingRow {
+            Layout.fillWidth: true
+            key: "session.restore"
+            label: "Open the same programs next time"
+            hint: "The programs come back on the same screen, not what was inside them. The list is kept while you work, so it survives a machine that went down without asking."
+        }
     }
 
     SettingGroup {

@@ -44,6 +44,7 @@ Singleton {
     readonly property alias notch: adapter.notch
     readonly property alias bar: adapter.bar
     readonly property alias launcher: adapter.launcher
+    readonly property alias session: adapter.session
 
     // Everything below feeds the generated niri config.
     readonly property alias programs: adapter.programs
@@ -1856,6 +1857,23 @@ Singleton {
                 "/usr/libexec/polkit-mate-authentication-agent-1"
             ]
 
+            // ⚠️ WHAT WAS OPEN LAST TIME, and the honest limit belongs with the
+            // key rather than only in the settings row: we can bring the
+            // PROGRAMS back, not what was in them. Which file the editor had,
+            // which tab the browser was on, how far anything was scrolled — only
+            // the program knows that, and Brave and VS Code restore their own
+            // while kitty does not. "The same programs on the same workspaces"
+            // is the promise; "the same state" is not one we can keep.
+            property JsonObject session: JsonObject {
+                property bool restore: false
+                // app-ids as niri reports them, which are the freedesktop entry
+                // ids in nearly every case (kitty, org.gnome.Nautilus,
+                // brave-browser). Maintained while you work rather than written
+                // at shutdown: a list only written on the way out is missing
+                // exactly when the machine went down without asking.
+                property list<string> apps: []
+            }
+
             property list<string> workspaces: ["scratch"]
 
             // The wallpaper, and the one key that makes it colour the desktop.
@@ -1893,6 +1911,34 @@ Singleton {
                 // restart — the derived palette is a cache keyed on it.
                 property string current: ""
                 property list<string> monitors: []
+
+                // ------------------------------------------------- slideshow
+                property bool slideshow: false
+                // Minutes. ⚠️ A number rather than a set of names, because the
+                // useful values are hours apart at one end and minutes at the
+                // other, and any list short enough to read would miss somebody.
+                property int intervalMinutes: 15
+                property bool shuffle: false
+
+                // ⚠️ WHETHER THE COLOURS COME ALONG, AND IT IS OFF BY DEFAULT.
+                // With `theme.palette` on "wallpaper" every picture change
+                // recalculates the WHOLE scheme — terminal, GTK, Qt, btop,
+                // niri, all of it — so a slideshow every fifteen minutes would
+                // repaint the entire desktop every fifteen minutes. Measured:
+                // Forest_Color1.png gives base 27201b (warm), Desert_Color2.png
+                // gives 1b2027 (cold). That is not a slideshow, it is a desktop
+                // that will not sit still.
+                //
+                // "Change the picture" and "change the colours" are two
+                // different wishes and they get two different switches.
+                property bool slideshowRecolour: false
+
+                // Which image the palette is derived from, when that is not the
+                // one on screen. Empty means "the one on screen", which is what
+                // every non-slideshow case wants — so this key is invisible
+                // until a slideshow with the colours pinned turns it on, and
+                // choosing a wallpaper by hand clears it again.
+                property string paletteFrom: ""
             }
         }
     }

@@ -33,7 +33,8 @@ groups were settable and undocumented.
 | `outputs` | per-monitor overrides; empty = let niri decide |
 | `autostart` | extra programs — **not** the shell or the clipboard watcher |
 | `workspaces` | named workspaces |
-| `wallpaper` | `folder`, `current` image, `monitors` |
+| `wallpaper` | `folder`, `current` image, `monitors`, and the slideshow: `slideshow`, `intervalMinutes`, `shuffle`, `slideshowRecolour`, `paletteFrom`. ⚠️ `slideshowRecolour` is OFF by default and that is deliberate — with the palette set to follow the wallpaper, every picture change recalculates all 26 colours and rewrites every foreign application's config (measured: a forest picture gives base `27201b`, a desert one `1b2027`), so a slideshow would repaint the whole desktop on every slide. `paletteFrom` is the pin that keeps the scheme still; choosing a wallpaper by hand clears it |
+| `session` | `restore` and `apps`. ⚠️ The PROGRAMS come back, not what was in them — Brave and VS Code restore their own tabs, kitty does not, and nothing outside a program can know what it had open. The list is kept while you work rather than written at shutdown, so it survives a machine that went down without asking, and it is applied once per SESSION rather than once per shell start (the marker lives in `$XDG_RUNTIME_DIR`) |
 | `location` | `name` (display only), `lat`, `lon` — set from the quick panel |
 | `cursor` | `theme` and `size`. ⚠️ TWO writers need it: niri draws the pointer over the desktop, GTK programs read `org.gnome.desktop.interface` and ignore the compositor. Setting one leaves the other wrong, which shows as a pointer that changes shape at a window edge |
 | `gpu` | `renderDevice` — which GPU niri draws with. Empty means niri chooses, which is right everywhere except a hybrid laptop with a monitor on the second card. ⚠️ `niri validate` accepts a device that does not exist; see docs/NIRI.md for the way back out |
