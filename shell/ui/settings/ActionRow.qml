@@ -27,6 +27,12 @@ ColumnLayout {
     // to infer from a word.
     property bool destructive: false
 
+    // Whether the action can do anything right now. Dimmed and inert rather
+    // than hidden, the same way SettingRow handles it and for the same reason:
+    // a button you cannot find is worse than one that is visibly unavailable,
+    // and hiding it would make the reason disappear along with it.
+    property bool usable: true
+
     // What happened, shown under the row until the next action. Empty means the
     // button has not been pressed yet — an action that reports nothing is an
     // action you have to take on faith.
@@ -36,6 +42,7 @@ ColumnLayout {
     signal triggered
 
     spacing: 0      // literal-ok: absence of a gap — the row and its result are one block
+    opacity: root.usable ? 1 : Theme.dimmed
 
     RowLayout {
         Layout.fillWidth: true
@@ -63,6 +70,11 @@ ColumnLayout {
 
         Rectangle {
             id: press
+            // A row may carry only a statement and no action — the update group
+            // opens with one. An empty `button` is that row, and it must take no
+            // width at all: a zero-width Rectangle still gets its layout spacing
+            // and would push the text off centre by a gap nobody can see.
+            visible: root.button.length > 0
             implicitWidth: buttonText.implicitWidth + Theme.space4 * 2
             implicitHeight: buttonText.implicitHeight + Theme.space2 * 2
             radius: Theme.radiusPill
@@ -84,9 +96,10 @@ ColumnLayout {
                 NumberAnimation { duration: Theme.durFast; easing.type: Theme.easing }
             }
 
-            HoverHandler { id: hover }
+            HoverHandler { id: hover; enabled: root.usable }
             TapHandler {
                 id: tap
+                enabled: root.usable
                 onTapped: root.triggered()
             }
 

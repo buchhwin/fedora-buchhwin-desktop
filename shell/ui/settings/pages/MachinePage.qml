@@ -14,12 +14,100 @@ ColumnLayout {
 
     spacing: Theme.space5
 
+    // ⚠️ THE GPU LIST WAS EMPTY UNLESS YOU HAD VISITED ANOTHER PAGE FIRST.
+    // `renderChoices` below reads Services.Installed, and Installed scans only
+    // when asked — KeyboardPage and TypePage both ask, this page never did. So
+    // "Render on" offered one entry ("niri chooses") on a fresh window and the
+    // full list after a detour through Keyboard, which reads as a list that
+    // sometimes works. Found while adding the update rows, not by a check.
+    //
+    // Update.probe() is here rather than in the service for the same reason it
+    // is in Installed: nothing asks the machine anything until a page that
+    // shows the answer is open.
+    Component.onCompleted: {
+        Services.Installed.scan()
+        Services.Update.probe()
+    }
+
     readonly property var renderChoices: {
         var out = [{ value: "", label: "niri chooses" }]
         var d = Services.Installed.renderDevices
         for (var i = 0; i < d.length; i++)
             out.push({ value: d[i].path, label: d[i].driver ? d[i].driver : d[i].path })
         return out
+    }
+
+    // ------------------------------------------------------------------ updates
+    //
+    // ⚠️ ActionRows, not SettingRows: none of these three holds a value, and
+    // giving them a `key` would mean punching an exception into
+    // tests/setting-rows.sh. See the note at the top of ActionRow.qml.
+    SettingGroup {
+        Layout.fillWidth: true
+        title: "Updates"
+
+        // A statement, not an action — the one row in the window with no
+        // button. What you want to know before pressing anything is which tree
+        // you are running and how old it is.
+        ActionRow {
+            Layout.fillWidth: true
+            label: "This desktop"
+            hint: Services.Update.subject.length > 0
+                      ? Services.Update.subject
+                      : Services.Update.repoDir
+            status: Services.Update.statusLine
+            failed: Services.Update._probed && !Services.Update.isCheckout
+        }
+
+        // ⚠️ THIS ONE IS ALLOWED TO RUN IN THE WINDOW. `git fetch` needs no
+        // root and changes nothing in the working tree — it only teaches the
+        // local repository what the remote has. The button below is the one
+        // that needs a terminal.
+        ActionRow {
+            Layout.fillWidth: true
+            label: "Check for updates"
+            hint: "Asks the remote what it has. It reads only — nothing here changes, and it needs no password."
+            button: Services.Update.busy ? "Checking…" : "Check"
+            usable: Services.Update.isCheckout && !Services.Update.busy
+            failed: Services.Update.error.length > 0
+            status: {
+                if (Services.Update.error.length > 0)
+                    return Services.Update.error
+                if (!Services.Update.checked)
+                    return ""
+                var n = Services.Update.newCommits.length
+                if (n === 0)
+                    return "Already current."
+                return n + (n === 1 ? " new commit:\n" : " new commits:\n")
+                       + Services.Update.newCommits.join("\n")
+            }
+            onTriggered: Services.Update.check()
+        }
+
+        // ⚠️ A TERMINAL, AND IT IS THE POINT RATHER THAN A SHORTCUT. bhctl
+        // update runs install.sh, install.sh runs dnf, and dnf asks for a
+        // password. A button that silently waits on a prompt nobody can see is
+        // a button that hangs — in a terminal you see the question and the
+        // output, and you can answer it.
+        ActionRow {
+            Layout.fillWidth: true
+            label: "Install the update"
+            hint: "Opens a terminal running bhctl update: pull, then the installer. It is a terminal because the installer asks for your password."
+            button: "Open a terminal"
+            usable: Services.Update.canInstall
+            failed: Services.Update.isCheckout && Services.Update.dirtyFiles > 0
+            status: {
+                if (!Services.Update._probed)
+                    return ""
+                if (!Services.Update.isCheckout)
+                    return "Not possible here — this tree has no git history to pull into. That is normal on a machine the files were copied to."
+                if (Services.Update.dirtyFiles > 0)
+                    return "There are uncommitted changes in " + Services.Update.repoDir
+                           + " — bhctl refuses to pull over them, and so does this button."
+                return ""
+            }
+            onTriggered: Services.Update.install()
+        }
     }
 
     SettingGroup {

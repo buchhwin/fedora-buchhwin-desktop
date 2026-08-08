@@ -31,3 +31,6 @@ singleton Clipboard 1.0 Clipboard.qml
 singleton Theming 1.0 Theming.qml
 singleton Installed 1.0 Installed.qml
 singleton Gpu 1.0 Gpu.qml
+# Which tree this desktop runs from, and whether the remote has more. Asks
+# nothing until the System page is opened, and nothing again until a button.
+singleton Update 1.0 Update.qml
