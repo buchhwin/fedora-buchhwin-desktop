@@ -9,6 +9,7 @@ import QtQuick
 import QtQuick.Layouts
 import ".."
 import "../../../config"
+import "../../../services" as Services
 import "../../../theme"
 
 ColumnLayout {
@@ -76,7 +77,8 @@ ColumnLayout {
             key: "timer.presets"
             label: "Preset lengths"
             hint: "Minutes, separated by commas. ⚠️ They are stored as text on purpose — JsonAdapter does not deserialise a list of numbers at all, and does it silently."
-            kind: "strings"
+            kind: "picks"
+            options: Services.Suggest.durations
             placeholder: "5, 15, 25, 60"
         }
         SettingRow {
@@ -88,7 +90,8 @@ ColumnLayout {
             Layout.fillWidth: true
             key: "timer.soundFile"
             label: "Sound file"
-            kind: "field"
+            kind: "pick"
+            options: Services.Suggest.sounds
             placeholder: "/usr/share/sounds/…"
             usable: Config.timer.sound
         }

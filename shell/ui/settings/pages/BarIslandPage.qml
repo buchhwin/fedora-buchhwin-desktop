@@ -23,6 +23,7 @@ import QtQuick
 import QtQuick.Layouts
 import ".."
 import "../../../config"
+import "../../../services" as Services
 import "../../../theme"
 
 ColumnLayout {
@@ -53,7 +54,8 @@ ColumnLayout {
             key: "bar.monitors"
             label: "Screens"
             hint: "Monitor names, separated by commas."
-            kind: "strings"
+            kind: "picks"
+            options: Services.Suggest.monitors
             placeholder: "Every screen"
             usable: Config.bar.enabled
         }
@@ -145,7 +147,8 @@ ColumnLayout {
             key: "notch.monitors"
             label: "Screens"
             hint: "Monitor names, separated by commas."
-            kind: "strings"
+            kind: "picks"
+            options: Services.Suggest.monitors
             placeholder: "Every screen"
             usable: Config.notch.enabled
         }

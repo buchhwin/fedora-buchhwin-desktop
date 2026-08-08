@@ -8,6 +8,7 @@ import QtQuick
 import QtQuick.Layouts
 import ".."
 import "../../../config"
+import "../../../services" as Services
 import "../../../theme"
 
 ColumnLayout {
@@ -45,7 +46,8 @@ ColumnLayout {
             Layout.fillWidth: true
             key: "wallpaper.monitors"
             label: "Screens"
-            kind: "strings"
+            kind: "picks"
+            options: Services.Suggest.monitors
             placeholder: "Every screen"
         }
     }

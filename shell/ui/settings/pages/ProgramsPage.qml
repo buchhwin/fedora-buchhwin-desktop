@@ -8,12 +8,19 @@ import QtQuick
 import QtQuick.Layouts
 import ".."
 import "../../../config"
+import "../../../services" as Services
 import "../../../theme"
 
 ColumnLayout {
     id: root
 
     spacing: Theme.space5
+
+    // These six were free text boxes, on a page whose entire subject is "which
+    // installed program". `Services.Suggest.programs()` puts the ones that fit
+    // the job first and keeps the rest — see the note there for why it orders
+    // rather than filters.
+    Component.onCompleted: Services.Installed.scan()
 
     SettingGroup {
         Layout.fillWidth: true
@@ -28,43 +35,49 @@ ColumnLayout {
             Layout.fillWidth: true
             key: "programs.terminal"
             label: "Terminal"
-            hint: "Program and arguments, separated by commas."
-            kind: "strings"
+            hint: "The program, and its arguments underneath. One argument per comma — niri's spawn takes them apart, so a whole command line in one box would look for a binary with spaces in its name."
+            kind: "command"
+            options: Services.Suggest.programs(["System", "Utility"])
             placeholder: "kitty"
         }
         SettingRow {
             Layout.fillWidth: true
             key: "programs.browser"
             label: "Browser"
-            kind: "strings"
+            kind: "command"
+            options: Services.Suggest.programs(["Network"])
             placeholder: "brave-browser"
         }
         SettingRow {
             Layout.fillWidth: true
             key: "programs.fileManager"
             label: "File manager"
-            kind: "strings"
+            kind: "command"
+            options: Services.Suggest.programs(["System", "Utility"])
             placeholder: "nautilus"
         }
         SettingRow {
             Layout.fillWidth: true
             key: "programs.editor"
             label: "Editor"
-            kind: "strings"
+            kind: "command"
+            options: Services.Suggest.programs(["Development", "Utility", "Office"])
             placeholder: "code"
         }
         SettingRow {
             Layout.fillWidth: true
             key: "programs.imageViewer"
             label: "Image viewer"
-            kind: "strings"
+            kind: "command"
+            options: Services.Suggest.programs(["Graphics"])
             placeholder: "loupe"
         }
         SettingRow {
             Layout.fillWidth: true
             key: "programs.video"
             label: "Video player"
-            kind: "strings"
+            kind: "command"
+            options: Services.Suggest.programs(["AudioVideo", "Video"])
             placeholder: "vlc"
         }
     }

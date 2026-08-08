@@ -150,15 +150,17 @@ ColumnLayout {
             Layout.fillWidth: true
             key: "autostart"
             label: "Start with the session"
-            hint: "Full paths, separated by commas. The polkit agent is here by default — without it, anything that asks for a password gets no dialogue."
-            kind: "strings"
+            hint: "Started with the session. The polkit agent is here by default — without it, anything that asks for a password gets no dialogue. A full path works too; these run through a shell."
+            kind: "picks"
+            options: Services.Suggest.allPrograms
             placeholder: "Nothing"
         }
         SettingRow {
             Layout.fillWidth: true
             key: "workspaces"
             label: "Named workspaces"
-            kind: "strings"
+            kind: "picks"
+            options: Services.Suggest.workspaceNames
             placeholder: "None"
         }
         // ⚠️ THE LIMIT IS IN THE HINT, not only in the code. We can bring the

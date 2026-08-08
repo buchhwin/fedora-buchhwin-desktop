@@ -28,7 +28,8 @@ ColumnLayout {
             key: "media.preferredPlayer"
             label: "Preferred player"
             hint: "⚠️ Worth setting if you keep a browser open: a page that starts playing is an MPRIS player too, so without this the island jumps from your music to an advert and back. Empty means whatever is actually playing. Matched loosely against the player's own name."
-            kind: "field"
+            kind: "pick"
+            options: Services.Suggest.players
             placeholder: "Whatever is playing"
         }
 

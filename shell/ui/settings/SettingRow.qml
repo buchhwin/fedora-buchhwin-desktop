@@ -44,16 +44,47 @@ ColumnLayout {
     // ⚠️ A STRING, NOT A QML ENUM, AND THE TRIPWIRE IS THE REASON. A typo in an
     // enum is caught by the engine but an enum cannot be grepped out of the
     // file; tests/setting-rows.sh checks the spelling of every `kind:` against
-    // the five below, which catches the same typo AND keeps the row table
+    // the eight below, which catches the same typo AND keeps the row table
     // readable from outside QML.
-    // switch | slider | choice | field | strings | pick
+    // switch | slider | choice | field | strings | pick | picks | command
     property string kind: "switch"
 
-    // --- pick: the values this machine actually has. A `pick` is a text field
-    // that SUGGESTS rather than a list that forbids — you can still type
-    // something that is not installed yet, which matters for a config file that
-    // may be copied to another machine before that machine has the font.
+    // --- pick / picks / command: the values this machine actually has. These
+    // SUGGEST rather than forbid — you can still type something that is not
+    // installed yet, which matters for a config file that may be copied to
+    // another machine before that machine has the font.
+    //
+    // ⚠️ AN ENTRY MAY BE A PLAIN STRING OR `{ value, label }`, and the second
+    // form earns itself on exactly the rows that needed it most: a sound file
+    // is a path nobody can read as a pill, and a date format is a row of letter
+    // codes that says nothing about the date it produces. The VALUE is what
+    // lands in the file either way — a label that could be stored by accident
+    // would be a setting that reads well and does nothing.
     property var options: []
+
+    function _optValue(o) {
+        return (o !== null && typeof o === "object" && o.value !== undefined)
+            ? String(o.value) : String(o)
+    }
+    function _optLabel(o) {
+        if (o !== null && typeof o === "object")
+            return String(o.label !== undefined ? o.label : o.value)
+        return String(o)
+    }
+    // The label for a value that is already set — so "Not installed here" and
+    // the field itself can speak in the same words the suggestions use.
+    function _labelOf(value) {
+        for (var i = 0; i < root.options.length; i++)
+            if (root._optValue(root.options[i]) === String(value))
+                return root._optLabel(root.options[i])
+        return String(value)
+    }
+    function _known(value) {
+        for (var i = 0; i < root.options.length; i++)
+            if (root._optValue(root.options[i]) === String(value))
+                return true
+        return false
+    }
 
     // --- slider
     property real from: 0
@@ -122,6 +153,19 @@ ColumnLayout {
         for (var i = 0; i < v.length; i++)
             out.push(String(v[i]))
         return out.join(", ")
+    }
+
+    // The same walk as _listText, but keeping the entries apart. `picks` and
+    // `command` both need the items rather than a joined line, and both need
+    // the walk-by-index: a `list<string>` comes back as a QJSValue wrapper,
+    // so `Array.isArray` says false and `.map` is not there.
+    function _textArray(v) {
+        var out = []
+        if (v === undefined || v === null)
+            return out
+        for (var i = 0; i < v.length; i++)
+            out.push(String(v[i]))
+        return out
     }
 
     function _textList(s) {
@@ -258,6 +302,8 @@ ColumnLayout {
                        : root.kind === "strings" ? stringsControl
                        : root.kind === "field" ? fieldControl
                        : root.kind === "pick" ? pickControl
+                       : root.kind === "picks" ? picksControl
+                       : root.kind === "command" ? commandControl
                        : null
     }
 
@@ -314,7 +360,7 @@ ColumnLayout {
         // one declaration per row: a page says what the options ARE, and the
         // control decides how to show them. A seventh kind would mean every row
         // stating the same fact twice, and tests/setting-rows.sh checks `kind`
-        // against a list of six.
+        // against a fixed list.
         //
         //   2–3 options   pills, unchanged. Opening a menu to choose between
         //                 two is more work than the choice itself.
@@ -522,10 +568,16 @@ ColumnLayout {
                     q = ""
                 var out = []
                 for (var i = 0; i < root.options.length; i++) {
-                    var o = String(root.options[i])
-                    if (o.toLowerCase() === pick.current.trim().toLowerCase())
+                    var o = root.options[i]
+                    var v = root._optValue(o)
+                    if (v.toLowerCase() === pick.current.trim().toLowerCase())
                         continue
-                    if (q.length === 0 || o.toLowerCase().indexOf(q) >= 0)
+                    // ⚠️ THE QUERY IS MATCHED AGAINST BOTH. With `{value,label}`
+                    // the two say different things — a sound is a path and a
+                    // name — and searching only one of them makes half of what
+                    // is on screen unfindable by what is on screen.
+                    var hay = (v + " " + root._optLabel(o)).toLowerCase()
+                    if (q.length === 0 || hay.indexOf(q) >= 0)
                         out.push(o)
                 }
                 return out
@@ -576,10 +628,25 @@ ColumnLayout {
             BarText {
                 Layout.fillWidth: true
                 visible: root.options.length > 0 && pick.current.length > 0
-                         && root.options.indexOf(pick.current) < 0
+                         && !root._known(pick.current)
                 text: "Not installed here"
                 font.pixelSize: Theme.fontSizeSm
                 color: Theme.warn
+            }
+
+            // ⚠️ WHAT THE VALUE IN THE BOX MEANS, when the box holds a path.
+            // `timer.soundFile` is 55 characters of directory and one word that
+            // matters. The field has to keep showing the value — it is what
+            // gets written — so the reading goes underneath rather than in it.
+            BarText {
+                Layout.fillWidth: true
+                visible: pick.current.length > 0
+                         && root._labelOf(pick.current) !== pick.current
+                text: root._labelOf(pick.current)
+                font.pixelSize: Theme.fontSizeSm
+                color: Theme.fgMuted
+                elide: Text.ElideRight
+                maximumLineCount: 1
             }
 
             Flow {
@@ -594,9 +661,16 @@ ColumnLayout {
                         id: suggestion
                         required property var modelData
                         interactive: true
-                        BarText { text: String(suggestion.modelData); color: Theme.fg }
+                        BarText {
+                            text: root._optLabel(suggestion.modelData)
+                            color: Theme.fg
+                        }
+                        // ⚠️ THE VALUE, NEVER THE LABEL. The two differ on the
+                        // rows this form was added for, and writing the label
+                        // would be a setting that reads perfectly and points at
+                        // nothing.
                         onClicked: {
-                            pickField.text = String(suggestion.modelData)
+                            pickField.text = root._optValue(suggestion.modelData)
                             pickField.commit()
                         }
                     }
@@ -633,6 +707,326 @@ ColumnLayout {
     // ⚠️ It is deliberately NOT always visible: a button that is present and
     // usually does nothing teaches people to ignore it, which is how the
     // refusal banner nearly went unread.
+    // ⚠️⚠️ A SET, NOT A LINE OF TEXT — and nine rows were the wrong shape.
+    //
+    // Which screens a surface appears on, which app-ids get blurred or float,
+    // what starts with the session: the order means nothing, and every entry is
+    // a name this machine can produce. As comma-separated boxes they were nine
+    // invitations to mistype an app-id — and a mistyped app-id is not an error
+    // anywhere. niri simply never matches the rule, and the window you wanted
+    // blurred is not blurred, with nothing in any log to say why.
+    //
+    // Chips for what is set, each one removable; a box for anything the machine
+    // has not thought of; and the machine's own answers underneath.
+    Component {
+        id: picksControl
+
+        ColumnLayout {
+            id: picks
+            spacing: Theme.space2
+
+            readonly property var entries: root._textArray(root.current)
+
+            // Same eight as `pick`, and the same reason: about two rows is a
+            // list you read, more is a wall you scroll past.
+            readonly property int shown: 8
+
+            readonly property var rest: {
+                var q = addField.text.trim().toLowerCase()
+                var out = []
+                for (var i = 0; i < root.options.length; i++) {
+                    var o = root.options[i]
+                    var v = root._optValue(o)
+                    // ⚠️ WHAT IS ALREADY SET IS NOT A SUGGESTION. Otherwise the
+                    // list below repeats the chips above it, and clicking one
+                    // of them does nothing — which reads as a dead pill.
+                    if (picks.entries.indexOf(v) >= 0)
+                        continue
+                    var hay = (v + " " + root._optLabel(o)).toLowerCase()
+                    if (q.length === 0 || hay.indexOf(q) >= 0)
+                        out.push(o)
+                }
+                return out
+            }
+            readonly property var matches: picks.rest.slice(0, picks.shown)
+
+            function write(list) {
+                Config.set(root.key, list)
+                Config.flush()
+            }
+            function add(v) {
+                var s = String(v).trim()
+                if (s.length === 0 || picks.entries.indexOf(s) >= 0)
+                    return
+                var out = picks.entries.slice()
+                out.push(s)
+                picks.write(out)
+                addField.text = ""
+            }
+            function drop(v) {
+                var out = []
+                for (var i = 0; i < picks.entries.length; i++)
+                    if (picks.entries[i] !== String(v))
+                        out.push(picks.entries[i])
+                picks.write(out)
+            }
+
+            // ------------------------------------------------ what is set now
+            //
+            // ⚠️ AN EMPTY LIST IS A REAL ANSWER AND HAS TO SAY SO. For half
+            // these keys empty means "every screen", not "no screens" — the
+            // placeholder carries that, exactly as it did on the text box this
+            // replaces, because a row of nothing reads as a row that is broken.
+            BarText {
+                Layout.fillWidth: true
+                visible: picks.entries.length === 0
+                text: root.placeholder.length > 0 ? root.placeholder : "Nothing"
+                font.pixelSize: Theme.fontSizeSm
+                color: Theme.fgMuted
+            }
+
+            Flow {
+                Layout.fillWidth: true
+                spacing: Theme.space2
+                visible: picks.entries.length > 0
+
+                Repeater {
+                    model: picks.entries
+
+                    Pill {
+                        id: chip
+                        required property var modelData
+                        interactive: root.usable
+                        active: true
+                        onClicked: picks.drop(chip.modelData)
+
+                        Row {
+                            spacing: Theme.space1
+                            BarText {
+                                text: root._labelOf(chip.modelData)
+                                color: Theme.accentFg
+                                anchors.verticalCenter: parent.verticalCenter
+                            }
+                            // The affordance. Without it a chip is a pill that
+                            // deletes something when you touch it, which is a
+                            // thing you find out by losing an entry.
+                            Icon {
+                                text: "close"
+                                size: Theme.fontSizeSm
+                                color: Theme.accentFg
+                                anchors.verticalCenter: parent.verticalCenter
+                            }
+                        }
+                    }
+                }
+            }
+
+            // --------------------------------------------------- add your own
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: Theme.space2
+
+                TextField {
+                    id: addField
+                    Layout.fillWidth: true
+                    enabled: root.usable
+                    placeholder: "Add one"
+                    onAccepted: picks.add(addField.text)
+                }
+
+                Pill {
+                    interactive: true
+                    visible: addField.text.trim().length > 0
+                    active: true
+                    BarText { text: "Add"; color: Theme.accentFg }
+                    onClicked: picks.add(addField.text)
+                }
+            }
+
+            // ------------------------------------------ what this machine has
+            Flow {
+                Layout.fillWidth: true
+                spacing: Theme.space2
+                visible: picks.matches.length > 0
+
+                Repeater {
+                    model: picks.matches
+
+                    Pill {
+                        id: offer
+                        required property var modelData
+                        interactive: root.usable
+                        BarText {
+                            text: root._optLabel(offer.modelData)
+                            color: Theme.fg
+                        }
+                        onClicked: picks.add(root._optValue(offer.modelData))
+                    }
+                }
+            }
+
+            // Say what is not being shown — the same rule as `pick`. A sample
+            // that does not admit it is a list that looks complete and is not.
+            BarText {
+                Layout.fillWidth: true
+                visible: picks.rest.length > picks.matches.length
+                text: "and " + (picks.rest.length - picks.matches.length)
+                      + " more — type to narrow it down"
+                font.pixelSize: Theme.fontSizeSm
+                color: Theme.fgMuted
+            }
+        }
+    }
+
+    // ⚠️⚠️ AN ARGUMENT LIST, WHICH IS WHY IT IS NOT `picks`. `programs.terminal`
+    // is ["kitty", "-e", "btop"]: the first entry is the program and the rest
+    // are its arguments, in order. A chip field would have made them a set you
+    // can shuffle, and `spawn` with the arguments in the wrong order fails with
+    // a message that does not mention the reason.
+    //
+    // So the two halves are separated and each gets the control it deserves:
+    // the program is a name this machine knows and gets suggestions, the
+    // arguments are free text and stay untouched when a suggestion is clicked.
+    Component {
+        id: commandControl
+
+        ColumnLayout {
+            id: cmd
+            spacing: Theme.space2
+
+            readonly property var argv: root._textArray(root.current)
+            readonly property string program: cmd.argv.length > 0 ? cmd.argv[0] : ""
+            readonly property string args:
+                cmd.argv.length > 1 ? cmd.argv.slice(1).join(", ") : ""
+
+            function write(prog, argsText) {
+                var out = []
+                var p = String(prog).trim()
+                if (p.length > 0)
+                    out.push(p)
+                var rest = root._textList(argsText)
+                // ⚠️ ARGUMENTS WITHOUT A PROGRAM ARE DROPPED, not kept. A list
+                // whose first entry is "-e" is a spawn that looks for a binary
+                // called "-e"; keeping them would turn an empty program box
+                // into a key binding that fails at the moment it is pressed.
+                if (out.length > 0)
+                    for (var i = 0; i < rest.length; i++)
+                        out.push(rest[i])
+                Config.set(root.key, out)
+                Config.flush()
+            }
+
+            readonly property int shown: 8
+            readonly property var rest: {
+                var q = progField.text.trim().toLowerCase()
+                if (q === cmd.program.toLowerCase())
+                    q = ""
+                var out = []
+                for (var i = 0; i < root.options.length; i++) {
+                    var o = root.options[i]
+                    var v = root._optValue(o)
+                    if (v.toLowerCase() === cmd.program.toLowerCase())
+                        continue
+                    var hay = (v + " " + root._optLabel(o)).toLowerCase()
+                    if (q.length === 0 || hay.indexOf(q) >= 0)
+                        out.push(o)
+                }
+                return out
+            }
+            readonly property var matches: cmd.rest.slice(0, cmd.shown)
+
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: Theme.space2
+
+                TextField {
+                    id: progField
+                    Layout.fillWidth: true
+                    enabled: root.usable
+                    text: cmd.program
+                    placeholder: root.placeholder
+                    onAccepted: cmd.write(progField.text, argsField.text)
+                }
+
+                Pill {
+                    interactive: true
+                    visible: progField.text !== cmd.program
+                    active: true
+                    BarText { text: "Apply"; color: Theme.accentFg }
+                    onClicked: cmd.write(progField.text, argsField.text)
+                }
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: Theme.space2
+
+                TextField {
+                    id: argsField
+                    Layout.fillWidth: true
+                    enabled: root.usable
+                    text: cmd.args
+                    // One string per argument, which is what niri's `spawn`
+                    // takes — a whole command line in one string makes it look
+                    // for a binary with spaces in its name.
+                    placeholder: "No arguments — separate them with commas"
+                    onAccepted: cmd.write(progField.text, argsField.text)
+                }
+
+                Pill {
+                    interactive: true
+                    visible: argsField.text !== cmd.args
+                    active: true
+                    BarText { text: "Apply"; color: Theme.accentFg }
+                    onClicked: cmd.write(progField.text, argsField.text)
+                }
+            }
+
+            BarText {
+                Layout.fillWidth: true
+                visible: root.options.length > 0 && cmd.program.length > 0
+                         && !root._known(cmd.program)
+                text: "Not installed here"
+                font.pixelSize: Theme.fontSizeSm
+                color: Theme.warn
+            }
+
+            Flow {
+                Layout.fillWidth: true
+                spacing: Theme.space2
+                visible: cmd.matches.length > 0
+
+                Repeater {
+                    model: cmd.matches
+
+                    Pill {
+                        id: progOffer
+                        required property var modelData
+                        interactive: root.usable
+                        BarText {
+                            text: root._optLabel(progOffer.modelData)
+                            color: Theme.fg
+                        }
+                        // ⚠️ THE ARGUMENTS SURVIVE. Picking a different terminal
+                        // must not silently drop the `-e btop` that made the
+                        // binding worth having.
+                        onClicked: cmd.write(root._optValue(progOffer.modelData),
+                                             argsField.text)
+                    }
+                }
+            }
+
+            BarText {
+                Layout.fillWidth: true
+                visible: cmd.rest.length > cmd.matches.length
+                text: "and " + (cmd.rest.length - cmd.matches.length)
+                      + " more — type to narrow it down"
+                font.pixelSize: Theme.fontSizeSm
+                color: Theme.fgMuted
+            }
+        }
+    }
+
     Component {
         id: fieldControl
 

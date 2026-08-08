@@ -30,6 +30,9 @@ singleton Tray 1.0 Tray.qml
 singleton Clipboard 1.0 Clipboard.qml
 singleton Theming 1.0 Theming.qml
 singleton Installed 1.0 Installed.qml
+# The answers this machine already knows, for the settings rows that used to be
+# empty text boxes. Bindings over the services above — no process of its own.
+singleton Suggest 1.0 Suggest.qml
 singleton Gpu 1.0 Gpu.qml
 # Which tree this desktop runs from, and whether the remote has more. Asks
 # nothing until the System page is opened, and nothing again until a button.

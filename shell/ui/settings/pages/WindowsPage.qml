@@ -2,6 +2,7 @@
 import QtQuick
 import QtQuick.Layouts
 import ".."
+import "../../../services" as Services
 import "../../../theme"
 
 ColumnLayout {
@@ -40,21 +41,24 @@ ColumnLayout {
             key: "windows.blurred"
             label: "Blur behind"
             hint: "App ids, separated by commas. Only worth it for windows transparent enough to show it."
-            kind: "strings"
+            kind: "picks"
+            options: Services.Suggest.appIds
             placeholder: "kitty, org.gnome.Nautilus"
         }
         SettingRow {
             Layout.fillWidth: true
             key: "windows.floating"
             label: "Open floating"
-            kind: "strings"
+            kind: "picks"
+            options: Services.Suggest.appIds
             placeholder: "None"
         }
         SettingRow {
             Layout.fillWidth: true
             key: "windows.blockFromScreencast"
             label: "Hide from screen sharing"
-            kind: "strings"
+            kind: "picks"
+            options: Services.Suggest.appIds
             placeholder: "None"
         }
     }

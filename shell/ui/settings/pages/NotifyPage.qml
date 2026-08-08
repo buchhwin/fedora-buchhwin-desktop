@@ -7,6 +7,7 @@ import QtQuick
 import QtQuick.Layouts
 import ".."
 import "../../../config"
+import "../../../services" as Services
 import "../../../theme"
 
 ColumnLayout {
@@ -52,7 +53,8 @@ ColumnLayout {
             key: "notifications.monitors"
             label: "Screens"
             hint: "⚠️ Empty means every screen — which on two monitors means the same message twice. That is the honest default, but worth naming one output once a second screen is in play."
-            kind: "strings"
+            kind: "picks"
+            options: Services.Suggest.monitors
             placeholder: "Every screen"
             usable: Config.surfaces.notifications
         }

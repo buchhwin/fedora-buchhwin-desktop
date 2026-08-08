@@ -186,11 +186,11 @@ fi
 printf '\033[38;5;114mok\033[0m\n'
 
 # ─────────────────────────────────────────────────────────────────────────────
-printf '  %-34s ' "every kind is one of the six"
+printf '  %-34s ' "every kind is one of the eight"
 
 badkind="$(grep -rhoE '^[[:space:]]*kind:[[:space:]]*"[^"]+"' shell/ui/settings/ \
            | sed -E 's/.*"([^"]+)".*/\1/' | sort -u \
-           | grep -vxE 'switch|slider|choice|field|strings|pick')"
+           | grep -vxE 'switch|slider|choice|field|strings|pick|picks|command')"
 if [[ -n "$badkind" ]]; then
     printf '\033[38;5;203mfound\033[0m\n'
     sed 's/^/      /' <<< "$badkind"

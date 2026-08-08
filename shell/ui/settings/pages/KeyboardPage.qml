@@ -55,7 +55,8 @@ ColumnLayout {
             key: "input.keyboard.options"
             label: "XKB options"
             hint: "Comma-separated, e.g. compose:ralt."
-            kind: "field"
+            kind: "pick"
+            options: Services.Installed.keyboardOptions
             placeholder: "none"
         }
         SettingRow {
