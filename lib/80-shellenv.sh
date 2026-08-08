@@ -87,6 +87,30 @@ phase_shellenv() {
         warn "  sudo chsh -s $want $who"
     fi
 
+    # ⚠️⚠️ AND `chsh` ALONE IS NOT ENOUGH, WHICH IS WHY THIS EXISTS. He reported
+    # "no zsh as the default shell" on a machine where `getent passwd` already
+    # said zsh — and he was right. `chsh` changes the passwd entry; a session
+    # that was already running keeps the `SHELL` it was handed at login, and
+    # kitty starts `$SHELL`. Measured on the test machine:
+    #
+    #     getent passwd  →  /usr/bin/zsh      what is written down
+    #     niri's SHELL=  →  /bin/bash         what actually runs
+    #     running shells →  2 × bash
+    #
+    # Reading the passwd entry and reporting success is checking the form rather
+    # than the result. environment.d is read by `systemd --user`, so the next
+    # session gets the right value whatever the display manager inherited — and
+    # the FIRST login after the change is then already correct, instead of
+    # needing a second one nobody would connect to this.
+    mkdir -p "$CONFIG_HOME/environment.d"
+    if [[ -x "$want" ]]; then
+        printf 'SHELL=%s\n' "$want" \
+            > "$CONFIG_HOME/environment.d/15-buchhwin-shell.conf"
+        if [[ "${SHELL:-}" != "$want" ]]; then
+            warn "this session still runs ${SHELL:-unset} — log out once and it is zsh"
+        fi
+    fi
+
     # ------------------------------------------------------------ the PATH
     #
     # ⚠️ ~/.local/bin FOR NON-LOGIN SHELLS TOO. Fedora's /etc/profile.d adds it

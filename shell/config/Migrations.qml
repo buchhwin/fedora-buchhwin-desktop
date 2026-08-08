@@ -43,7 +43,7 @@ Singleton {
     // joining three fields with it can never collide with their contents.
     readonly property string sep: "\u0000"
 
-   readonly property int current: 13
+   readonly property int current: 14
 
     // step[n] upgrades a config at version n to version n+1.
     // Each is a pure function: take the parsed object, return it changed.
@@ -392,6 +392,33 @@ Singleton {
                 cfg.look.opacityActive = 1.0
             if (cfg.look.opacityInactive === 0.90 || cfg.look.opacityInactive === 0.9)
                 cfg.look.opacityInactive = 1.0
+            return cfg
+        },
+
+        // ---------------------------------------------------------- 13 -> 14
+        //
+        // The Apple pointer, because he asked for it by name on 08.08.2026 and
+        // because the value standing in its way was never a choice anybody made.
+        //
+        // ⚠️ THIS OVERWRITES A STORED VALUE, which this file does not normally
+        // do, so the reason has to be here rather than in a plan. `McMojave-
+        // cursors` has been the DEFAULT for a while and the installer places it
+        // pinned by commit and SHA256 — but a file that says anything at all
+        // wins, and files were still carrying the Breeze names. Those got there
+        // in the era when our own default was `Breeze_Dark`, a theme that is on
+        // no machine: niri could not resolve it, fell back to its own pointer at
+        // its own size, and that is the "the cursor is far too big" report.
+        // Step 8 -> 9 already rescued `Breeze_Dark` for exactly this reason and
+        // simply did not know about the other two names.
+        //
+        // ⚠️ AND IT IS DELIBERATELY NOT A BLANKET RESET. Only the two Breeze
+        // names move. Anything else in there — including a theme somebody chose
+        // from the list in the settings window — is left exactly where it is.
+        function (cfg) {
+            if (cfg.cursor
+                && (cfg.cursor.theme === "breeze_cursors"
+                    || cfg.cursor.theme === "Breeze_Light"))
+                cfg.cursor.theme = "McMojave-cursors"
             return cfg
         },
 

@@ -66,3 +66,16 @@ direnv                      # per-directory environments, hooked in .zshrc
 # else. lib/80-shellenv.sh sources them in the order that matters.
 zsh-autosuggestions
 zsh-syntax-highlighting
+
+# --- brought back from fedora-buchhwin-hyprland (08.08.2026) -----------------
+# ⚠️ These fell out in the rewrite for the same reason the rest of this file did:
+# the boundary ran along "does this program have a colour file?". None of them
+# do, so none of them came across, and nobody decided that.
+remmina                     # RDP and VNC — the one a Systemintegration job needs daily
+remmina-plugins-rdp
+keepassxc                   # passwords, offline, in a file you own
+wireguard-tools             # wg / wg-quick; NetworkManager can import the conf
+gvfs-mtp                    # plug a phone in and see it in the file manager
+playerctl                   # the media keys talk to whatever is playing over MPRIS
+ImageMagick                 # convert / identify — the scriptable half of image work
+gettext                     # msgfmt and friends; also what many build scripts want

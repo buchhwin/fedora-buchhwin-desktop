@@ -40,3 +40,4 @@ nss-mdns                    # ...and glibc actually asks avahi for them
 tuned-ppd                   # power profiles; replaced power-profiles-daemon in F41
 libnotify
 desktop-file-utils
+nano                        # the editor that is on every server you will ever ssh into

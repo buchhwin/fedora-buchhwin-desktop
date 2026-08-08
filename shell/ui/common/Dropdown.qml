@@ -16,7 +16,10 @@
 // clearest possible violation of it.
 import QtQuick
 import QtQuick.Layouts
-import QtQuick.Window
+// ⚠️ Quickshell, not QtQuick.Window. The old version needed the `Window`
+// attached property to find something to reparent into; PopupWindow needs no
+// parent of its own, only an anchor.
+import Quickshell
 import "../../theme"
 
 Item {
@@ -29,7 +32,7 @@ Item {
 
     signal picked(var value)
 
-    readonly property bool open: menu.visible
+    readonly property bool open: root.menuOpen
 
     function labelFor(v) {
         for (var i = 0; i < root.options.length; i++)
@@ -60,7 +63,7 @@ Item {
         HoverHandler { id: hover; enabled: root.usable }
         TapHandler {
             enabled: root.usable
-            onTapped: menu.visible = !menu.visible
+            onTapped: root.menuOpen = !root.menuOpen
         }
 
         RowLayout {
@@ -82,7 +85,7 @@ Item {
                 text: "expand_more"
                 size: Theme.fontSizeSm
                 color: Theme.fgMuted
-                rotation: menu.visible ? 180 : 0
+                rotation: root.menuOpen ? 180 : 0
                 Behavior on rotation {
                     enabled: Theme.animate
                     NumberAnimation { duration: Theme.durFast; easing.type: Theme.easing }
@@ -92,76 +95,70 @@ Item {
     }
 
     // -------------------------------------------------------------- the menu
-    // ⚠️ IT LIVES IN THE WINDOW, NOT IN THE ROW, and the first version did not —
-    // reported as "das dropdown menu ist unter dem rest, man kann nichts        // english-ok: quoted brief
-    // auswählen und es lässt sich nicht schließen".                             // english-ok: quoted brief
+    // ⚠️⚠️ ITS OWN WINDOW, AND THE TWO ATTEMPTS BEFORE THIS ONE BOTH FAILED IN
+    // HIS HANDS. Reported the first time as "das dropdown menu ist unter dem     // english-ok: quoted brief
+    // rest, man kann nichts auswählen und es lässt sich nicht schließen", and    // english-ok: quoted brief
+    // the second time, after a fix that was reported as done, as still broken.
     //
-    // Two reasons it could never have worked as a child of the row. The group
-    // card sets `clip: true` so it can animate shut, which cuts the menu off at
-    // the card's edge. And `z` only orders SIBLINGS, so a menu inside row three
-    // is still painted before rows four and five whatever its z says.
+    // Attempt one was a child of the row. That could never work: the group card
+    // sets `clip: true` so it can fold, which cuts the menu off at the card's
+    // edge, and `z` only orders SIBLINGS, so a menu in row three is painted
+    // before rows four and five whatever its z says.
     //
-    // Reparenting to the window's contentItem takes it out of both problems: it
-    // is a sibling of everything else in the window, and nothing clips it. The
-    // position has to be mapped across, because the coordinates it was written
-    // in are no longer the ones it lives in.
-    Item {
-        id: overlay
-        parent: root.Window.contentItem
-        anchors.fill: parent
-        z: 1000                      // literal-ok: above the window's own content, not a theme value
-        visible: menu.visible
-        enabled: menu.visible
+    // Attempt two reparented it to `root.Window.contentItem`. That was a guess
+    // dressed as a fix — the construct appears exactly ONCE in this whole
+    // project, it was never proven anywhere, and the settings window is a
+    // `FloatingWindow` rather than the `PanelWindow` everything else here uses.
+    // It was reported as still broken, which is the only evidence that counts.
+    //
+    // ⚠️ AND QUICKSHELL HAD THE RIGHT PART ALL ALONG. `PopupWindow` is a real
+    // popup surface — the compositor places it, so no `clip`, no z-order and no
+    // layout anywhere in the shell can reach it, and there is nothing to
+    // reparent and no coordinates to map. Verified in the type description
+    // shipped with quickshell rather than assumed: `ProxyPopupWindow`, exported
+    // as `Quickshell._Window/PopupWindow`, with `anchor` (a `PopupAnchor`
+    // carrying `item`, `rect`, `edges`, `gravity`, `adjustment`) and
+    // `grabFocus`.
+    //
+    // `grabFocus` is what makes Esc an answer rather than a detour: the popup
+    // takes the keyboard while it is up, so the key reaches the menu instead of
+    // closing the settings window underneath it.
+    property bool menuOpen: false
 
-        // Anywhere else closes it. Full-window, and only while open — a
-        // permanent invisible catcher is the bug nobody suspects.
-        TapHandler { onTapped: menu.visible = false }
+    PopupWindow {
+        id: popup
 
-        // Esc closes it before the window does. Without this the settings window
-        // would close underneath an open menu, which is two steps in one key.
-        focus: menu.visible
-        Keys.onEscapePressed: menu.visible = false
+        visible: root.menuOpen
+        color: "transparent"            // literal-ok: absence of colour
+
+        // Under the field, aligned with its left edge. `adjustment` is what
+        // keeps it on screen for a row near the bottom without any of the
+        // min/max arithmetic the previous version needed.
+        anchor.item: field
+        anchor.rect.y: field.height + Theme.space1
+        anchor.edges: Edges.Bottom | Edges.Left
+        anchor.gravity: Edges.Bottom | Edges.Right
+        anchor.adjustment: PopupAdjustment.All
+
+        grabFocus: true
+
+        implicitWidth: Math.max(root.width, list.implicitWidth + Theme.space2 * 2)
+        implicitHeight: Math.min(list.implicitHeight + Theme.space2 * 2,
+                                 Theme.space6 * 8)
+
+        // ⚠️ CLOSED WHEN IT LOSES THE KEYBOARD, which is also "you clicked
+        // somewhere else". The old version needed a full-window invisible
+        // catcher for that, and a permanent invisible catcher is the bug nobody
+        // suspects — it ate clicks meant for the tabs behind it.
+        onVisibleChanged: if (!popup.visible) root.menuOpen = false
 
         Rectangle {
-            id: menu
-
-            // Where the field is, expressed in the window's coordinates.
-            readonly property point anchor:
-                root.mapToItem(overlay, 0, field.height + Theme.space1)
-
-            x: Math.max(Theme.space2,
-                        Math.min(menu.anchor.x, overlay.width - menu.width - Theme.space2))
-            y: Math.min(menu.anchor.y,
-                        Math.max(Theme.space2, overlay.height - menu.height - Theme.space2))
-            width: Math.max(root.width, list.implicitWidth + Theme.space2 * 2)
-
-            // Grows out of the field rather than appearing at full size.
-            height: menu.visible ? Math.min(list.implicitHeight + Theme.space2 * 2,
-                                            Theme.space6 * 8) : 0
-            clip: true
-            visible: false
-            opacity: menu.visible ? 1 : 0
-
+            anchors.fill: parent
             radius: Theme.radiusMd
             color: Theme.menuBg
 
-            // motion-ok: the menu unrolling IS a height change, and it is
-            // reparented to the window's contentItem (see the note above), so it
-            // sits in no layout and nothing is laid out around it. `clip: true`
-            // is what turns the height into a reveal rather than a squash.
-            Behavior on height {
-                enabled: Theme.animate
-                NumberAnimation { duration: Theme.durFast; easing.type: Theme.easing }
-            }
-            Behavior on opacity {
-                enabled: Theme.animate
-                NumberAnimation { duration: Theme.durFast; easing.type: Theme.easing }
-            }
-
-            // The menu itself must not close when it is clicked ON — the catcher
-            // above covers the whole window, and without this every pick would
-            // be swallowed by it before reaching an entry.
-            TapHandler { onTapped: {} }
+            focus: true
+            Keys.onEscapePressed: root.menuOpen = false
 
             Flickable {
                 anchors.fill: parent
@@ -177,7 +174,7 @@ Item {
                     spacing: 0      // literal-ok: rows meet, separated by their own padding
 
                     Repeater {
-                        model: menu.visible ? root.options : []
+                        model: root.menuOpen ? root.options : []
 
                         Rectangle {
                             id: entry
@@ -202,7 +199,7 @@ Item {
                             TapHandler {
                                 onTapped: {
                                     root.picked(entry.modelData.value)
-                                    menu.visible = false
+                                    root.menuOpen = false
                                 }
                             }
 
@@ -225,5 +222,5 @@ Item {
         }
     }
 
-    function close() { menu.visible = false }
+    function close() { root.menuOpen = false }
 }

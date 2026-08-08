@@ -820,7 +820,7 @@ Singleton {
             // only the migration chain quietly papering over it. Both now write
             // no version at all: a file without one reads as 0 and is migrated
             // forward, which is exactly the path a genuinely old file takes.
-            property int version: 13
+            property int version: 14
 
             property JsonObject theme: JsonObject {
                 property string palette: "everforest-dark"
