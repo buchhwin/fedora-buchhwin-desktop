@@ -539,7 +539,7 @@ FocusScope {
             // icons.sh has already proven exists in the font.
             Rectangle {
                 Layout.fillWidth: true
-                visible: Services.Gpu.needsEnrolment
+                visible: Services.Gpu.needsEnrolment || Services.Gpu.needsResigning
                 implicitHeight: mok.implicitHeight + Theme.space3 * 2
                 radius: Theme.radiusSm
                 color: Theme.pillBg
@@ -564,7 +564,15 @@ FocusScope {
                         Icon { text: "warning"; size: Theme.fontSize; color: Theme.warn }
                         BarText {
                             Layout.fillWidth: true
-                            text: "Secure Boot is blocking the NVIDIA driver"
+                            // ⚠️ TWO FAULTS, TWO SENTENCES. Both end with the
+                            // module not loading, and saying "Secure Boot is
+                            // blocking it" to somebody who has already enrolled
+                            // his key sends him to check the one thing that is
+                            // fine. Measured on this machine: three keys
+                            // enrolled, nothing pending, module unsigned.
+                            text: Services.Gpu.needsResigning
+                                  ? "The NVIDIA driver was never signed"
+                                  : "Secure Boot is blocking the NVIDIA driver"
                             color: Theme.warn
                             font.weight: Theme.weightMedium
                         }
@@ -585,7 +593,16 @@ FocusScope {
                         // depends on whether an enrolment is already waiting.
                         // Telling somebody to run a command they ran an hour ago
                         // is how a correct message becomes a useless one.
-                        text: Services.Gpu.enrolmentPending
+                        text: Services.Gpu.needsResigning
+                            ? "Your key is enrolled — the modules are the problem. "
+                              + "They were built before the key existed, so they "
+                              + "carry no signature and the kernel refuses them "
+                              + "(\"Key was rejected by service\").\n\n"
+                              + "In a terminal:\n\n"
+                              + "    sudo akmods --force --rebuild\n\n"
+                              + "Then reboot. No blue screen this time: the key is "
+                              + "already where it needs to be."
+                            : Services.Gpu.enrolmentPending
                             ? "An enrolment is already scheduled.\n\n"
                               + "1. Reboot.\n"
                               + "2. A blue screen appears: choose Enroll MOK, Continue, Yes.\n"

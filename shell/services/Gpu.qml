@@ -52,9 +52,26 @@ Singleton {
     // between useful and infuriating.
     property bool enrolmentPending: false
 
+    // Whether an akmods key is in the MOK list at all, and whether the built
+    // module actually carries a signature. Together they say WHICH of the two
+    // Secure Boot failures this machine has — and they are different jobs.
+    property bool keyEnrolled: false
+    property bool moduleSigned: false
+
+    // ⚠️ THE CARD USED TO SAY ONE THING FOR TWO DIFFERENT FAULTS. `needsEnrolment`
+    // is only true when there is genuinely no key; when a key IS enrolled and
+    // the module is unsigned, the answer is to rebuild and re-sign, and telling
+    // someone to enrol a key they already enrolled is the kind of message that
+    // costs an evening.
+    readonly property bool needsResigning:
+        root._done && root.nvidiaPresent && root.driverBuilt
+        && root.secureBoot && !root.moduleLoaded
+        && root.keyEnrolled && !root.moduleSigned
+
     readonly property bool needsEnrolment:
         root._done && root.nvidiaPresent && root.driverBuilt
         && root.secureBoot && !root.moduleLoaded
+        && !root.needsResigning
 
     // ⚠️ A TEST SEAM, in the shape of the existing BUCHHWIN_SHELL_FAKE. The card
     // this service feeds appears on exactly one combination of four facts, and
@@ -79,6 +96,11 @@ Singleton {
         root.moduleLoaded = mode === "loaded"
         root.secureBoot = mode !== "none"
         root.enrolmentPending = mode === "pending"
+        // ⚠️ The fake has to cover the new state too, or the resigning card
+        // ships having never been drawn once — which is how a warning ends up
+        // with a typo nobody sees for a year.
+        root.keyEnrolled = mode === "needs-resigning"
+        root.moduleSigned = false
         root._done = true
     }
 
@@ -128,13 +150,18 @@ Singleton {
             mokutil --sb-state 2>/dev/null
             echo "--pending"
             mokutil --list-new 2>/dev/null | head -1
+            echo "--enrolled"
+            mokutil --list-enrolled 2>/dev/null | grep -ci "akmods"
+            echo "--signed"
+            modinfo nvidia 2>/dev/null | grep -ci "^sig"
             echo "--end"
         `]
         stdout: StdioCollector { id: collected }
 
         onExited: function (code) {
             root._running = false
-            var buckets = { "gpus": [], "built": [], "loaded": [], "sb": [], "pending": [] }
+            var buckets = { "gpus": [], "built": [], "loaded": [], "sb": [], "pending": [],
+                            "enrolled": [], "signed": [] }
             var cur = ""
             var lines = String(collected.text || "").split("\n")
             for (var i = 0; i < lines.length; i++) {
@@ -161,6 +188,18 @@ Singleton {
             root.moduleLoaded = buckets.loaded.length > 0
             root.secureBoot = String(buckets.sb.join(" ")).indexOf("SecureBoot enabled") >= 0
             root.enrolmentPending = buckets.pending.length > 0
+
+            // ⚠️ THE TWO FACTS THAT TELL "not enrolled" FROM "not signed", and
+            // without them the card told him to do something he had already
+            // done. Measured on his laptop: three MOK keys enrolled, nothing
+            // pending, and `modinfo nvidia` with NO signature field at all —
+            // `modprobe` answers "Key was rejected by service". The key was
+            // never the problem; the modules were built before it existed.
+            //
+            // Counted rather than parsed. `grep -c` gives a number on one line,
+            // which cannot be half-read the way a name can.
+            root.keyEnrolled = Number(buckets.enrolled.join("")) > 0
+            root.moduleSigned = Number(buckets.signed.join("")) > 0
 
             // `_done` even on a non-zero exit and even on an empty answer, for
             // the same reason Installed.qml gives: retrying for ever is a
