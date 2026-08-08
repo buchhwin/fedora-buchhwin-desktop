@@ -273,6 +273,13 @@ ColumnLayout {
             enabled: root.usable
             value: root.fraction
             showValue: false
+            // ⚠️ NO WHEEL INSIDE A SCROLLING PAGE. LevelRow's handler covers the
+            // whole row and accepts the event, so the settings page stopped
+            // scrolling the moment the pointer crossed a slider — and every
+            // notch it swallowed wrote a new value into the setting it was
+            // passing over. Reported as the sliders being frozen; it was worse
+            // than frozen.
+            wheel: false
             // One notch per step, so the wheel walks the same values the track
             // can land on rather than a second, finer set of its own.
             steps: Math.max(1, Math.round((root.to - root.from) / (root.step > 0 ? root.step : 1)))

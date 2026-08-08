@@ -700,7 +700,7 @@ Singleton {
             // only the migration chain quietly papering over it. Both now write
             // no version at all: a file without one reads as 0 and is migrated
             // forward, which is exactly the path a genuinely old file takes.
-            property int version: 12
+            property int version: 13
 
             property JsonObject theme: JsonObject {
                 property string palette: "everforest-dark"
@@ -1204,12 +1204,21 @@ Singleton {
                 // plus `rounding` plus `shadows`, and it is the one of the
                 // three you actually feel.
                 property int gapsOut: 16
-                // 0.95 / 0.90, chosen deliberately: enough to see the blur
-                // behind a window and not enough to grey the text out. The
-                // inactive one is a step further so the window you are NOT in
-                // recedes — that is what makes a screenful of windows readable.
-                property real opacityActive: 0.95
-                property real opacityInactive: 0.90
+                // ⚠️ 1.0 AND 1.0, AND THIS IS THE SECOND ATTEMPT AT ONE
+                // INSTRUCTION. The brief was "Transparenz raus — überall außer   // english-ok: quoted brief
+                // im Terminal", and migration 10 → 11 lifted `opacityPanel` and  // english-ok: quoted brief
+                // `opacityApp`. Those are OUR panels and GTK's own background.
+                // The two keys that make a WINDOW see-through are these, and they
+                // were left at 0.95 and 0.90 — so VS Code and the browser stayed
+                // exactly as transparent as before and he had to say it twice.
+                //
+                // They were "chosen deliberately: enough to see the blur behind a
+                // window and not enough to grey the text out". That reasoning was
+                // fine and it is not the point; he does not want it. Compositor
+                // opacity also fades the TEXT, which is the honest argument
+                // against it and the reason the terminal uses its own key.
+                property real opacityActive: 1.0
+                property real opacityInactive: 1.0
                 // Translucency the blur sits behind. Lower than it looks like it
                 // should be: a panel is read, not looked through, so this is the
                 // one place where legibility outranks the effect — but at 0.88

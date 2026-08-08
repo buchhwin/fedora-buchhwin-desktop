@@ -38,7 +38,11 @@ FocusScope {
     //
     // The other two routes to the same answer already exist: the installer says
     // it on the terminal, and `bhctl doctor` says it over SSH.
-    Component.onCompleted: Services.Gpu.probe()
+    Component.onCompleted: {
+        Services.Gpu.probe()
+        // The row index, built between frames from now on — see `buildIndex`.
+        root.buildIndex()
+    }
 
     // ⚠️ ONE ENTRY IS THE WHOLE REGISTRATION, and it used to be three. A page
     // needed a line here, a `Component { id: fooPage; FooPage {} }` further
@@ -200,26 +204,50 @@ FocusScope {
                 root.harvest(d[j], page, into)
     }
 
+    // ⚠️ ONE PAGE PER TICK, NOT ALL TWENTY-ONE AT ONCE. The first version built
+    // the whole index in a single call on the first keystroke, and that is a
+    // visible freeze in the middle of typing — reported as the search hanging.
+    // Twenty-one pages is not a small amount of work; doing it between frames
+    // costs the same total and blocks nothing.
+    //
+    // ⚠️ AND IT STARTS WHEN THE WINDOW OPENS, not when he types. By the time
+    // anyone reaches the search box it is finished, and a partial index is
+    // still useful — `shown` reads whatever is there.
+    property var rowIndexBuilding: null
+    property int rowIndexAt: 0
+
     function buildIndex() {
-        if (root.rowIndex !== null)
+        if (root.rowIndex !== null || indexer.running)
             return
-        var out = []
-        for (var i = 0; i < root.pages.length; i++) {
-            var p = root.pages[i]
+        root.rowIndexBuilding = []
+        root.rowIndexAt = 0
+        indexer.start()
+    }
+
+    Timer {
+        id: indexer
+        interval: 1          // literal-ok: "the next tick", not a duration
+        repeat: true
+        onTriggered: {
+            if (root.rowIndexAt >= root.pages.length) {
+                indexer.stop()
+                root.rowIndex = root.rowIndexBuilding
+                return
+            }
+            var p = root.pages[root.rowIndexAt++]
             var comp = Qt.createComponent(p.source)
             if (comp.status !== Component.Ready)
-                continue
+                return
             // ⚠️ `null` AS THE PARENT, deliberately. Given `root` the page would
             // be a child of this FocusScope with no layout to place it — drawn
             // at the top left, over the real one. Parentless is what "build it
             // to look at it" means.
             var obj = comp.createObject(null)
             if (obj === null)
-                continue
-            root.harvest(obj, p, out)
+                return
+            root.harvest(obj, p, root.rowIndexBuilding)
             obj.destroy()
         }
-        root.rowIndex = out
     }
 
     // What the sidebar lists. With an empty box that is the pages, in their own
@@ -351,11 +379,8 @@ FocusScope {
                 // is a way to get somewhere rather than only a way to filter.
                 onAccepted: if (root.shown.length > 0) root.goTo(root.shown[0])
 
-                // ⚠️ THE INDEX IS BUILT ON THE FIRST KEYSTROKE, not when the
-                // window opens. Building twenty-one pages costs a visible pause;
-                // paying it when the window opens would tax everyone who came to
-                // change one thing they can already see. Someone typing in the
-                // search box has said what they want it for.
+                // Still a backstop: if the window was opened and closed fast
+                // enough that the indexer never finished, typing restarts it.
                 onTextChanged: if (search.text.length > 0) root.buildIndex()
             }
 

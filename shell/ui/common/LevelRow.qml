@@ -68,10 +68,25 @@ RowLayout {
     readonly property int thickness: root.fat ? Theme.space6 + Theme.space4
                                               : Theme.space4
 
+    // ⚠️ THE WHEEL IS OFF INSIDE A SCROLLING PAGE, and this was reported as
+    // "die slider gehen nicht mit sondern sind freeze" — scrolling the settings   // english-ok: quoted brief
+    // stopped dead whenever the pointer crossed a slider.
+    //
+    // It is worse than it sounds. The handler covers the WHOLE ROW and answers
+    // `ev.accepted = true`, so the wheel never reaches the Flickable — and every
+    // notch it swallowed CHANGED THE SETTING it was passing over. Scrolling
+    // through a page silently rewrote it.
+    //
+    // It stays on where it was designed for: the quick panel and the notch
+    // readouts, which do not scroll and where nudging is the whole point.
+    // SettingRow turns it off.
+    property bool wheel: true
+
     WheelHandler {
         // The whole row, not just the track. Aiming is the thing being removed
         // here; a hit area the size of a 4 px slider would defeat the point.
         target: null
+        enabled: root.wheel
         onWheel: function (ev) {
             root.nudged(ev.angleDelta.y > 0 ? 1 : -1)
             ev.accepted = true
@@ -89,72 +104,86 @@ RowLayout {
         color: root.live ? Theme.fg : Theme.fgDim
     }
 
-    Rectangle {
-        id: track
+    // ⚠️ A SLOT OF CONSTANT HEIGHT, and the track grows INSIDE it. This was
+    // reported as the sliders jittering while dragged: the track's growth went
+    // through `implicitHeight`, which is a LAYOUT size, so every press relaid
+    // out the row — and with it the whole page below. The feedback was real and
+    // it moved everything else to deliver it.
+    //
+    // The slot is as tall as the track can ever get, so nothing outside the row
+    // can move; `height` inside it is not a layout property and animates freely.
+    Item {
+        id: slot
         Layout.fillWidth: true
         Layout.alignment: Qt.AlignVCenter
-        implicitHeight: root.thickness + (root.held ? Theme.space1 : 0)
-        radius: Theme.radiusPill
-        color: Theme.surfaceHigh
-
-        // The grow, and the shrink back. Short, because this is an answer to a
-        // touch rather than a movement of its own — anything slower reads as the
-        // control being late.
-        Behavior on implicitHeight {
-            enabled: Theme.animate
-            NumberAnimation { duration: Theme.durFast; easing.type: Theme.easing }
-        }
+        implicitHeight: root.thickness + Theme.space1
 
         Rectangle {
-            id: fill
-            // ⚠️ NEVER NARROWER THAN IT IS TALL. Below that the pill radius has
-            // no room to round and the fill degenerates into a lozenge that
-            // looks like a rendering fault — and in fat mode the symbol inside
-            // would be sitting on bare grey. At a true zero the control still
-            // has to look like a control set to zero.
-            width: Math.max(track.height,
-                            track.width * Math.max(0, Math.min(1, root.live ? root.value : 0)))
-            height: parent.height
-            radius: parent.radius
-            color: root.live ? Theme.accent : Theme.surfaceHigher
+            id: track
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.verticalCenter: parent.verticalCenter
+            height: root.thickness + (root.held ? Theme.space1 : 0)
+            radius: Theme.radiusPill
+            color: Theme.surfaceHigh
 
-            // The fill follows the value rather than jumping to it, which is
-            // what makes a key held down feel continuous instead of stepped.
-            Behavior on width {
+            // The grow, and the shrink back. Short, because this is an answer to
+            // a touch rather than a movement of its own — anything slower reads
+            // as the control being late.
+            Behavior on height {
                 enabled: Theme.animate
                 NumberAnimation { duration: Theme.durFast; easing.type: Theme.easing }
             }
-            Behavior on color {
-                enabled: Theme.animate
-                ColorAnimation { duration: Theme.durBase; easing.type: Theme.easing }
+
+            Rectangle {
+                id: fill
+                // ⚠️ NEVER NARROWER THAN IT IS TALL. Below that the pill radius has
+                // no room to round and the fill degenerates into a lozenge that
+                // looks like a rendering fault — and in fat mode the symbol inside
+                // would be sitting on bare grey. At a true zero the control still
+                // has to look like a control set to zero.
+                width: Math.max(track.height,
+                                track.width * Math.max(0, Math.min(1, root.live ? root.value : 0)))
+                height: parent.height
+                radius: parent.radius
+                color: root.live ? Theme.accent : Theme.surfaceHigher
+
+                // The fill follows the value rather than jumping to it, which is
+                // what makes a key held down feel continuous instead of stepped.
+                Behavior on width {
+                    enabled: Theme.animate
+                    NumberAnimation { duration: Theme.durFast; easing.type: Theme.easing }
+                }
+                Behavior on color {
+                    enabled: Theme.animate
+                    ColorAnimation { duration: Theme.durBase; easing.type: Theme.easing }
+                }
             }
+
+            // ⚠️ SITS ON THE TRACK, NOT ON THE FILL, and it is the fill that moves
+            // under it. Anchored into the fill it would slide off the left end as
+            // the level dropped; anchored here it stays where the symbol belongs
+            // and simply stops being on the accent when the fill retreats past it.
+            // That is what the fill's minimum width above is protecting.
+            Icon {
+                visible: root.fat
+                anchors.verticalCenter: parent.verticalCenter
+                anchors.left: parent.left
+                anchors.leftMargin: Theme.space3
+                text: root.icon
+                size: Theme.fontSizeLg
+                color: root.live ? Theme.accentFg : Theme.fgDim
+            }
+
         }
 
-        // ⚠️ SITS ON THE TRACK, NOT ON THE FILL, and it is the fill that moves
-        // under it. Anchored into the fill it would slide off the left end as
-        // the level dropped; anchored here it stays where the symbol belongs
-        // and simply stops being on the accent when the fill retreats past it.
-        // That is what the fill's minimum width above is protecting.
-        Icon {
-            visible: root.fat
-            anchors.verticalCenter: parent.verticalCenter
-            anchors.left: parent.left
-            anchors.leftMargin: Theme.space3
-            text: root.icon
-            size: Theme.fontSizeLg
-            color: root.live ? Theme.accentFg : Theme.fgDim
-        }
-
-        // ⚠️ THE HANDLERS STILL SIT ON THEIR OWN ITEM, even now that the track is
-        // big enough to hit. It is what keeps the answering area a rectangle of
-        // constant height while the drawn track grows and shrinks underneath —
-        // otherwise the control would change size under the finger that is
-        // holding it, and the fraction would shift with it.
+        // ⚠️ OUTSIDE THE TRACK NOW, filling the slot. It used to be the track's
+        // child, so it inherited the very size change it was supposed to be
+        // insulated from — and the fraction under the finger shifted as the
+        // track grew. The slot never changes, so neither does this.
         Item {
             id: grab
-            anchors.verticalCenter: parent.verticalCenter
-            width: parent.width
-            height: Math.max(root.thickness + Theme.space1, Theme.space5)
+            anchors.fill: parent
 
             // Pressed-state only. The tap itself is below, because a HoverHandler
             // and a TapHandler answer different questions and sharing one would

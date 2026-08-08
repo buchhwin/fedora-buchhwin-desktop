@@ -100,12 +100,25 @@ ColumnLayout {
         radius: Theme.radiusLg
         color: Theme.cardBg
 
+        // ⚠️ NOT UNTIL THE CARD HAS LAID OUT ONCE. `full` is derived from
+        // `holder.implicitHeight`, which starts at 0 and grows as the rows
+        // arrive — so this Behavior animated every BUILD, not just the
+        // collapse. Every page change showed all its cards unfolding from
+        // nothing, which is what "die settings buggen oft" was.               // english-ok: quoted brief
+        //
+        // A Behavior on a layout size animates every change to it, including
+        // the ones that are not the gesture you meant. Gating it on "has this
+        // ever been laid out" is the difference between a card that closes and
+        // a page that assembles itself in front of you.
+        property bool settled: false
+        Component.onCompleted: Qt.callLater(function () { card.settled = true })
+
         Behavior on implicitHeight {
-            enabled: Theme.animate
+            enabled: Theme.animate && card.settled
             NumberAnimation { duration: Theme.durBase; easing.type: Theme.easing }
         }
         Behavior on opacity {
-            enabled: Theme.animate
+            enabled: Theme.animate && card.settled
             NumberAnimation { duration: Theme.durFast; easing.type: Theme.easing }
         }
 

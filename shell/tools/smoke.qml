@@ -183,6 +183,25 @@ Scope {
                     && chosen.config.programs.browser.length === 2
                     && chosen.config.programs.browser[0] === "firefox")
 
+            // ⚠️ THE SECOND HALF OF AN INSTRUCTION THAT SHIPPED HALF-DONE. Step
+            // 10 → 11 lifted opacityPanel and opacityApp and left the two keys
+            // that actually make a window see-through. Both directions again,
+            // because a step that clamped every opacity to 1 would pass the
+            // first line and take a deliberate 0.5 with it.
+            var opaque = Migrations.migrate(
+                { version: 12, look: { opacityActive: 0.95, opacityInactive: 0.9 } }, ctx)
+            root.ok("12→13 makes the untouched windows opaque",
+                    opaque.ok
+                    && opaque.config.look.opacityActive === 1.0
+                    && opaque.config.look.opacityInactive === 1.0)
+
+            var dimmed = Migrations.migrate(
+                { version: 12, look: { opacityActive: 0.5, opacityInactive: 0.4 } }, ctx)
+            root.ok("12→13 leaves a transparency somebody chose alone",
+                    dimmed.ok
+                    && dimmed.config.look.opacityActive === 0.5
+                    && dimmed.config.look.opacityInactive === 0.4)
+
             // ------------------------------------------------------ theme
             // All 26 palette names resolve. `hex()` answers Scheme.unknown for
             // a name it does not know — magenta, impossible to miss in a

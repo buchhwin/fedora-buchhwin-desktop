@@ -43,7 +43,7 @@ Singleton {
     // joining three fields with it can never collide with their contents.
     readonly property string sep: "\u0000"
 
-   readonly property int current: 12
+   readonly property int current: 13
 
     // step[n] upgrades a config at version n to version n+1.
     // Each is a pure function: take the parsed object, return it changed.
@@ -368,6 +368,30 @@ Singleton {
                 && cfg.programs.browser.length === 1
                 && cfg.programs.browser[0] === "brave-browser")
                 cfg.programs.browser = ["brave-browser", "--ozone-platform=wayland"]
+            return cfg
+        },
+
+        // ---------------------------------------------------------- 12 -> 13
+        // The window opacities, and this is the SECOND half of an instruction
+        // whose first half shipped in step 10 → 11.
+        //
+        // ⚠️ THAT STEP LIFTED THE WRONG TWO KEYS. "Transparenz raus — überall     // english-ok: quoted brief
+        // außer im Terminal" was answered with `opacityPanel` and `opacityApp`,  // english-ok: quoted brief
+        // which are our own surfaces and GTK's background. The two that make a
+        // WINDOW see-through are `opacityActive` and `opacityInactive`, and they
+        // stayed at 0.95 and 0.90 — so nothing he actually looks at changed, and
+        // he had to report the same thing twice.
+        //
+        // Same rule as every lift here: ONLY when the value is exactly the old
+        // default. 0.90 is written `0.9` by JSON, so both spellings are checked —
+        // the same care step 10 → 11 took with opacityApp.
+        function (cfg) {
+            if (!cfg.look)
+                return cfg
+            if (cfg.look.opacityActive === 0.95)
+                cfg.look.opacityActive = 1.0
+            if (cfg.look.opacityInactive === 0.90 || cfg.look.opacityInactive === 0.9)
+                cfg.look.opacityInactive = 1.0
             return cfg
         },
 

@@ -142,9 +142,28 @@ Item {
         id: wideLoader
         anchors.centerIn: parent
         width: parent.width - Theme.space5 * 2
-        active: root.wide && !root.expanded
-        visible: active
-        asynchronous: true
+        // ⚠️ ALWAYS LOADED, AND THIS IS THE NOTCH'S "BUGGY ANIMATION". It used
+        // to be `active: root.wide` with `asynchronous: true`, and the island's
+        // width is `max(collapsedWidth, notch.implicitWidth)` — so on hover:
+        //
+        //   1. mode becomes "wide" and the width animation STARTS
+        //   2. …toward a width that does not include this content, because it
+        //      does not exist yet — asynchronous means "next frame at the
+        //      earliest"
+        //   3. the content arrives, implicitWidth jumps
+        //   4. the running animation is re-targeted mid-flight and goes again
+        //
+        // Two stages, every single time. And again whenever album art, the
+        // battery or the network icon resolve, because each of those changes
+        // implicitWidth once more.
+        //
+        // No amount of tuning durations or easing curves could fix that — it is
+        // a load ORDER, not a motion. Keeping it built means the width is known
+        // before the first hover, so the animation has one target and runs once.
+        // The cost is one NotchWide per screen held in memory; the services it
+        // reads are singletons that are running anyway.
+        active: true
+        visible: root.wide && !root.expanded
         sourceComponent: wideContent
 
         opacity: root.wide && !root.expanded ? 1 : 0
