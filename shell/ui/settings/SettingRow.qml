@@ -65,6 +65,12 @@ ColumnLayout {
     // --- choice: [{ value: "off", label: "Off" }, …]
     property var choices: []
 
+    // ⚠️ Colours are shown as colours, not as words. Set on the accent row,
+    // where a dropdown listing "Mauve" tells you nothing about Mauve. It is a
+    // property rather than a guess from the key name, because guessing would
+    // break the day somebody names a non-colour setting "accent".
+    property bool swatch: false
+
     // --- field / strings: what an EMPTY value means. A blank box reads as
     // "unset", and for half these keys empty is a real answer with a meaning —
     // an empty monitor list is "every screen", not "no screens".
@@ -298,28 +304,145 @@ ColumnLayout {
     Component {
         id: choiceControl
 
-        Flow {
-            spacing: Theme.space2
+        // ⚠️ THE FORM IS CHOSEN BY THE NUMBER OF OPTIONS, not by a seventh
+        // `kind`. His complaint was exact: "überall wo es ne auswahl wie bei     // english-ok: quoted brief
+        // color auswahl gibt, da sind ganz viele bubble, das ist                // english-ok: quoted brief
+        // unübersichtlich" — fourteen palettes as a Flow of pills wrap over      // english-ok: quoted brief
+        // three lines and the chosen one has to be hunted for.
+        //
+        // Deriving it from `choices.length` rather than adding a `kind` keeps
+        // one declaration per row: a page says what the options ARE, and the
+        // control decides how to show them. A seventh kind would mean every row
+        // stating the same fact twice, and tests/setting-rows.sh checks `kind`
+        // against a list of six.
+        //
+        //   2–3 options   pills, unchanged. Opening a menu to choose between
+        //                 two is more work than the choice itself.
+        //   4 or more     a dropdown.
+        //   colours       swatches, whatever the count — see `swatch`.
+        Item {
+            implicitWidth: swatches.visible ? swatches.implicitWidth
+                         : pills.visible ? pills.implicitWidth
+                         : menu.implicitWidth
+            implicitHeight: swatches.visible ? swatches.implicitHeight
+                          : pills.visible ? pills.implicitHeight
+                          : menu.implicitHeight
 
-            Repeater {
-                model: root.choices
+            readonly property bool few: root.choices.length <= 3
 
-                Pill {
-                    id: choicePill
-                    required property var modelData
+            // ------------------------------------------------------ 2–3: pills
+            Flow {
+                id: pills
+                width: parent.width
+                visible: !root.swatch && parent.few
+                spacing: Theme.space2
 
-                    interactive: root.usable
-                    active: String(root.current) === String(choicePill.modelData.value)
+                Repeater {
+                    model: pills.visible ? root.choices : []
 
-                    BarText {
-                        text: choicePill.modelData.label !== undefined
-                            ? choicePill.modelData.label : choicePill.modelData.value
-                        color: choicePill.active ? Theme.accentFg : Theme.fg
+                    Pill {
+                        id: choicePill
+                        required property var modelData
+
+                        interactive: root.usable
+                        active: String(root.current) === String(choicePill.modelData.value)
+
+                        BarText {
+                            text: choicePill.modelData.label !== undefined
+                                ? choicePill.modelData.label : choicePill.modelData.value
+                            color: choicePill.active ? Theme.accentFg : Theme.fg
+                        }
+
+                        onClicked: {
+                            Config.set(root.key, choicePill.modelData.value)
+                            Config.flush()
+                        }
                     }
+                }
+            }
 
-                    onClicked: {
-                        Config.set(root.key, choicePill.modelData.value)
-                        Config.flush()
+            // ------------------------------------------------- 4+: a dropdown
+            Dropdown {
+                id: menu
+                width: parent.width
+                visible: !root.swatch && !parent.few
+                options: menu.visible ? root.choices : []
+                current: String(root.current)
+                usable: root.usable
+                onPicked: function (v) {
+                    Config.set(root.key, v)
+                    Config.flush()
+                }
+            }
+
+            // --------------------------------------------- colours: swatches
+            // ⚠️ THE ONE EXCEPTION, and it earns itself. A dropdown entry
+            // reading "Mauve" does not tell you what Mauve looks like, so the
+            // list would be fourteen words you have to try one at a time. The
+            // colour IS the label.
+            Flow {
+                id: swatches
+                width: parent.width
+                visible: root.swatch
+                spacing: Theme.space2
+
+                Repeater {
+                    model: swatches.visible ? root.choices : []
+
+                    Rectangle {
+                        id: dot
+                        required property var modelData
+
+                        readonly property bool chosen:
+                            String(root.current) === String(dot.modelData.value)
+
+                        implicitWidth: Theme.space5
+                        implicitHeight: Theme.space5
+                        radius: width / 2
+                        color: Scheme.color(String(dot.modelData.value))
+                        opacity: root.usable ? 1 : Theme.dimmed
+
+                        // The ring, drawn outside the fill so the colour is
+                        // never covered by the thing marking it.
+                        Rectangle {
+                            anchors.centerIn: parent
+                            width: parent.width + Theme.space2
+                            height: width
+                            radius: width / 2
+                            color: "transparent"          // literal-ok: absence of colour
+                            border.width: dot.chosen ? Theme.hairline * 2 : 0
+                            border.color: Theme.fg
+
+                            Behavior on border.width {
+                                enabled: Theme.animate
+                                NumberAnimation { duration: Theme.durFast; easing.type: Theme.easing }
+                            }
+                        }
+
+                        HoverHandler { id: dotHover; enabled: root.usable }
+                        TapHandler {
+                            enabled: root.usable
+                            onTapped: {
+                                Config.set(root.key, dot.modelData.value)
+                                Config.flush()
+                            }
+                        }
+
+                        scale: dotHover.hovered ? 1.15 : 1
+                        Behavior on scale {
+                            enabled: Theme.animate
+                            NumberAnimation { duration: Theme.durFast; easing.type: Theme.easing }
+                        }
+
+                        // ⚠️ `target` and `active`, which is Tooltip's actual
+                        // API — the name of a colour has to be reachable, or
+                        // swatches are fourteen dots you have to guess at.
+                        Tooltip {
+                            target: dot
+                            active: dotHover.hovered
+                            text: dot.modelData.label !== undefined
+                                ? String(dot.modelData.label) : String(dot.modelData.value)
+                        }
                     }
                 }
             }

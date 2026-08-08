@@ -12,3 +12,4 @@ IconRail 1.0 IconRail.qml
 Tooltip 1.0 Tooltip.qml
 Toggle 1.0 Toggle.qml
 TextField 1.0 TextField.qml
+Dropdown 1.0 Dropdown.qml

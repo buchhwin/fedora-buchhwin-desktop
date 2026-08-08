@@ -52,6 +52,9 @@ ColumnLayout {
             hint: "A colour name, not a colour — every palette answers to all fourteen, so switching palette keeps your choice."
             kind: "choice"
             choices: root.accents
+            // Fourteen colour NAMES in a dropdown would be fourteen words you
+            // have to try one at a time. The colour is the label.
+            swatch: true
         }
         SettingRow {
             Layout.fillWidth: true
