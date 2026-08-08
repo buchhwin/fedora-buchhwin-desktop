@@ -38,8 +38,8 @@ the fix and 5.2 s after. Saying so matters more than the tidy story.
 
 ## ⚠️ NVIDIA: the key was never the problem
 
-Reported as "mein nvidia key ist enrolt aber es wird noch ein fehler angezeigt,
-ich glaube ich habe was falsch gemacht". He had not.
+Reported as: his NVIDIA key is enrolled, an error is still shown, and he thought
+he had done something wrong. He had not.
 
 | | before | after |
 |---|---|---|
